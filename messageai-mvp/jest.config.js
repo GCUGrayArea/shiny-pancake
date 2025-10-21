@@ -8,9 +8,11 @@ const baseConfig = {
   moduleNameMapper: {
     '^@env$': '<rootDir>/jest.env.mock.js',
     '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.js',
+    '^@react-native-community/netinfo$': '<rootDir>/__mocks__/@react-native-community/netinfo.js',
+    '^@/(.*)$': '<rootDir>/src/$1',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(expo-sqlite|@react-native|react-native)/)',
+    'node_modules/(?!(expo-sqlite|@react-native|react-native|@react-native-community)/)',
   ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
