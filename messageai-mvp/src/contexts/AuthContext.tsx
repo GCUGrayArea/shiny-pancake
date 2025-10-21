@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { onAuthStateChangedListener, signIn as svcSignIn, signOut as svcSignOut, signUp as svcSignUp, getCurrentUser } from '@/services/auth.service';
+import { setupPresenceSystem, teardownPresenceSystem } from '@/services/presence.service';
+import { initDatabase } from '@/services/database.service';
 import { User } from '@/types';
 
 type AuthContextValue = {
@@ -17,13 +19,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [dbInitialized, setDbInitialized] = useState<boolean>(false);
+
+  console.log('🔐 AuthProvider: Rendering', { user: user?.uid, loading, error });
+
+  // Initialize database on app startup
+  useEffect(() => {
+    const initializeDb = async () => {
+      try {
+        console.log('🗄️ AuthProvider: Initializing database');
+        const result = await initDatabase();
+        if (result.success) {
+          console.log('✅ AuthProvider: Database initialized successfully');
+          setDbInitialized(true);
+        } else {
+          console.error('❌ AuthProvider: Database initialization failed:', result.error);
+        }
+      } catch (error) {
+        console.error('❌ AuthProvider: Database initialization error:', error);
+      }
+    };
+
+    initializeDb();
+  }, []);
 
   useEffect(() => {
     let listenerFired = false;
 
     // Set up auth state listener - it fires immediately with current state
-    const unsub = onAuthStateChangedListener(u => {
+    const unsub = onAuthStateChangedListener(async (u) => {
+      console.log('🔐 AuthContext: Auth state changed', { user: u?.uid, hasUser: !!u });
       listenerFired = true;
+
+      // Handle presence system setup/teardown based on auth state
+      if (u) {
+        // User logged in - set up presence system
+        try {
+          await setupPresenceSystem(u.uid);
+          console.log(`✅ Presence system initialized for user ${u.uid}`);
+        } catch (error) {
+          console.error('❌ Failed to initialize presence system:', error);
+        }
+      } else {
+        // User logged out - tear down presence system
+        try {
+          await teardownPresenceSystem();
+          console.log('🛑 Presence system torn down');
+        } catch (error) {
+          console.error('❌ Failed to teardown presence system:', error);
+        }
+      }
+
       setUser(u);
       setLoading(false);
     });
@@ -66,7 +112,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signOut: async () => {
       setError(null);
-      await svcSignOut();
+      try {
+        await teardownPresenceSystem();
+        await svcSignOut();
+      } catch (error) {
+        console.error('Error during sign out:', error);
+        // Continue with sign out even if presence teardown fails
+        await svcSignOut();
+      }
     },
   }), [user, loading, error]);
 

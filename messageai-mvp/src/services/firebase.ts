@@ -1,7 +1,12 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { initializeAuth, getAuth, type Auth } from 'firebase/auth';
+import { 
+  initializeAuth, 
+  getAuth, 
+  type Auth
+} from 'firebase/auth';
 import { getDatabase, type Database } from 'firebase/database';
 import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   FIREBASE_API_KEY,
   FIREBASE_AUTH_DOMAIN,
@@ -41,6 +46,9 @@ export function getFirebaseAuth(): Auth {
   if (!authInitialized) {
     authInitialized = true;
     try {
+      // Initialize without custom persistence for now
+      // Firebase will use memory persistence (session-based)
+      // TODO: Implement proper AsyncStorage persistence later
       return initializeAuth(app);
     } catch (error: any) {
       // If already initialized (shouldn't happen, but handle it)

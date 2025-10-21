@@ -78,7 +78,13 @@ export async function signIn(email: string, password: string): Promise<User> {
   try {
     const auth = getFirebaseAuth();
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    return toUser(cred.user);
+    const user = toUser(cred.user);
+    
+    // Ensure profile exists in RTDB (in case user was created before this feature)
+    // This is idempotent - won't overwrite existing profiles
+    await createUserProfile(user.uid, user.email, user.displayName);
+    
+    return user;
   } catch (e: any) {
     // eslint-disable-next-line no-console
     console.error('signIn error:', e?.code, e?.message);

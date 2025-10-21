@@ -99,12 +99,15 @@ export async function getMessagesFromFirebase(
   startAfterTimestamp?: number
 ): Promise<FirebaseResult<Message[]>> {
   try {
+    console.log('📥 FirebaseMessageService: Getting messages for chat:', chatId);
     const db = getFirebaseDatabase();
     const messagesRef = ref(db, `messages/${chatId}`);
+    console.log('📥 FirebaseMessageService: Messages path:', `messages/${chatId}`);
 
     let messagesQuery;
 
     if (startAfterTimestamp) {
+      console.log('📥 FirebaseMessageService: Getting messages before timestamp:', startAfterTimestamp);
       // Get messages before a specific timestamp (for pagination)
       messagesQuery = query(
         messagesRef,
@@ -113,6 +116,7 @@ export async function getMessagesFromFirebase(
         limitToLast(limit)
       );
     } else {
+      console.log('📥 FirebaseMessageService: Getting last', limit, 'messages');
       // Get most recent messages
       messagesQuery = query(
         messagesRef,
@@ -121,6 +125,7 @@ export async function getMessagesFromFirebase(
       );
     }
 
+    console.log('📥 FirebaseMessageService: Executing query...');
     const snapshot = await get(messagesQuery);
 
     const messages: Message[] = [];
@@ -130,10 +135,14 @@ export async function getMessagesFromFirebase(
         const msgData = childSnapshot.val();
         messages.push(msgData as Message);
       });
+      console.log('✅ FirebaseMessageService: Retrieved', messages.length, 'messages');
+    } else {
+      console.log('📭 FirebaseMessageService: No messages found in chat');
     }
 
     return { success: true, data: messages };
   } catch (error) {
+    console.error('❌ FirebaseMessageService: Error getting messages:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get messages from Firebase',

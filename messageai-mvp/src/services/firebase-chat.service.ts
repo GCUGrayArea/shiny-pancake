@@ -296,16 +296,15 @@ export function subscribeToChat(
 }
 
 /**
- * Find existing 1:1 chat between two users, or create a new one
- * This prevents duplicate 1:1 chats
- *
- * Returns the chat ID
+ * Find existing 1:1 chat between two users (does NOT create)
+ * Returns the chat ID if found, or null if no chat exists
  */
-export async function findOrCreateOneOnOneChat(
+export async function findOneOnOneChat(
   userId1: string,
   userId2: string
-): Promise<FirebaseResult<string>> {
+): Promise<FirebaseResult<string | null>> {
   try {
+    console.log(`🔍 FirebaseChatService: Looking for existing 1:1 chat between ${userId1} and ${userId2}`);
     const db = getFirebaseDatabase();
     const chatsRef = ref(db, 'chats');
 
@@ -336,11 +335,72 @@ export async function findOrCreateOneOnOneChat(
       });
 
       if (existingChatId) {
+        console.log(`✅ FirebaseChatService: Found existing chat: ${existingChatId}`);
+        return { success: true, data: existingChatId };
+      }
+    }
+
+    console.log(`ℹ️ FirebaseChatService: No existing chat found`);
+    return { success: true, data: null };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to find chat',
+    };
+  }
+}
+
+/**
+ * Find existing 1:1 chat between two users, or create a new one
+ * This prevents duplicate 1:1 chats
+ *
+ * Returns the chat ID
+ */
+export async function findOrCreateOneOnOneChat(
+  userId1: string,
+  userId2: string
+): Promise<FirebaseResult<string>> {
+  try {
+    console.log(`💬 FirebaseChatService: Finding or creating 1:1 chat between ${userId1} and ${userId2}`);
+    const db = getFirebaseDatabase();
+    const chatsRef = ref(db, 'chats');
+
+    // Get all chats
+    console.log(`📊 FirebaseChatService: Attempting to read chats from Firebase...`);
+    const snapshot = await get(chatsRef);
+    console.log(`📊 FirebaseChatService: Fetched chats successfully, exists: ${snapshot.exists()}`);
+
+    if (snapshot.exists()) {
+      // Look for existing 1:1 chat with these two users
+      let existingChatId: string | null = null;
+
+      snapshot.forEach((childSnapshot) => {
+        const chatData = childSnapshot.val();
+
+        // Check if it's a 1:1 chat
+        if (chatData.type === '1:1' && chatData.participantIds) {
+          const participants = Object.keys(chatData.participantIds);
+
+          // Check if both users are participants and no one else
+          if (
+            participants.length === 2 &&
+            participants.includes(userId1) &&
+            participants.includes(userId2)
+          ) {
+            existingChatId = chatData.id;
+            return true; // Stop iteration
+          }
+        }
+      });
+
+      if (existingChatId) {
+        console.log(`✅ FirebaseChatService: Found existing chat: ${existingChatId}`);
         return { success: true, data: existingChatId };
       }
     }
 
     // No existing chat found, create a new one
+    console.log(`➕ FirebaseChatService: No existing chat found, creating new one`);
     const newChat: Chat = {
       id: '', // Will be generated
       type: '1:1',
@@ -352,7 +412,13 @@ export async function findOrCreateOneOnOneChat(
       },
     };
 
-    return await createChatInFirebase(newChat);
+    const result = await createChatInFirebase(newChat);
+    if (result.success) {
+      console.log(`✅ FirebaseChatService: Created new chat: ${result.data}`);
+    } else {
+      console.error(`❌ FirebaseChatService: Failed to create chat: ${result.error}`);
+    }
+    return result;
   } catch (error) {
     return {
       success: false,

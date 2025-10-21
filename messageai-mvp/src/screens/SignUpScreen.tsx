@@ -93,6 +93,7 @@ export default function SignUpScreen({ navigation }: Props) {
             onBlur={onBlur}
             onChangeText={onChange}
             secureTextEntry
+            autoCapitalize="none"
             error={!!errors.password}
           />
         )}

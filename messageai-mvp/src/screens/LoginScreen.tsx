@@ -68,6 +68,7 @@ export default function LoginScreen({ navigation }: Props) {
             onBlur={onBlur}
             onChangeText={onChange}
             secureTextEntry
+            autoCapitalize="none"
             error={!!errors.password}
           />
         )}

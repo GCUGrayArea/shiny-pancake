@@ -4,7 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
 import LoginScreen from '@/screens/LoginScreen';
 import SignUpScreen from '@/screens/SignUpScreen';
-import MainScreen from '@/screens/MainScreen';
+import ChatListScreen from '@/screens/ChatListScreen';
+import NewChatScreen from '@/screens/NewChatScreen';
+import ConversationScreen from '@/screens/ConversationScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export type AuthStackParamList = {
@@ -13,7 +15,14 @@ export type AuthStackParamList = {
 };
 
 export type MainStackParamList = {
-  Main: undefined;
+  ChatList: undefined;
+  NewChat: undefined;
+  Conversation: {
+    chatId?: string; // Optional - will be undefined for new chats
+    otherUserId: string;
+    otherUserName: string;
+    otherUserEmail: string;
+  };
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -29,9 +38,24 @@ function AuthStackNavigator() {
 }
 
 function MainStackNavigator() {
+  console.log('📋 MainStackNavigator: Rendering main stack');
   return (
     <MainStack.Navigator>
-      <MainStack.Screen name="Main" component={MainScreen} options={{ title: 'MessageAI' }} />
+      <MainStack.Screen
+        name="ChatList"
+        component={ChatListScreen}
+        options={{ title: 'Chats' }}
+      />
+      <MainStack.Screen
+        name="NewChat"
+        component={NewChatScreen}
+        options={{ title: 'New Chat' }}
+      />
+      <MainStack.Screen
+        name="Conversation"
+        component={ConversationScreen}
+        options={{ title: 'Chat' }}
+      />
     </MainStack.Navigator>
   );
 }
@@ -39,10 +63,14 @@ function MainStackNavigator() {
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
+  console.log('🧭 AppNavigator: Rendering', { user: user?.uid, loading, hasUser: !!user });
+
   if (loading) {
+    console.log('⏳ AppNavigator: Showing loading screen');
     return <LoadingScreen message="Initializing…" />;
   }
 
+  console.log('📱 AppNavigator: User authenticated, showing main navigator');
   return (
     <NavigationContainer>
       {user ? <MainStackNavigator /> : <AuthStackNavigator />}

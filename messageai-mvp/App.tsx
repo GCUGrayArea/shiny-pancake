@@ -4,6 +4,7 @@ import AppNavigator from '@/navigation/AppNavigator';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 export default function App() {
+  console.log('🚀 App: Component rendering');
   return (
     <PaperProvider>
       <AuthProvider>

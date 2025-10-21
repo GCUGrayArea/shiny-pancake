@@ -150,6 +150,8 @@ export function subscribeToUser(
  */
 export async function searchUsers(searchQuery: string): Promise<FirebaseResult<User[]>> {
   try {
+    console.log(`🔍 FirebaseUserService: Searching for users with query: "${searchQuery}"`);
+    
     if (!searchQuery || searchQuery.trim().length === 0) {
       return { success: true, data: [] };
     }
@@ -157,28 +159,47 @@ export async function searchUsers(searchQuery: string): Promise<FirebaseResult<U
     const db = getFirebaseDatabase();
     const usersRef = ref(db, 'users');
 
-    // Search by displayName (case-sensitive prefix match)
-    const queryByName = query(
-      usersRef,
-      orderByChild('displayName'),
-      startAt(searchQuery),
-      endAt(searchQuery + '\uf8ff')
-    );
+    const queryString = searchQuery.trim();
+    const users: User[] = [];
 
-    const snapshot = await get(queryByName);
+    // Get all users and filter client-side for better search capabilities
+    const snapshot = await get(usersRef);
 
-    if (!snapshot.exists()) {
-      return { success: true, data: [] };
+    if (snapshot.exists()) {
+      console.log(`📊 FirebaseUserService: Total users in database: ${snapshot.size}`);
+      
+      snapshot.forEach((childSnapshot) => {
+        const user = childSnapshot.val() as User;
+        console.log(`🔎 FirebaseUserService: Checking user: ${user.email} (${user.displayName})`);
+
+        // Search by display name (case-insensitive partial match)
+        if (user.displayName && user.displayName.toLowerCase().includes(queryString.toLowerCase())) {
+          console.log(`✅ FirebaseUserService: Match found by display name: ${user.displayName}`);
+          users.push(user);
+          return;
+        }
+
+        // Search by email (case-insensitive partial match)
+        if (user.email && user.email.toLowerCase().includes(queryString.toLowerCase())) {
+          console.log(`✅ FirebaseUserService: Match found by email: ${user.email}`);
+          users.push(user);
+          return;
+        }
+
+        // If query looks like an email, try exact email match
+        if (queryString.includes('@') && user.email && user.email.toLowerCase() === queryString.toLowerCase()) {
+          console.log(`✅ FirebaseUserService: Exact email match found: ${user.email}`);
+          users.push(user);
+        }
+      });
+    } else {
+      console.log('📭 FirebaseUserService: No users in database');
     }
 
-    const users: User[] = [];
-    snapshot.forEach((childSnapshot) => {
-      const user = childSnapshot.val() as User;
-      users.push(user);
-    });
-
+    console.log(`✅ FirebaseUserService: Search complete, found ${users.length} matches`);
     return { success: true, data: users };
   } catch (error) {
+    console.error('❌ FirebaseUserService: Search users failed:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to search users',
@@ -192,23 +213,28 @@ export async function searchUsers(searchQuery: string): Promise<FirebaseResult<U
  */
 export async function getAllUsersFromFirebase(): Promise<FirebaseResult<User[]>> {
   try {
+    console.log('🔍 FirebaseUserService: Getting all users from Firebase');
     const db = getFirebaseDatabase();
     const usersRef = ref(db, 'users');
 
     const snapshot = await get(usersRef);
 
     if (!snapshot.exists()) {
+      console.log('📭 FirebaseUserService: No users found in Firebase');
       return { success: true, data: [] };
     }
 
     const users: User[] = [];
     snapshot.forEach((childSnapshot) => {
       const user = childSnapshot.val() as User;
+      console.log(`👤 FirebaseUserService: Found user: ${user.email} (${user.displayName})`);
       users.push(user);
     });
 
+    console.log(`✅ FirebaseUserService: Found ${users.length} users`);
     return { success: true, data: users };
   } catch (error) {
+    console.error('❌ FirebaseUserService: Failed to get users:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get all users',

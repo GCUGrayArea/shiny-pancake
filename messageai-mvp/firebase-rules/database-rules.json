@@ -1,6 +1,7 @@
 {
   "rules": {
     "users": {
+      ".read": "auth != null",
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid",
@@ -8,11 +9,12 @@
       }
     },
     "chats": {
+      ".read": "auth != null",
       "$chatId": {
-        ".read": "auth != null && data.child('participantIds').child(auth.uid).val() == true",
+        ".read": "auth != null",
         ".write": "auth != null && (
-          !data.exists() ||
-          data.child('participantIds').child(auth.uid).val() == true
+          (!data.exists() && newData.child('participantIds').child(auth.uid).val() == true) ||
+          (data.exists() && data.child('participantIds').child(auth.uid).val() == true)
         )",
         ".validate": "newData.hasChildren(['id', 'type', 'participantIds', 'createdAt'])",
         "participantIds": {
@@ -22,8 +24,9 @@
     },
     "messages": {
       "$chatId": {
-        ".read": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
-        ".write": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["timestamp"],
         "$messageId": {
           ".validate": "newData.hasChildren(['id', 'chatId', 'senderId', 'type', 'content', 'timestamp', 'status'])"
         }

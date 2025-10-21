@@ -5,6 +5,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { Text } from 'react-native-paper';
 import { isOnline, subscribeToNetworkState } from '../services/network.service';
 import { processQueue } from '../services/message-queue.service';
 
@@ -31,7 +32,7 @@ interface NetworkProviderProps {
 /**
  * Network provider component
  */
-export function NetworkProvider({ children }: NetworkProviderProps): JSX.Element {
+export function NetworkProvider({ children }: NetworkProviderProps): React.ReactElement {
   const [online, setOnline] = useState<boolean>(true);
   const [checking, setChecking] = useState<boolean>(true);
 
