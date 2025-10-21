@@ -4,7 +4,12 @@
       "Read(//c/Users/tgrah/Documents/Gauntlet/repos/Challenge 2 Cursor/**)",
       "Bash(npm test:*)",
       "Bash(npm install:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(test:*)",
+      "Bash(npm start)",
+      "Bash(npx madge:*)",
+      "Bash(cat:*)",
+      "Bash(npm run test:integration:*)"
     ],
     "deny": [],
     "ask": []

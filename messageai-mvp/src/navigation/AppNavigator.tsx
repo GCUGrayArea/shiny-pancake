@@ -39,7 +39,9 @@ function MainStackNavigator() {
 export default function AppNavigator() {
   const { user, loading } = useAuth();
 
-  if (loading) return <LoadingScreen message="Initializing…" />;
+  if (loading) {
+    return <LoadingScreen message="Initializing…" />;
+  }
 
   return (
     <NavigationContainer>

@@ -1,23 +1,18 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to upload images
-    match /images/{chatId}/{messageId} {
-      // Allow read if user is participant in the chat
+    // Allow authenticated users to read/write images in their chats
+    match /images/{chatId}/{imageId} {
       allow read: if request.auth != null;
-
-      // Allow write (upload) if:
-      // 1. User is authenticated
-      // 2. File is an image
-      // 3. File size is less than 2MB
-      allow write: if request.auth != null
-                   && request.resource.contentType.matches('image/.*')
-                   && request.resource.size < 2 * 1024 * 1024;
+      allow write: if request.auth != null 
+                   && request.resource.size < 5 * 1024 * 1024  // Max 5MB
+                   && request.resource.contentType.matches('image/.*');
     }
-
-    // Deny all other access
+    
+    // For emulator testing: more permissive rules
     match /{allPaths=**} {
-      allow read, write: if false;
+      allow read, write: if request.auth != null;
     }
   }
 }

@@ -28,6 +28,25 @@ export interface FirebaseResult<T = any> {
 }
 
 /**
+ * Helper function to create a chat with just participant IDs
+ * Useful for tests and simple chat creation
+ */
+export async function createChat(
+  participantIds: string[],
+  name?: string
+): Promise<FirebaseResult<string>> {
+  const chat: Chat = {
+    id: '', // Will be auto-generated
+    type: participantIds.length === 2 ? '1:1' : 'group',
+    participantIds,
+    name,
+    createdAt: Date.now(),
+  };
+  
+  return createChatInFirebase(chat);
+}
+
+/**
  * Create a new chat in Firebase
  * Returns the generated chat ID
  */
@@ -197,6 +216,45 @@ export function subscribeToUserChats(
     console.error('Error in user chats subscription:', error);
     callback([]);
   });
+}
+
+/**
+ * Get all chats for a user (one-time read, not subscription)
+ * Useful for testing and initial sync
+ */
+export async function getUserChatsFromFirebase(userId: string): Promise<FirebaseResult<Chat[]>> {
+  try {
+    const db = getFirebaseDatabase();
+    const chatsRef = ref(db, 'chats');
+    const snapshot = await get(chatsRef);
+
+    const chats: Chat[] = [];
+
+    if (snapshot.exists()) {
+      snapshot.forEach((childSnapshot) => {
+        const chatData = childSnapshot.val();
+
+        // Check if user is a participant
+        if (chatData.participantIds && chatData.participantIds[userId]) {
+          const participantIds = Object.keys(chatData.participantIds);
+
+          chats.push({
+            id: chatData.id,
+            type: chatData.type,
+            participantIds,
+            name: chatData.name,
+            createdAt: chatData.createdAt,
+            lastMessage: chatData.lastMessage,
+            unreadCounts: chatData.unreadCounts || {},
+          });
+        }
+      });
+    }
+
+    return { success: true, data: chats };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
 }
 
 /**

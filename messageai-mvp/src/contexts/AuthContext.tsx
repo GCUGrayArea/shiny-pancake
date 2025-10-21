@@ -14,16 +14,32 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(getCurrentUser());
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let listenerFired = false;
+
+    // Set up auth state listener - it fires immediately with current state
     const unsub = onAuthStateChangedListener(u => {
+      listenerFired = true;
       setUser(u);
       setLoading(false);
     });
-    return unsub;
+
+    // Fallback: if listener doesn't fire within 3 seconds, stop loading anyway
+    const timeout = setTimeout(() => {
+      if (!listenerFired) {
+        console.warn('Auth listener did not fire within 3s, forcing loading=false');
+        setLoading(false);
+      }
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeout);
+      unsub();
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(() => ({
@@ -52,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       await svcSignOut();
     },
-  }), [user, error]);
+  }), [user, loading, error]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

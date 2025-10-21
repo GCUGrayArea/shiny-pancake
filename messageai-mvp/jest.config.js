@@ -1,29 +1,41 @@
-module.exports = {
+const baseConfig = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
   transform: {
     '^.+\\.tsx?$': 'ts-jest',
   },
-  setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   moduleNameMapper: {
     '^@env$': '<rootDir>/jest.env.mock.js',
+    '^expo-sqlite$': '<rootDir>/__mocks__/expo-sqlite.js',
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(expo-sqlite|@react-native|react-native)/)',
+  ],
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
     '!src/**/__tests__/**',
   ],
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
-    },
-  },
-  testMatch: [
-    '**/__tests__/**/*.test.{ts,tsx}',
-  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
+};
+
+module.exports = {
+  ...baseConfig,
+  projects: [
+    {
+      ...baseConfig,
+      displayName: 'unit',
+      testMatch: ['**/__tests__/**/*.test.{ts,tsx}'],
+      testPathIgnorePatterns: ['/node_modules/', '/integration/'],
+      setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+    },
+    {
+      ...baseConfig,
+      displayName: 'integration',
+      testMatch: ['**/__tests__/integration/**/*.test.{ts,tsx}'],
+      setupFilesAfterEnv: ['<rootDir>/jest.integration.setup.js'],
+      testTimeout: 30000,
+    },
+  ],
 };

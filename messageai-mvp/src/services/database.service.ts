@@ -8,7 +8,9 @@ import { DATABASE_CONSTANTS } from '../constants';
 
 const { DB_NAME, DB_VERSION } = DATABASE_CONSTANTS;
 
+// Support for dependency injection in tests
 let db: SQLite.SQLiteDatabase | null = null;
+let testDbOverride: SQLite.SQLiteDatabase | null = null;
 
 /**
  * Database operation result type
@@ -50,12 +52,33 @@ export async function initDatabase(): Promise<DbResult<void>> {
 
 /**
  * Get the database instance
+ * Uses test override if set (for integration tests)
  */
 export function getDatabase(): SQLite.SQLiteDatabase {
+  // Use test override if available (for integration tests)
+  if (testDbOverride) {
+    return testDbOverride;
+  }
+
   if (!db) {
     throw new Error('Database not initialized. Call initDatabase() first.');
   }
   return db;
+}
+
+/**
+ * Set test database override (for integration tests)
+ * @param testDb - Database instance to use for testing
+ */
+export function setTestDatabaseOverride(testDb: SQLite.SQLiteDatabase | null): void {
+  testDbOverride = testDb;
+}
+
+/**
+ * Clear test database override (restore normal operation)
+ */
+export function clearTestDatabaseOverride(): void {
+  testDbOverride = null;
 }
 
 /**
