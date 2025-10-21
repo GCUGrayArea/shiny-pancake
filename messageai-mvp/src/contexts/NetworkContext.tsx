@@ -1,10 +1,13 @@
 /**
  * Network Context
  * Provides network state to the entire app
- * Triggers message queue processing when connection is restored
+ * SINGLE SOURCE OF TRUTH for message queue processing
+ * Processes queue when:
+ * 1. Network comes back online
+ * 2. New messages added while online
  */
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { Text } from 'react-native-paper';
 import { isOnline, subscribeToNetworkState } from '../services/network.service';
 import { processQueue } from '../services/message-queue.service';
@@ -15,6 +18,7 @@ import { processQueue } from '../services/message-queue.service';
 interface NetworkContextValue {
   isOnline: boolean;
   isChecking: boolean;
+  triggerQueueProcessing: () => void;  // Trigger processing when new message added
 }
 
 /**
@@ -35,6 +39,40 @@ interface NetworkProviderProps {
 export function NetworkProvider({ children }: NetworkProviderProps): React.ReactElement {
   const [online, setOnline] = useState<boolean>(true);
   const [checking, setChecking] = useState<boolean>(true);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
+  // Single queue processor - prevents concurrent processing
+  const processQueueSafely = useCallback(async (reason: string) => {
+    if (isProcessing) {
+      return;
+    }
+
+    if (!online) {
+      return;
+    }
+
+    setIsProcessing(true);
+    
+    try {
+      const result = await processQueue();
+      if (result.success && result.data) {
+        const { sent, failed } = result.data;
+        // Only log if something actually happened
+        if (sent > 0 || failed > 0) {
+          console.log(`✅ NetworkProvider: Queue processed - sent: ${sent}, failed: ${failed}`);
+        }
+      }
+    } catch (error) {
+      console.error('❌ NetworkProvider: Queue processing error:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [online, isProcessing]);
+
+  // Expose trigger for components to call when they enqueue messages
+  const triggerQueueProcessing = useCallback(() => {
+    processQueueSafely('new message enqueued');
+  }, [processQueueSafely]);
 
   useEffect(() => {
     // Check initial network state
@@ -42,6 +80,11 @@ export function NetworkProvider({ children }: NetworkProviderProps): React.React
       try {
         const state = await isOnline();
         setOnline(state);
+        
+        // If online initially, process any queued messages from previous session
+        if (state) {
+          await processQueueSafely('initial load');
+        }
       } catch (error) {
         console.error('Failed to check initial network state:', error);
       } finally {
@@ -58,22 +101,19 @@ export function NetworkProvider({ children }: NetworkProviderProps): React.React
 
       // If coming back online, process message queue
       if (wasOffline && isOnlineNow) {
-        try {
-          await processQueue();
-        } catch (error) {
-          console.error('Failed to process queue on reconnection:', error);
-        }
+        await processQueueSafely('reconnection');
       }
     });
 
     return (): void => {
       unsubscribe();
     };
-  }, [online]);
+  }, [online, processQueueSafely]);
 
   const value: NetworkContextValue = {
     isOnline: online,
     isChecking: checking,
+    triggerQueueProcessing,
   };
 
   return (

@@ -17,6 +17,7 @@ import {
   limitToLast,
   endBefore,
   onChildAdded,
+  onChildChanged,
   type DatabaseReference,
   type Unsubscribe,
 } from 'firebase/database';
@@ -73,7 +74,7 @@ export async function sendMessageToFirebase(
       type: message.type,
       content: message.content,
       timestamp: message.timestamp,
-      status: message.status,
+      status: 'sent',  // Message is 'sent' once it's in Firebase
       localId: message.localId || null,
       deliveredTo: message.deliveredTo || [],
       readBy: message.readBy || [],
@@ -166,6 +167,25 @@ export function subscribeToMessages(
     callback(messageData as Message);
   }, (error) => {
     console.error('Error in messages subscription:', error);
+  });
+}
+
+/**
+ * Subscribe to message updates in a chat
+ * Listens for changes to existing messages (e.g., status updates, delivery/read receipts)
+ */
+export function subscribeToMessageUpdates(
+  chatId: string,
+  callback: (message: Message) => void
+): Unsubscribe {
+  const db = getFirebaseDatabase();
+  const messagesRef = ref(db, `messages/${chatId}`);
+
+  return onChildChanged(messagesRef, (snapshot) => {
+    const messageData = snapshot.val();
+    callback(messageData as Message);
+  }, (error) => {
+    console.error('Error in message updates subscription:', error);
   });
 }
 

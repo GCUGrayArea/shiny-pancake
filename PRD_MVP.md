@@ -39,6 +39,7 @@ This is an AI-driven development project with no human-generated code. The MVP s
 - **Profile Pictures** - Use initials; to be added in final submission
 - **Multi-language UI** - Stretch goal #2 for MVP; required for final
 - **Typing Indicators** - Stretch goal #1 for MVP; required for final
+- **Detailed Delivery/Read Tracking** - Individual user delivery/read status display (e.g., "Read by Alice, Bob"); shows delivered/read when ANY participant has done so
 - **Voice/Video calls**
 - **Message editing/deletion**
 - **Message reactions**

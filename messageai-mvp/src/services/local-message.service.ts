@@ -53,8 +53,8 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
       ],
     });
 
-    // Save delivery tracking for group messages
-    if (message.deliveredTo || message.readBy) {
+    // Save delivery tracking for group messages (only if message has a Firebase ID)
+    if (message.id && (message.deliveredTo || message.readBy)) {
       // Delete existing delivery records
       queries.push({
         sql: 'DELETE FROM message_delivery WHERE messageId = ?',
