@@ -1,11 +1,13 @@
 // Mock @env module for Jest tests
-// Uses actual Firebase config for integration tests
+// SECURITY: Loads from .env at runtime instead of hardcoding credentials
+require('dotenv').config();
+
 module.exports = {
-  FIREBASE_API_KEY: 'AIzaSyA6UmsDgvqL_3PCcOz5uSm_KPojCEXpR7M',
-  FIREBASE_AUTH_DOMAIN: 'shiny-pancake.firebaseapp.com',
-  FIREBASE_DATABASE_URL: 'https://shiny-pancake-default-rtdb.firebaseio.com',
-  FIREBASE_PROJECT_ID: 'shiny-pancake',
-  FIREBASE_STORAGE_BUCKET: 'shiny-pancake.firebasestorage.app',
-  FIREBASE_MESSAGING_SENDER_ID: '184039791155',
-  FIREBASE_APP_ID: '1:184039791155:web:caf52b57334f148a382146',
+  FIREBASE_API_KEY: process.env.FIREBASE_API_KEY,
+  FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN,
+  FIREBASE_DATABASE_URL: process.env.FIREBASE_DATABASE_URL,
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID,
+  FIREBASE_STORAGE_BUCKET: process.env.FIREBASE_STORAGE_BUCKET,
+  FIREBASE_MESSAGING_SENDER_ID: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  FIREBASE_APP_ID: process.env.FIREBASE_APP_ID,
 };
