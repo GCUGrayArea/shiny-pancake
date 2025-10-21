@@ -6,6 +6,9 @@ module.exports = {
     '^.+\\.tsx?$': 'ts-jest',
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
+  moduleNameMapper: {
+    '^@env$': '<rootDir>/jest.env.mock.js',
+  },
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
