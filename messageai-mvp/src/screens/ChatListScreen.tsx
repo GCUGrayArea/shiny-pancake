@@ -23,6 +23,7 @@ export default function ChatListScreen() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<ChatListNavigationProp>();
@@ -42,41 +43,10 @@ export default function ChatListScreen() {
 
       console.log('📊 ChatListScreen: Found chats from DB', { count: chatsToDisplay.length, data: chatResult });
 
-      // For demo purposes, add some sample chats if none exist
+      // Don't add sample data - just show empty state
+      // (Sample data was causing infinite loop when chats updated)
       if (chatsToDisplay.length === 0) {
-        console.log('🎭 ChatListScreen: No chats found, adding sample data');
-        const sampleChats: Chat[] = [
-          {
-            id: 'sample-chat-1',
-            type: '1:1',
-            participantIds: [user.uid, 'sample-user-1'],
-            name: 'Alice Johnson',
-            createdAt: Date.now() - 86400000,
-            lastMessage: {
-              content: 'Hey! How are you doing?',
-              senderId: 'sample-user-1',
-              timestamp: Date.now() - 3600000,
-              type: 'text',
-            },
-            unreadCounts: {
-              [user.uid]: 2,
-            },
-          },
-          {
-            id: 'sample-chat-2',
-            type: '1:1',
-            participantIds: [user.uid, 'sample-user-2'],
-            name: 'Bob Smith',
-            createdAt: Date.now() - 172800000,
-            lastMessage: {
-              content: 'Thanks for the help yesterday!',
-              senderId: 'sample-user-2',
-              timestamp: Date.now() - 7200000,
-              type: 'text',
-            },
-          },
-        ];
-        chatsToDisplay = sampleChats;
+        console.log('ℹ️ ChatListScreen: No chats found - showing empty state');
       }
 
       // Sort by last message timestamp (most recent first)
@@ -87,6 +57,7 @@ export default function ChatListScreen() {
       });
       console.log('✅ ChatListScreen: Setting chats', { count: sortedChats.length });
       setChats(sortedChats);
+      setHasLoadedOnce(true);
     } catch (error) {
       console.error('❌ Error loading chats:', error);
     } finally {
@@ -102,8 +73,11 @@ export default function ChatListScreen() {
   }, [loadChats]);
 
   useEffect(() => {
-    loadChats();
-  }, [loadChats]);
+    // Only load once when component mounts or user changes
+    if (!hasLoadedOnce || !user) {
+      loadChats();
+    }
+  }, [user?.uid]); // Only depend on user ID, not the whole user object or loadChats
 
   // Handle opening a chat
   const handleOpenChat = useCallback(async (chat: Chat) => {

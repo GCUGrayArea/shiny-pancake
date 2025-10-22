@@ -94,6 +94,29 @@
 
 ---
 
+### ✅ Bug 6: FOREIGN KEY Constraint Failed on Login
+**Status**: FIXED
+
+**Issue**: Users would get "FOREIGN KEY constraint failed" error immediately on login when trying to sync chats, preventing the app from loading their conversations.
+
+**Root Cause**: The sync service was skipping the current user when syncing chat participants (assumed they were already in DB), but this caused a foreign key violation because:
+1. SQLite schema has foreign keys: `chat_participants.userId` → `users.uid`
+2. When syncing a chat, ALL participants (including current user) must exist in users table first
+3. Code had `if (participantId !== userId)` check that skipped current user
+
+**Fix**: Removed the userId skip condition in `sync.service.ts`:
+1. In `initialSync`: Sync ALL participants including current user
+2. In `startRealtimeSync`: Sync ALL participants including current user
+3. Changed comment to clarify participants includes current user
+4. Ensures users table is fully populated before chat writes occur
+
+**Why This Matters**: SQLite enforces referential integrity. Every participant ID in a chat MUST have a corresponding entry in the users table. The current user needs to be in the DB just like other participants.
+
+**Files Changed**:
+- `src/services/sync.service.ts` (lines 207-217, 264-274)
+
+---
+
 ## Feature Requests (Out of MVP Scope)
 
 ### FR-1: "Note to Self" Chat
@@ -116,7 +139,7 @@
 
 ## Known Issues (Out of Scope for Block 10)
 
-### Issue 6: Duplicate Messages (Rapid Sending)
+### Issue 7: Duplicate Messages (Rapid Sending)
 **Status**: OUT OF SCOPE (Block 7 - Message Queue)
 
 **Issue**: Rapid sending of multiple messages sometimes produces duplicates:
@@ -132,7 +155,7 @@
 
 ---
 
-### Issue 7: Pull-to-Refresh at Wrong End
+### Issue 8: Pull-to-Refresh at Wrong End
 **Status**: OUT OF SCOPE (UI Polish)
 
 **Issue**: Pull-to-refresh activates at top of chat (where older messages are) instead of bottom.
@@ -159,6 +182,7 @@ All critical notification scenarios now pass:
 9. ✅ **Permissions** - Requested properly
 10. ✅ **Chat with self prevention** - Blocked appropriately
 11. ✅ **Historical message suppression** - No notifs on login ✅ NEW FIX
+12. ✅ **Foreign key constraint fix** - Syncs current user properly ✅ NEW FIX
 
 ## Updated Testing Checklist
 
@@ -172,6 +196,7 @@ All critical notification scenarios now pass:
 - [x] Test 8: Permission handling works
 - [x] Test 9: Cannot chat with self ✅ PREVENTED (Feature Request: Note to Self)
 - [x] Test 10: No historical message notifications on login ✅ NEW FIX
+- [x] Test 11: No foreign key errors on login ✅ NEW FIX
 - [x] Performance testing passed
 - [x] No crashes during any test
 - [x] Unit tests all passing (27 tests total)

@@ -71,11 +71,62 @@ export async function syncChatToLocal(firebaseChat: Chat): Promise<void> {
 }
 
 /**
+ * Helper: Sync a chat with its participants (ensures FK constraints satisfied)
+ * CRITICAL: Always syncs participants BEFORE chat to avoid FK violations
+ */
+async function syncChatWithParticipants(chat: Chat): Promise<void> {
+  // Sync all participants first
+  for (const participantId of chat.participantIds) {
+    try {
+      const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
+      if (userResult.success && userResult.data) {
+        await syncUserToLocal(userResult.data);
+      }
+    } catch (error) {
+      console.error('Failed to sync participant:', participantId, error);
+    }
+  }
+  
+  // Now sync the chat
+  await syncChatToLocal(chat);
+}
+
+/**
  * Sync a message from Firebase to local database
  * Firebase is source of truth - overwrites local data
+ * CRITICAL: Ensures chat exists before saving message to avoid FK constraint errors
  */
 export async function syncMessageToLocal(firebaseMessage: Message): Promise<void> {
   try {
+    // CRITICAL FIX: Ensure chat exists before saving message (FK constraint)
+    // Check if chat exists in local DB
+    const chatResult = await LocalChatService.getChat(firebaseMessage.chatId);
+    
+    if (!chatResult.success || !chatResult.data) {
+      // Chat doesn't exist locally - fetch from Firebase and save with participants
+      console.log('⚠️ Chat not in local DB, fetching from Firebase:', firebaseMessage.chatId);
+      const fbChatResult = await FirebaseChatService.getChatFromFirebase(firebaseMessage.chatId);
+      
+      if (fbChatResult.success && fbChatResult.data) {
+        // CRITICAL: Use helper that syncs participants FIRST
+        await syncChatWithParticipants(fbChatResult.data);
+        console.log('✅ Chat and participants synced to local DB before message');
+      } else {
+        console.error('Failed to fetch chat from Firebase:', fbChatResult.error);
+        // Don't save message if we can't get the chat (FK will fail)
+        return;
+      }
+    }
+
+    // Also ensure the message sender exists in local DB
+    const senderResult = await LocalUserService.getUser(firebaseMessage.senderId);
+    if (!senderResult.success || !senderResult.data) {
+      const fbSenderResult = await FirebaseUserService.getUserFromFirebase(firebaseMessage.senderId);
+      if (fbSenderResult.success && fbSenderResult.data) {
+        await syncUserToLocal(fbSenderResult.data);
+      }
+    }
+
     const result = await LocalMessageService.saveMessage(firebaseMessage);
 
     if (!result.success) {
@@ -152,25 +203,24 @@ export async function initialSync(userId: string): Promise<void> {
 
     // 2. Sync each chat and its recent messages (with error handling)
     for (const chat of chatsResult) {
+      // IMPORTANT: Sync participants FIRST to avoid foreign key constraints
+      // Fetch participants and sync them (INCLUDING current user!)
+      for (const participantId of chat.participantIds) {
+        try {
+          const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
+          if (userResult.success && userResult.data) {
+            await syncUserToLocal(userResult.data);
+          }
+        } catch (error) {
+          console.error('Failed to sync user to local:', error);
+        }
+      }
+
+      // Now sync chat to local (after participants are in DB)
       try {
-        // Sync chat to local
         await syncChatToLocal(chat);
       } catch (error) {
         console.error('Failed to sync chat to local:', error);
-      }
-
-      // Fetch participants and sync them
-      for (const participantId of chat.participantIds) {
-        if (participantId !== userId) {
-          try {
-            const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
-            if (userResult.success && userResult.data) {
-              await syncUserToLocal(userResult.data);
-            }
-          } catch (error) {
-            console.error('Failed to sync user to local:', error);
-          }
-        }
       }
 
       // Fetch recent messages (last 50) for this chat
@@ -211,6 +261,19 @@ export async function startRealtimeSync(userId: string): Promise<void> {
       async (chats) => {
         // Sync all chats to local (with error handling)
         for (const chat of chats) {
+          // IMPORTANT: Sync participants FIRST to avoid foreign key constraints (INCLUDING current user!)
+          for (const participantId of chat.participantIds) {
+            try {
+              const participantResult = await FirebaseUserService.getUserFromFirebase(participantId);
+              if (participantResult.success && participantResult.data) {
+                await syncUserToLocal(participantResult.data);
+              }
+            } catch (error) {
+              console.error('Failed to sync participant to local:', error);
+            }
+          }
+
+          // Now sync chat to local (after participants are in DB)
           try {
             await syncChatToLocal(chat);
           } catch (error) {
