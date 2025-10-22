@@ -1,0 +1,42 @@
+{
+  "rules": {
+    "users": {
+      ".read": "auth != null",
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid",
+        ".validate": "newData.hasChildren(['uid', 'email', 'displayName', 'createdAt', 'lastSeen', 'isOnline'])"
+      }
+    },
+    "chats": {
+      ".read": "auth != null",
+      "$chatId": {
+        ".read": "auth != null",
+        ".write": "auth != null && (
+          (!data.exists() && newData.child('participantIds').child(auth.uid).val() == true) ||
+          (data.exists() && data.child('participantIds').child(auth.uid).val() == true)
+        )",
+        ".validate": "newData.hasChildren(['id', 'type', 'participantIds', 'createdAt'])",
+        "participantIds": {
+          ".validate": "newData.hasChildren()"
+        }
+      }
+    },
+    "messages": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
+        ".write": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
+        ".indexOn": ["timestamp"],
+        "$messageId": {
+          ".validate": "newData.hasChildren(['id', 'chatId', 'senderId', 'type', 'content', 'timestamp', 'status'])"
+        }
+      }
+    },
+    "presence": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}

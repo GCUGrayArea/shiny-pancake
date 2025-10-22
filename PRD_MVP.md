@@ -39,6 +39,7 @@ This is an AI-driven development project with no human-generated code. The MVP s
 - **Profile Pictures** - Use initials; to be added in final submission
 - **Multi-language UI** - Stretch goal #2 for MVP; required for final
 - **Typing Indicators** - Stretch goal #1 for MVP; required for final
+- **Detailed Delivery/Read Tracking** - Individual user delivery/read status display (e.g., "Read by Alice, Bob"); shows delivered/read when ANY participant has done so
 - **Voice/Video calls**
 - **Message editing/deletion**
 - **Message reactions**
@@ -280,12 +281,15 @@ This is an AI-driven development project with no human-generated code. The MVP s
 - Support JPEG, PNG formats
 
 **Acceptance Criteria:**
-- [ ] User can select image from gallery
-- [ ] Image preview shows before send
-- [ ] Upload progress visible during send
-- [ ] Image appears in chat for both sender and receiver
-- [ ] Tap image to view full-screen
-- [ ] Images compressed appropriately (< 2MB)
+- [x] User can select image from gallery
+- [x] Image preview shows before send
+- [x] Upload progress visible during send
+- [x] Image appears in chat for both sender and receiver
+- [x] Tap image to view full-screen
+- [x] Images compressed appropriately (< 2MB)
+
+**Future Enhancements (Post-MVP):**
+- Text caption support (text + image in same message) - Currently sends as separate messages
 
 **AI Development Notes:**
 - Use Expo ImagePicker for selection
@@ -521,6 +525,13 @@ This is an AI-driven development project with no human-generated code. The MVP s
 - Implement notification tap handlers
 - Test notification delivery across all app states
 - Handle notification permission requests
+
+**Post-MVP Enhancement:**
+- The MVP implements client-side local notifications (works in Expo Go)
+- For true background/killed state support, upgrade to FCM with Cloud Functions
+- See detailed migration guide: `messageai-mvp/POST_MVP_NOTIFICATIONS_UPGRADE.md`
+- Estimated upgrade time: 8-13 hours
+- Requires custom dev client (Expo Go not sufficient)
 
 **Validation Checkpoint:**
 - Test notification delivery in all app states
