@@ -19,6 +19,9 @@ import * as FirebaseUserService from './firebase-user.service';
 import * as FirebaseChatService from './firebase-chat.service';
 import * as FirebaseMessageService from './firebase-message.service';
 
+// Notification manager
+import * as NotificationManager from './notification-manager.service';
+
 /**
  * Active subscription tracking
  */
@@ -232,6 +235,9 @@ export async function startRealtimeSync(userId: string): Promise<void> {
                       await syncUserToLocal(fbSender.data);
                     }
                   }
+
+                  // Trigger notification for new message
+                  await NotificationManager.handleNewMessage(message);
                 } catch (error) {
                   console.error('Failed to sync message to local:', error);
                 }

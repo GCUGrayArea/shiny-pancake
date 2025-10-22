@@ -526,6 +526,13 @@ This is an AI-driven development project with no human-generated code. The MVP s
 - Test notification delivery across all app states
 - Handle notification permission requests
 
+**Post-MVP Enhancement:**
+- The MVP implements client-side local notifications (works in Expo Go)
+- For true background/killed state support, upgrade to FCM with Cloud Functions
+- See detailed migration guide: `messageai-mvp/POST_MVP_NOTIFICATIONS_UPGRADE.md`
+- Estimated upgrade time: 8-13 hours
+- Requires custom dev client (Expo Go not sufficient)
+
 **Validation Checkpoint:**
 - Test notification delivery in all app states
 - Verify deep linking works from killed state

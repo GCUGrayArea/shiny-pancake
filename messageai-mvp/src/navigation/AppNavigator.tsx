@@ -1,7 +1,8 @@
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useRef, useEffect } from 'react';
+import { NavigationContainer, type NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
+import { setNotificationNavigationHandler } from '@/contexts/NotificationContext';
 import LoginScreen from '@/screens/LoginScreen';
 import SignUpScreen from '@/screens/SignUpScreen';
 import ChatListScreen from '@/screens/ChatListScreen';
@@ -89,6 +90,20 @@ function MainStackNavigator() {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const navigationRef = useRef<NavigationContainerRef<MainStackParamList>>(null);
+
+  // Set up notification navigation handler
+  useEffect(() => {
+    setNotificationNavigationHandler((chatId: string, data?: any) => {
+      if (navigationRef.current?.isReady()) {
+        // Pass notification data for better UX (sender name, etc.)
+        navigationRef.current.navigate('Conversation', { 
+          chatId,
+          otherUserName: data?.senderName,
+        });
+      }
+    });
+  }, []);
 
   console.log('🧭 AppNavigator: Rendering', { user: user?.uid, loading, hasUser: !!user });
 
@@ -104,7 +119,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef as any}>
       {user ? <MainStackNavigator /> : <AuthStackNavigator />}
     </NavigationContainer>
   );

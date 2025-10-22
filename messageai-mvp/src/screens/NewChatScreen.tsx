@@ -52,8 +52,9 @@ export default function NewChatScreen() {
         return;
       }
 
-      const firebaseUsers = usersResult.data || [];
-      console.log('📊 NewChatScreen: Found users from Firebase:', firebaseUsers.length);
+      // Filter out current user from the list
+      const firebaseUsers = (usersResult.data || []).filter(u => u.uid !== user.uid);
+      console.log('📊 NewChatScreen: Found users from Firebase (excluding self):', firebaseUsers.length);
 
       // Load existing chats to get participants (filter by current user for security)
       const chatsResult = await getAllChats(user.uid);
@@ -208,6 +209,12 @@ export default function NewChatScreen() {
   // Handle user selection (single or multi-select)
   const handleUserSelect = useCallback(async (selectedUser: User) => {
     if (!user || creatingChat) return;
+
+    // Prevent chatting with yourself
+    if (selectedUser.uid === user.uid) {
+      console.log('⚠️ NewChatScreen: Cannot create chat with yourself');
+      return;
+    }
 
     if (isMultiSelectMode) {
       // Multi-select mode - toggle selection

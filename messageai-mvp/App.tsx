@@ -4,6 +4,7 @@ import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from '@/navigation/AppNavigator';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NetworkProvider } from '@/contexts/NetworkContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
 export default function App() {
   console.log('🚀 App: Component rendering');
@@ -12,7 +13,9 @@ export default function App() {
       <PaperProvider>
         <NetworkProvider>
           <AuthProvider>
-            <AppNavigator />
+            <NotificationProvider>
+              <AppNavigator />
+            </NotificationProvider>
           </AuthProvider>
         </NetworkProvider>
       </PaperProvider>

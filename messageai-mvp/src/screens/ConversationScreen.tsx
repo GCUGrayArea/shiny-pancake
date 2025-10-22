@@ -5,7 +5,7 @@
  * Note: Chat is NOT created until the first message is sent
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, FlatList, RefreshControl, ViewToken } from 'react-native';
 import { Text, TextInput, IconButton, ActivityIndicator, Button } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -21,6 +21,7 @@ import { enqueueMessage } from '@/services/message-queue.service';
 import { useNetwork } from '@/contexts/NetworkContext';
 import { saveChat } from '@/services/local-chat.service';
 import { saveUser } from '@/services/local-user.service';
+import * as NotificationManager from '@/services/notification-manager.service';
 import { Message } from '@/types';
 import MessageBubble from '@/components/MessageBubble';
 import MessageInput from '@/components/MessageInput';
@@ -50,6 +51,50 @@ export default function ConversationScreen() {
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
   const [oldestTimestamp, setOldestTimestamp] = useState<number | undefined>(undefined);
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+  const [loadedOtherUserName, setLoadedOtherUserName] = useState<string | null>(null);
+  const flatListRef = useRef<FlatList>(null);
+
+  // Set current viewing chat for notification suppression
+  useEffect(() => {
+    if (chatId) {
+      NotificationManager.setCurrentViewingChat(chatId);
+      console.log('📱 ConversationScreen: Set current viewing chat:', chatId);
+    }
+
+    return () => {
+      NotificationManager.setCurrentViewingChat(null);
+      console.log('📱 ConversationScreen: Cleared current viewing chat');
+    };
+  }, [chatId]);
+
+  // Load other user's info if not provided (when opening from notification)
+  useEffect(() => {
+    if (!chatId || otherUserName || isGroup || !user) return;
+
+    const loadOtherUser = async () => {
+      try {
+        console.log('👤 ConversationScreen: Loading other user info for 1:1 chat');
+        const chatResult = await getChatFromFirebase(chatId);
+        if (!chatResult.success || !chatResult.data) return;
+
+        const chat = chatResult.data;
+        const participantIds = Object.keys(chat.participantIds || {});
+        const otherUserIdFromChat = participantIds.find(id => id !== user.uid);
+
+        if (otherUserIdFromChat) {
+          const userResult = await getUserFromFirebase(otherUserIdFromChat);
+          if (userResult.success && userResult.data) {
+            console.log('✅ ConversationScreen: Loaded other user:', userResult.data.displayName);
+            setLoadedOtherUserName(userResult.data.displayName);
+          }
+        }
+      } catch (error) {
+        console.error('❌ ConversationScreen: Error loading other user info:', error);
+      }
+    };
+
+    loadOtherUser();
+  }, [chatId, otherUserName, isGroup, user]);
 
   // Load user names for group chat participants
   const loadUserNames = useCallback(async () => {
@@ -93,12 +138,13 @@ export default function ConversationScreen() {
 
   // Set the header title and right button based on chat type
   useEffect(() => {
-    const title = isGroup ? (groupName || 'Group Chat') : (otherUserName || otherUserEmail);
+    const effectiveOtherUserName = otherUserName || loadedOtherUserName;
+    const title = isGroup ? (groupName || 'Group Chat') : (effectiveOtherUserName || otherUserEmail);
 
     navigation.setOptions({
-      title: !isGroup ? otherUserName || otherUserEmail : title,
+      title: !isGroup ? effectiveOtherUserName || otherUserEmail : title,
       headerTitle: isGroup ? title : () => {
-        const displayName = otherUserName || otherUserEmail || 'Unknown';
+        const displayName = effectiveOtherUserName || otherUserEmail || 'Unknown';
         const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
 
         return (
@@ -126,12 +172,17 @@ export default function ConversationScreen() {
         />
       ) : undefined,
     });
-  }, [navigation, otherUserName, otherUserEmail, isGroup, groupName, chatId, otherUserId]);
+  }, [navigation, otherUserName, loadedOtherUserName, otherUserEmail, isGroup, groupName, chatId, otherUserId]);
 
   // Load messages when chat ID is available
   useEffect(() => {
     if (chatId) {
-      loadMessages();
+      loadMessages().then(() => {
+        // Auto-scroll to bottom after loading messages (when opening from notification)
+        setTimeout(() => {
+          flatListRef.current?.scrollToEnd({ animated: true });
+        }, 300);
+      });
       // Ensure current user is synced to local database
       syncCurrentUserToLocal();
     }
@@ -619,6 +670,7 @@ export default function ConversationScreen() {
           </View>
         ) : (
           <FlatList
+            ref={flatListRef}
             data={messages}
             renderItem={({ item, index }) => {
               // For group chats, show sender indicator only when sender changes

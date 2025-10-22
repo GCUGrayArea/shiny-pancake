@@ -3,6 +3,7 @@ import { onAuthStateChangedListener, signIn as svcSignIn, signOut as svcSignOut,
 import { setupPresenceSystem, teardownPresenceSystem } from '@/services/presence.service';
 import { initDatabase } from '@/services/database.service';
 import { startRealtimeSync, initialSync, stopRealtimeSync, getSyncStatus } from '@/services/sync.service';
+import * as NotificationManager from '@/services/notification-manager.service';
 import { User } from '@/types';
 
 type AuthContextValue = {
@@ -57,6 +58,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         // User logged in - set up presence system and sync
         try {
+          // Set current user for notification manager
+          NotificationManager.setCurrentUser(u.uid);
+          
           await setupPresenceSystem(u.uid);
           console.log(`✅ Presence system initialized for user ${u.uid}`);
 
@@ -76,6 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         // User logged out - tear down systems
         try {
+          NotificationManager.setCurrentUser(null);
           await stopRealtimeSync();
           await teardownPresenceSystem();
           console.log('🛑 Systems torn down');
