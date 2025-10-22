@@ -7,6 +7,8 @@ import SignUpScreen from '@/screens/SignUpScreen';
 import ChatListScreen from '@/screens/ChatListScreen';
 import NewChatScreen from '@/screens/NewChatScreen';
 import ConversationScreen from '@/screens/ConversationScreen';
+import CreateGroupScreen from '@/screens/CreateGroupScreen';
+import GroupInfoScreen from '@/screens/GroupInfoScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export type AuthStackParamList = {
@@ -17,11 +19,26 @@ export type AuthStackParamList = {
 export type MainStackParamList = {
   ChatList: undefined;
   NewChat: undefined;
+  CreateGroup: {
+    participants: {
+      uid: string;
+      email: string;
+      displayName: string;
+      isOnline?: boolean;
+      lastSeen?: number;
+    }[];
+  };
   Conversation: {
     chatId?: string; // Optional - will be undefined for new chats
-    otherUserId: string;
-    otherUserName: string;
-    otherUserEmail: string;
+    otherUserId?: string; // For 1:1 chats
+    otherUserName?: string; // For 1:1 chats
+    otherUserEmail?: string; // For 1:1 chats
+    isGroup?: boolean; // For group chats
+    groupName?: string; // For group chats
+  };
+  GroupInfo: {
+    chatId: string;
+    chatName: string;
   };
 };
 
@@ -52,9 +69,19 @@ function MainStackNavigator() {
         options={{ title: 'New Chat' }}
       />
       <MainStack.Screen
+        name="CreateGroup"
+        component={CreateGroupScreen}
+        options={{ title: 'Create Group' }}
+      />
+      <MainStack.Screen
         name="Conversation"
         component={ConversationScreen}
         options={{ title: 'Chat' }}
+      />
+      <MainStack.Screen
+        name="GroupInfo"
+        component={GroupInfoScreen}
+        options={{ title: 'Group Info' }}
       />
     </MainStack.Navigator>
   );
@@ -70,7 +97,12 @@ export default function AppNavigator() {
     return <LoadingScreen message="Initializing…" />;
   }
 
-  console.log('📱 AppNavigator: User authenticated, showing main navigator');
+  if (user) {
+    console.log('📱 AppNavigator: User authenticated, showing main navigator');
+  } else {
+    console.log('📱 AppNavigator: No user, showing auth navigator');
+  }
+
   return (
     <NavigationContainer>
       {user ? <MainStackNavigator /> : <AuthStackNavigator />}

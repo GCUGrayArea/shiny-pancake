@@ -55,13 +55,21 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
       });
     }
 
-    const result = await executeTransaction(queries);
+    try {
+      const result = await executeTransaction(queries);
 
-    if (!result.success) {
-      return { success: false, error: result.error };
+      if (!result.success) {
+        return { success: false, error: result.error };
+      }
+
+      return { success: true };
+    } catch (error) {
+      console.error('Error in saveChat:', error);
+      return {
+        success: false,
+        error: `Failed to save chat: ${error instanceof Error ? error.message : String(error)}`,
+      };
     }
-
-    return { success: true };
   } catch (error) {
     return {
       success: false,
@@ -104,17 +112,34 @@ export async function getChat(chatId: string): Promise<DbResult<Chat | null>> {
 }
 
 /**
- * Get all chats for current user
+ * Get all chats for a specific user (security: only return chats where user is a participant)
  */
-export async function getAllChats(): Promise<DbResult<Chat[]>> {
+export async function getAllChats(userId?: string): Promise<DbResult<Chat[]>> {
   try {
-    const sql = `
-      SELECT DISTINCT c.*
-      FROM chats c
-      ORDER BY c.lastMessageTimestamp DESC
-    `;
+    let sql;
+    let params: any[] = [];
 
-    const chatsResult = await executeQuery<any>(sql);
+    if (userId) {
+      // Filter by user participation (secure)
+      sql = `
+        SELECT DISTINCT c.*
+        FROM chats c
+        INNER JOIN chat_participants cp ON c.id = cp.chatId
+        WHERE cp.userId = ?
+        ORDER BY c.lastMessageTimestamp DESC
+      `;
+      params = [userId];
+    } else {
+      // For backward compatibility, but this should not be used in production
+      console.warn('⚠️ getAllChats called without userId - this may show chats user is not part of');
+      sql = `
+        SELECT DISTINCT c.*
+        FROM chats c
+        ORDER BY c.lastMessageTimestamp DESC
+      `;
+    }
+
+    const chatsResult = await executeQuery<any>(sql, params);
 
     if (!chatsResult.success) {
       return { success: false, error: chatsResult.error };

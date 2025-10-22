@@ -22,6 +22,7 @@ import {
   type Unsubscribe,
 } from 'firebase/database';
 import { getFirebaseDatabase } from './firebase';
+import { uploadImage } from './image.service';
 import type { Message } from '../types';
 
 export interface FirebaseResult<T = any> {
@@ -57,6 +58,52 @@ export async function sendMessageToFirebase(
   try {
     const db = getFirebaseDatabase();
     let messageId = message.id;
+    let messageContent = message.content;
+
+    // Handle image upload for image messages
+    if (message.type === 'image' && message.content.startsWith('file://')) {
+      console.log('📤 FirebaseMessageService: Uploading image for message:', message.localId);
+      console.log('📤 FirebaseMessageService: Chat ID:', message.chatId);
+      console.log('📤 FirebaseMessageService: Image URI:', message.content.substring(0, 100) + '...');
+
+      try {
+        // Ensure user is authenticated before uploading
+        const { getAuth } = await import('firebase/auth');
+        const auth = getAuth();
+        const user = auth.currentUser;
+
+        if (!user) {
+          console.error('❌ FirebaseMessageService: No authenticated user for image upload');
+          return {
+            success: false,
+            error: 'User must be authenticated to upload images',
+          };
+        }
+
+        console.log('🔐 FirebaseMessageService: User authenticated for upload:', user.uid);
+
+        // Generate unique path for the image
+        const timestamp = Date.now();
+        const randomSuffix = Math.random().toString(36).substring(2);
+        const path = `images/${message.chatId}/${timestamp}_${randomSuffix}.jpg`;
+
+        console.log('📤 FirebaseMessageService: Upload path:', path);
+
+        // Upload image to Firebase Storage
+        const uploadResult = await uploadImage(message.content, path);
+
+        // Update content with Firebase Storage URL
+        messageContent = uploadResult.url;
+
+        console.log('✅ FirebaseMessageService: Image uploaded successfully:', uploadResult.url);
+      } catch (uploadError) {
+        console.error('❌ FirebaseMessageService: Image upload failed:', uploadError);
+        return {
+          success: false,
+          error: `Image upload failed: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`,
+        };
+      }
+    }
 
     // If no ID provided, generate one
     if (!messageId) {
@@ -72,7 +119,7 @@ export async function sendMessageToFirebase(
       chatId: message.chatId,
       senderId: message.senderId,
       type: message.type,
-      content: message.content,
+      content: messageContent,
       timestamp: message.timestamp,
       status: 'sent',  // Message is 'sent' once it's in Firebase
       localId: message.localId || null,

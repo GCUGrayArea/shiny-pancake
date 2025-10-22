@@ -147,27 +147,43 @@ export async function initialSync(userId: string): Promise<void> {
 
     console.log(`Found ${chatsResult.length} chats to sync`);
 
-    // 2. Sync each chat and its recent messages
+    // 2. Sync each chat and its recent messages (with error handling)
     for (const chat of chatsResult) {
-      // Sync chat to local
-      await syncChatToLocal(chat);
+      try {
+        // Sync chat to local
+        await syncChatToLocal(chat);
+      } catch (error) {
+        console.error('Failed to sync chat to local:', error);
+      }
 
       // Fetch participants and sync them
       for (const participantId of chat.participantIds) {
         if (participantId !== userId) {
-          const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
-          if (userResult.success && userResult.data) {
-            await syncUserToLocal(userResult.data);
+          try {
+            const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
+            if (userResult.success && userResult.data) {
+              await syncUserToLocal(userResult.data);
+            }
+          } catch (error) {
+            console.error('Failed to sync user to local:', error);
           }
         }
       }
 
       // Fetch recent messages (last 50) for this chat
-      const messagesResult = await FirebaseMessageService.getMessagesFromFirebase(chat.id, 50);
-      if (messagesResult.success && messagesResult.data) {
-        for (const message of messagesResult.data) {
-          await syncMessageToLocal(message);
+      try {
+        const messagesResult = await FirebaseMessageService.getMessagesFromFirebase(chat.id, 50);
+        if (messagesResult.success && messagesResult.data) {
+          for (const message of messagesResult.data) {
+            try {
+              await syncMessageToLocal(message);
+            } catch (error) {
+              console.error('Failed to sync message to local:', error);
+            }
+          }
         }
+      } catch (error) {
+        console.error('Failed to fetch messages for chat:', error);
       }
     }
 
@@ -190,26 +206,34 @@ export async function startRealtimeSync(userId: string): Promise<void> {
     activeSubscriptions.userChats = FirebaseChatService.subscribeToUserChats(
       userId,
       async (chats) => {
-        // Sync all chats to local
+        // Sync all chats to local (with error handling)
         for (const chat of chats) {
-          await syncChatToLocal(chat);
+          try {
+            await syncChatToLocal(chat);
+          } catch (error) {
+            console.error('Failed to sync chat to local:', error);
+          }
 
           // Set up message subscription for this chat if not already subscribed
           if (!activeSubscriptions.messageSubscriptions.has(chat.id)) {
             const messageUnsub = FirebaseMessageService.subscribeToMessages(
               chat.id,
               async (message) => {
-                await syncMessageToLocal(message);
+                try {
+                  await syncMessageToLocal(message);
 
-                // Also sync the sender if we don't have them locally
-                const localSender = await LocalUserService.getUser(message.senderId);
-                if (!localSender.success || !localSender.data) {
-                  const fbSender = await FirebaseUserService.getUserFromFirebase(
-                    message.senderId
-                  );
-                  if (fbSender.success && fbSender.data) {
-                    await syncUserToLocal(fbSender.data);
+                  // Also sync the sender if we don't have them locally
+                  const localSender = await LocalUserService.getUser(message.senderId);
+                  if (!localSender.success || !localSender.data) {
+                    const fbSender = await FirebaseUserService.getUserFromFirebase(
+                      message.senderId
+                    );
+                    if (fbSender.success && fbSender.data) {
+                      await syncUserToLocal(fbSender.data);
+                    }
                   }
+                } catch (error) {
+                  console.error('Failed to sync message to local:', error);
                 }
               }
             );

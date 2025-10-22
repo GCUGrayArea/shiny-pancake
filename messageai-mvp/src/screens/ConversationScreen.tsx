@@ -7,14 +7,15 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, KeyboardAvoidingView, Platform, FlatList, RefreshControl, ViewToken } from 'react-native';
-import { Text, TextInput, IconButton, ActivityIndicator } from 'react-native-paper';
+import { Text, TextInput, IconButton, ActivityIndicator, Button } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainStackParamList } from '@/navigation/AppNavigator';
 import { findOrCreateOneOnOneChat, getChatFromFirebase } from '@/services/firebase-chat.service';
 import { getMessagesFromFirebase, markMessageDelivered, markMessageRead, subscribeToMessages, subscribeToMessageUpdates } from '@/services/firebase-message.service';
-import { getUserFromFirebase } from '@/services/firebase-user.service';
+import { getUserFromFirebase, getAllUsersFromFirebase } from '@/services/firebase-user.service';
 import { saveMessage, getMessagesByChat, updateMessageStatus, getPendingMessages } from '@/services/local-message.service';
 import { enqueueMessage } from '@/services/message-queue.service';
 import { useNetwork } from '@/contexts/NetworkContext';
@@ -22,6 +23,8 @@ import { saveChat } from '@/services/local-chat.service';
 import { saveUser } from '@/services/local-user.service';
 import { Message } from '@/types';
 import MessageBubble from '@/components/MessageBubble';
+import MessageInput from '@/components/MessageInput';
+// import Avatar from '@/components/Avatar'; // Temporarily disabled due to import issues
 import { computeMessageStatus } from '@/utils/message-status.utils';
 
 type ConversationScreenRouteProp = RouteProp<MainStackParamList, 'Conversation'>;
@@ -30,31 +33,107 @@ type ConversationScreenNavigationProp = NativeStackNavigationProp<MainStackParam
 export default function ConversationScreen() {
   const route = useRoute<ConversationScreenRouteProp>();
   const navigation = useNavigation<ConversationScreenNavigationProp>();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { isOnline, triggerQueueProcessing } = useNetwork();
   
-  const { chatId: initialChatId, otherUserId, otherUserName, otherUserEmail } = route.params;
+  const { chatId: initialChatId, otherUserId, otherUserName, otherUserEmail, isGroup, groupName } = route.params;
   
   const [chatId, setChatId] = useState<string | undefined>(initialChatId);
-  const [messageText, setMessageText] = useState('');
   const [sending, setSending] = useState(false);
   const [creatingChat, setCreatingChat] = useState(false);
   const [chatSyncedToLocal, setChatSyncedToLocal] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [hasMoreMessages, setHasMoreMessages] = useState(true);
+  const [oldestTimestamp, setOldestTimestamp] = useState<number | undefined>(undefined);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
 
-  // Set the header title to the other user's name
+  // Load user names for group chat participants
+  const loadUserNames = useCallback(async () => {
+    if (!isGroup || !chatId) return;
+
+    try {
+      console.log('👤 ConversationScreen: Loading user names for group chat');
+      const chatResult = await getChatFromFirebase(chatId);
+      if (!chatResult.success) return;
+
+      const chatData = chatResult.data!;
+      const participantIds = Object.keys(chatData.participantIds || {});
+
+      // Load all users and cache their names
+      const usersResult = await getAllUsersFromFirebase();
+      if (usersResult.success) {
+        const users = usersResult.data || [];
+        const nameMap = new Map<string, string>();
+
+        participantIds.forEach(participantId => {
+          const user = users.find(u => u.uid === participantId);
+          if (user) {
+            nameMap.set(participantId, user.displayName);
+          }
+        });
+
+        setUserNames(nameMap);
+        console.log('✅ ConversationScreen: Loaded user names:', nameMap.size);
+      }
+    } catch (error) {
+      console.error('❌ ConversationScreen: Error loading user names:', error);
+    }
+  }, [isGroup, chatId]);
+
+  // Load user names when chat is available
   useEffect(() => {
+    if (chatId && isGroup) {
+      loadUserNames();
+    }
+  }, [chatId, isGroup, loadUserNames]);
+
+  // Set the header title and right button based on chat type
+  useEffect(() => {
+    const title = isGroup ? (groupName || 'Group Chat') : (otherUserName || otherUserEmail);
+
     navigation.setOptions({
-      title: otherUserName || otherUserEmail,
+      title: !isGroup ? otherUserName || otherUserEmail : title,
+      headerTitle: isGroup ? title : () => {
+        const displayName = otherUserName || otherUserEmail || 'Unknown';
+        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+
+        return (
+          <View style={styles.headerTitleContainer}>
+            <View style={[styles.avatarCircle, { backgroundColor: '#2196F3' }]}>
+              <Text style={styles.avatarText}>{initials || '?'}</Text>
+            </View>
+            <Text style={styles.headerTitleText}>
+              {displayName}
+            </Text>
+          </View>
+        );
+      },
+      headerRight: isGroup ? () => (
+        <IconButton
+          icon="information-outline"
+          onPress={() => {
+            if (chatId) {
+              navigation.navigate('GroupInfo', {
+                chatId,
+                chatName: groupName || 'Group Chat'
+              });
+            }
+          }}
+        />
+      ) : undefined,
     });
-  }, [navigation, otherUserName, otherUserEmail]);
+  }, [navigation, otherUserName, otherUserEmail, isGroup, groupName, chatId, otherUserId]);
 
   // Load messages when chat ID is available
   useEffect(() => {
     if (chatId) {
       loadMessages();
+      // Ensure current user is synced to local database
+      syncCurrentUserToLocal();
     }
   }, [chatId]);
 
@@ -139,16 +218,28 @@ export default function ConversationScreen() {
     };
   }, [chatId]);
 
-  const loadMessages = async () => {
+  // Load messages (recent or older)
+  const loadMessages = async (loadOlder: boolean = false) => {
     if (!chatId) return;
 
     try {
-      setLoadingMessages(true);
-      console.log('📥 ConversationScreen: Loading messages for chat:', chatId);
+      if (loadOlder) {
+        setLoadingOlderMessages(true);
+      } else {
+        setLoadingMessages(true);
+      }
+      console.log(`📥 ConversationScreen: Loading ${loadOlder ? 'older' : 'recent'} messages for chat:`, chatId);
 
-      // Always fetch from Firebase to get the latest messages
-      console.log('📡 ConversationScreen: Fetching messages from Firebase');
-      const firebaseResult = await getMessagesFromFirebase(chatId);
+      let firebaseResult;
+      if (loadOlder && oldestTimestamp) {
+        // Load older messages using pagination
+        console.log('📡 ConversationScreen: Fetching older messages from Firebase');
+        firebaseResult = await getMessagesFromFirebase(chatId, 50, oldestTimestamp);
+      } else {
+        // Always fetch from Firebase to get the latest messages
+        console.log('📡 ConversationScreen: Fetching recent messages from Firebase');
+        firebaseResult = await getMessagesFromFirebase(chatId);
+      }
       
       // Combine messages from different sources
       let allMessages: Message[] = [];
@@ -204,21 +295,52 @@ export default function ConversationScreen() {
         }
       }
 
-      // Sort by timestamp
-      const sortedMessages = allMessages.sort((a, b) => a.timestamp - b.timestamp);
-      
-      if (sortedMessages.length > 0) {
-        console.log('📋 ConversationScreen: Messages:', sortedMessages.map(m => ({ 
-          id: m.id || m.localId, 
-          content: m.content.substring(0, 20), 
+      if (allMessages.length > 0) {
+        // Sort by timestamp
+        const sortedMessages = allMessages.sort((a, b) => a.timestamp - b.timestamp);
+
+        if (loadOlder) {
+          // Prepend older messages to existing messages
+          setMessages(prev => {
+            const combined = [...sortedMessages, ...prev];
+            // Remove duplicates based on message ID
+            const unique = combined.filter((message, index, self) =>
+              index === self.findIndex(m => m.id === message.id)
+            );
+            return unique.sort((a, b) => a.timestamp - b.timestamp);
+          });
+
+          // Update oldest timestamp for next pagination
+          if (sortedMessages.length > 0) {
+            setOldestTimestamp(sortedMessages[0].timestamp);
+          }
+
+          // If we got fewer than requested, no more messages available
+          if (sortedMessages.length < 50) {
+            setHasMoreMessages(false);
+          }
+        } else {
+          // Replace all messages (initial load or refresh)
+          setMessages(sortedMessages);
+
+          // Update oldest timestamp for pagination
+          if (sortedMessages.length > 0) {
+            setOldestTimestamp(sortedMessages[0].timestamp);
+            setHasMoreMessages(sortedMessages.length >= 50); // If we got 50 messages, there might be more
+          }
+        }
+
+        console.log('📋 ConversationScreen: Messages:', sortedMessages.map(m => ({
+          id: m.id || m.localId,
+          content: m.content.substring(0, 20),
           status: m.status,
-          timestamp: m.timestamp 
+          timestamp: m.timestamp
         })));
       } else {
-        console.log('⚠️ ConversationScreen: No messages found');
+        if (!loadOlder) {
+          console.log('⚠️ ConversationScreen: No messages found');
+        }
       }
-      
-      setMessages(sortedMessages);
     } catch (error) {
       console.error('❌ ConversationScreen: Error loading messages:', error);
       // Try local database as last resort
@@ -234,9 +356,20 @@ export default function ConversationScreen() {
         console.error('❌ ConversationScreen: Error loading from local DB:', localError);
       }
     } finally {
-      setLoadingMessages(false);
+      if (loadOlder) {
+        setLoadingOlderMessages(false);
+      } else {
+        setLoadingMessages(false);
+      }
     }
   };
+
+  // Load older messages when scrolling to top
+  const loadOlderMessages = useCallback(() => {
+    if (hasMoreMessages && !loadingOlderMessages && !loadingMessages) {
+      loadMessages(true);
+    }
+  }, [hasMoreMessages, loadingOlderMessages, loadingMessages]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -310,13 +443,8 @@ export default function ConversationScreen() {
     }
   }, [messages.length]); // Only run when message count changes
 
-  const handleSendMessage = async () => {
-    if (!user || !messageText.trim() || sending) return;
-
-    const messageContent = messageText.trim();
-    
-    // Clear the input immediately (before async operations)
-    setMessageText('');
+  const handleSendMessage = async (content: string, type: 'text' | 'image', imageUri?: string) => {
+    if (!user || sending) return;
     
     try {
       setSending(true);
@@ -329,8 +457,6 @@ export default function ConversationScreen() {
       if (!activeChatId) {
         if (!isOnline) {
           console.error('❌ ConversationScreen: Cannot create new chat while offline');
-          // Restore message text
-          setMessageText(messageContent);
           // TODO: Show error to user (Snackbar)
           return;
         }
@@ -342,8 +468,6 @@ export default function ConversationScreen() {
         
         if (!chatResult.success) {
           console.error('❌ ConversationScreen: Failed to create chat:', chatResult.error);
-          // Restore message text
-          setMessageText(messageContent);
           // TODO: Show error to user (Snackbar or Alert)
           setCreatingChat(false);
           return;
@@ -353,6 +477,16 @@ export default function ConversationScreen() {
         console.log('✅ ConversationScreen: Chat created:', activeChatId);
         setChatId(activeChatId);
         setCreatingChat(false);
+
+        // Sync chat and users to local database (required for foreign key constraints)
+        // This ensures the chat exists in local DB before we try to enqueue a message
+        try {
+          console.log('🔄 ConversationScreen: Syncing newly created chat to local');
+          await syncChatToLocal(activeChatId);
+        } catch (error) {
+          console.error('Failed to sync chat to local:', error);
+          // Continue anyway - the check at line 506 will retry if needed
+        }
       }
 
       // Create the message object
@@ -361,15 +495,26 @@ export default function ConversationScreen() {
         id: '', // Will be generated by Firebase
         chatId: activeChatId,
         senderId: user.uid,
-        type: 'text',
-        content: messageContent,
+        type,
+        content,
         timestamp: Date.now(),
         status: 'sending',
         localId, // Temporary local ID for tracking
       };
 
       console.log('📨 ConversationScreen: Enqueueing message to chat:', activeChatId);
-      console.log('📝 ConversationScreen: Message content:', messageContent);
+      console.log('📝 ConversationScreen: Message content:', content.substring(0, 50));
+
+      // Sync chat/users to local DB BEFORE enqueueing (required for foreign key constraints)
+      if (!chatSyncedToLocal) {
+        try {
+          console.log('🔄 ConversationScreen: Syncing chat to local before enqueueing message');
+          await syncChatToLocal(activeChatId);
+        } catch (error) {
+          console.error('❌ ConversationScreen: Failed to sync chat to local:', error);
+          // Continue anyway - the sync function already handles individual failures
+        }
+      }
 
       // Add message to UI immediately (optimistic UI)
       setMessages(prev => [...prev, message]);
@@ -393,13 +538,6 @@ export default function ConversationScreen() {
       // - Wait until reconnection if offline
       // - Prevent concurrent processing
       triggerQueueProcessing();
-
-      // Sync chat/users to local DB in background (non-blocking, can fail)
-      if (!chatSyncedToLocal && isOnline) {
-        syncChatToLocal(activeChatId).catch(err => 
-          console.error('Background chat sync failed:', err)
-        );
-      }
       
     } catch (error) {
       console.error('❌ ConversationScreen: Error sending message:', error);
@@ -409,23 +547,38 @@ export default function ConversationScreen() {
     }
   };
 
+  // Sync current user to local database (needed for message sending)
+  const syncCurrentUserToLocal = async () => {
+    try {
+      console.log('👤 ConversationScreen: Syncing current user to local database');
+      const currentUserData = await getUserFromFirebase(user!.uid);
+      if (currentUserData.success && currentUserData.data) {
+        await saveUser(currentUserData.data);
+        console.log('✅ ConversationScreen: Current user synced to local database');
+      } else {
+        console.error('❌ ConversationScreen: Failed to get current user data from Firebase');
+      }
+    } catch (error) {
+      console.error('❌ ConversationScreen: Error syncing current user to local:', error);
+    }
+  };
+
   // Background sync helper (non-blocking)
   const syncChatToLocal = async (chatId: string) => {
     try {
       console.log('💾 ConversationScreen: Background sync of chat and users');
-      
-      // Sync current user
-      const currentUserData = await getUserFromFirebase(user!.uid);
-      if (currentUserData.success && currentUserData.data) {
-        await saveUser(currentUserData.data);
+
+      // Sync current user (needed for message sending)
+      await syncCurrentUserToLocal();
+
+      // Sync other user (for 1:1 chats)
+      if (otherUserId) {
+        const otherUserData = await getUserFromFirebase(otherUserId);
+        if (otherUserData.success && otherUserData.data) {
+          await saveUser(otherUserData.data);
+        }
       }
-      
-      // Sync other user
-      const otherUserData = await getUserFromFirebase(otherUserId);
-      if (otherUserData.success && otherUserData.data) {
-        await saveUser(otherUserData.data);
-      }
-      
+
       // Sync chat
       const chatData = await getChatFromFirebase(chatId);
       if (chatData.success && chatData.data) {
@@ -440,7 +593,7 @@ export default function ConversationScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { paddingBottom: insets.bottom }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={100}
     >
@@ -467,47 +620,64 @@ export default function ConversationScreen() {
         ) : (
           <FlatList
             data={messages}
-            renderItem={({ item }) => (
-              <MessageBubble
-                message={item}
-                isOwnMessage={item.senderId === user?.uid}
-                currentUserId={user?.uid}
-              />
-            )}
+            renderItem={({ item, index }) => {
+              // For group chats, show sender indicator only when sender changes
+              const showSenderIndicator = isGroup && item.senderId !== user?.uid;
+              const senderName = showSenderIndicator ? userNames.get(item.senderId) || 'Unknown' : undefined;
+
+              // Check if this is the first message or if sender changed from previous message
+              const shouldShowSenderIndicator = showSenderIndicator && (
+                index === 0 || // First message always shows sender
+                messages[index - 1].senderId !== item.senderId // Sender changed from previous
+              );
+
+              return (
+                <MessageBubble
+                  message={item}
+                  isOwnMessage={item.senderId === user?.uid}
+                  currentUserId={user?.uid}
+                  showSenderIndicator={shouldShowSenderIndicator}
+                  senderName={shouldShowSenderIndicator ? senderName : undefined}
+                  isGroup={isGroup}
+                />
+              );
+            }}
             keyExtractor={(item) => item.id || item.localId || String(item.timestamp)}
             contentContainerStyle={styles.messagesList}
             inverted={false}
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={viewabilityConfig}
+            onEndReached={loadOlderMessages}
+            onEndReachedThreshold={0.1} // Load when 10% from top
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            }
+            ListHeaderComponent={
+              loadingOlderMessages ? (
+                <View style={styles.loadingOlderContainer}>
+                  <ActivityIndicator size="small" />
+                  <Text style={styles.loadingOlderText}>Loading older messages...</Text>
+                </View>
+              ) : hasMoreMessages ? (
+                <View style={styles.loadMoreContainer}>
+                  <Text style={styles.loadMoreText}>Scroll up to load older messages</Text>
+                </View>
+              ) : messages.length > 50 ? (
+                <View style={styles.noMoreContainer}>
+                  <Text style={styles.noMoreText}>No older messages</Text>
+                </View>
+              ) : null
             }
           />
         )}
       </View>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          mode="outlined"
-          placeholder="Type a message..."
-          value={messageText}
-          onChangeText={setMessageText}
-          multiline
-          maxLength={1000}
-          disabled={sending || creatingChat}
-          onSubmitEditing={handleSendMessage}
-          blurOnSubmit={false}
-        />
-        <IconButton
-          icon="send"
-          mode="contained"
-          size={24}
-          disabled={!messageText.trim() || sending || creatingChat}
-          onPress={handleSendMessage}
-          style={styles.sendButton}
-        />
-      </View>
+      <MessageInput
+        onSendMessage={handleSendMessage}
+        chatId={chatId}
+        disabled={sending || creatingChat}
+        placeholder={`Message ${otherUserName || otherUserEmail}...`}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -516,6 +686,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingBottom: 0, // Will be overridden by safe area insets
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitleText: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+  },
+  avatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   messagesContainer: {
     flex: 1,
@@ -537,24 +730,40 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    padding: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
-  },
-  input: {
-    flex: 1,
-    marginRight: 8,
-    maxHeight: 100,
-  },
-  sendButton: {
-    marginBottom: 4,
-  },
   messagesList: {
     paddingVertical: 8,
+  },
+  loadingOlderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+    backgroundColor: '#F5F5F5',
+  },
+  loadingOlderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+  },
+  loadMoreContainer: {
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+  },
+  loadMoreText: {
+    fontSize: 12,
+    color: '#999',
+    fontStyle: 'italic',
+  },
+  noMoreContainer: {
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#F8F9FA',
+  },
+  noMoreText: {
+    fontSize: 12,
+    color: '#666',
+    fontStyle: 'italic',
   },
 });
 

@@ -1,11 +1,12 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { 
-  initializeAuth, 
-  getAuth, 
+import {
+  initializeAuth,
+  getAuth,
+  connectAuthEmulator,
   type Auth
 } from 'firebase/auth';
-import { getDatabase, type Database } from 'firebase/database';
-import { getStorage, type FirebaseStorage } from 'firebase/storage';
+import { getDatabase, connectDatabaseEmulator, type Database } from 'firebase/database';
+import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   FIREBASE_API_KEY,
@@ -15,7 +16,11 @@ import {
   FIREBASE_STORAGE_BUCKET,
   FIREBASE_MESSAGING_SENDER_ID,
   FIREBASE_APP_ID,
+  USE_FIREBASE_EMULATORS,
 } from '@env';
+
+// Check if emulators should be used
+const shouldUseEmulators = USE_FIREBASE_EMULATORS === 'true';
 
 function getFirebaseApp(): FirebaseApp {
   // Check if app is already initialized
@@ -49,11 +54,39 @@ export function getFirebaseAuth(): Auth {
       // Initialize without custom persistence for now
       // Firebase will use memory persistence (session-based)
       // TODO: Implement proper AsyncStorage persistence later
-      return initializeAuth(app);
+      const auth = initializeAuth(app);
+
+      // Connect to Auth emulator if explicitly enabled
+      if (shouldUseEmulators) {
+        try {
+          connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+          console.log('🔗 Firebase: Connected to Auth emulator');
+        } catch (error) {
+          console.warn('⚠️ Firebase: Could not connect to Auth emulator:', error);
+        }
+      } else {
+        console.log('🔗 Firebase: Using live Firebase Auth');
+      }
+
+      return auth;
     } catch (error: any) {
       // If already initialized (shouldn't happen, but handle it)
       if (error?.code === 'auth/already-initialized') {
-        return getAuth(app);
+        const auth = getAuth(app);
+
+        // Connect to Auth emulator if explicitly enabled
+        if (shouldUseEmulators) {
+          try {
+            connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+            console.log('🔗 Firebase: Connected to Auth emulator');
+          } catch (emulatorError) {
+            console.warn('⚠️ Firebase: Could not connect to Auth emulator:', emulatorError);
+          }
+        } else {
+          console.log('🔗 Firebase: Using live Firebase Auth');
+        }
+
+        return auth;
       }
       throw error;
     }
@@ -64,11 +97,43 @@ export function getFirebaseAuth(): Auth {
 }
 
 export function getFirebaseDatabase(): Database {
-  return getDatabase(getFirebaseApp());
+  const app = getFirebaseApp();
+  const db = getDatabase(app);
+
+  // Connect to Database emulator if explicitly enabled
+  if (shouldUseEmulators) {
+    try {
+      connectDatabaseEmulator(db, "127.0.0.1", 9000, {
+        mockUserToken: 'test-user-token'
+      });
+      console.log('🔗 Firebase: Connected to Database emulator');
+    } catch (error) {
+      console.warn('⚠️ Firebase: Could not connect to Database emulator:', error);
+    }
+  } else {
+    console.log('🔗 Firebase: Using live Firebase Database');
+  }
+
+  return db;
 }
 
 export function getFirebaseStorage(): FirebaseStorage {
-  return getStorage(getFirebaseApp());
+  const app = getFirebaseApp();
+
+  // Connect to Storage emulator if explicitly enabled
+  if (shouldUseEmulators) {
+    try {
+      connectStorageEmulator(getStorage(app), "127.0.0.1", 9199);
+      console.log('🔗 Firebase: Connected to Storage emulator');
+    } catch (error) {
+      console.warn('⚠️ Firebase: Could not connect to Storage emulator:', error);
+      console.log('🔗 Firebase: Falling back to live Firebase Storage');
+    }
+  } else {
+    console.log('🔗 Firebase: Using live Firebase Storage');
+  }
+
+  return getStorage(app);
 }
 
 

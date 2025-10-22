@@ -198,11 +198,13 @@ describe('Local Chat Service', () => {
           data: [{ userId: 'user1', unreadCount: 0 }],
         });
 
-      const result = await getAllChats();
+      const result = await getAllChats('user1');
 
       expect(result.success).toBe(true);
       expect(result.data).toHaveLength(2);
       expect(mockExecuteQuery).toHaveBeenCalledWith(
+        expect.stringContaining('INNER JOIN chat_participants cp ON c.id = cp.chatId'),
+        expect.stringContaining('WHERE cp.userId = ?'),
         expect.stringContaining('ORDER BY c.lastMessageTimestamp DESC')
       );
     });
@@ -213,7 +215,7 @@ describe('Local Chat Service', () => {
         data: [],
       });
 
-      const result = await getAllChats();
+      const result = await getAllChats('user1');
 
       expect(result.success).toBe(true);
       expect(result.data).toEqual([]);

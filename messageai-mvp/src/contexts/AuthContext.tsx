@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState, ReactNo
 import { onAuthStateChangedListener, signIn as svcSignIn, signOut as svcSignOut, signUp as svcSignUp, getCurrentUser } from '@/services/auth.service';
 import { setupPresenceSystem, teardownPresenceSystem } from '@/services/presence.service';
 import { initDatabase } from '@/services/database.service';
+import { startRealtimeSync, initialSync, stopRealtimeSync, getSyncStatus } from '@/services/sync.service';
 import { User } from '@/types';
 
 type AuthContextValue = {
@@ -20,6 +21,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [dbInitialized, setDbInitialized] = useState<boolean>(false);
+  const [initialSyncCompleted, setInitialSyncCompleted] = useState<boolean>(false);
 
   console.log('🔐 AuthProvider: Rendering', { user: user?.uid, loading, error });
 
@@ -53,20 +55,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Handle presence system setup/teardown based on auth state
       if (u) {
-        // User logged in - set up presence system
+        // User logged in - set up presence system and sync
         try {
           await setupPresenceSystem(u.uid);
           console.log(`✅ Presence system initialized for user ${u.uid}`);
+
+          // Initialize sync system sequentially to avoid transaction conflicts
+          console.log('🔄 Initializing sync system...');
+          await initialSync(u.uid);
+          setInitialSyncCompleted(true);
+
+          // Small delay to ensure initial sync completes fully
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          await startRealtimeSync(u.uid);
+          console.log(`✅ Sync system initialized for user ${u.uid}`);
         } catch (error) {
-          console.error('❌ Failed to initialize presence system:', error);
+          console.error('❌ Failed to initialize systems:', error);
         }
       } else {
-        // User logged out - tear down presence system
+        // User logged out - tear down systems
         try {
+          await stopRealtimeSync();
           await teardownPresenceSystem();
-          console.log('🛑 Presence system torn down');
+          console.log('🛑 Systems torn down');
         } catch (error) {
-          console.error('❌ Failed to teardown presence system:', error);
+          console.error('❌ Failed to teardown systems:', error);
         }
       }
 
@@ -85,6 +99,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => {
       clearTimeout(timeout);
       unsub();
+
+      // Cleanup sync system on unmount
+      try {
+        stopRealtimeSync();
+      } catch (error) {
+        console.error('❌ Failed to cleanup sync system:', error);
+      }
     };
   }, []);
 

@@ -249,12 +249,29 @@ export async function executeUpdate(
 }
 
 /**
+ * Transaction queue to prevent nested transactions
+ */
+let transactionQueue: Promise<any> = Promise.resolve();
+
+/**
  * Execute multiple queries in a transaction
+ * Uses a queue to ensure transactions don't overlap
  */
 export async function executeTransaction(
   queries: Array<{ sql: string; params?: any[] }>
 ): Promise<DbResult<void>> {
+  // Chain this transaction after the previous one
+  const previousTransaction = transactionQueue;
+  
+  let resolveTransaction: (value?: any) => void;
+  transactionQueue = new Promise((resolve) => {
+    resolveTransaction = resolve;
+  });
+
   try {
+    // Wait for previous transaction to complete
+    await previousTransaction;
+    
     const database = getDatabase();
 
     await database.withTransactionAsync(async () => {
@@ -269,6 +286,9 @@ export async function executeTransaction(
       success: false,
       error: `Transaction failed: ${error instanceof Error ? error.message : String(error)}`,
     };
+  } finally {
+    // Allow next transaction to proceed
+    resolveTransaction!();
   }
 }
 

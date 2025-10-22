@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, FlatList, RefreshControl, Pressable } from 'react-native';
 import { Text, FAB, ActivityIndicator } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
@@ -22,6 +23,7 @@ export default function ChatListScreen() {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<ChatListNavigationProp>();
 
@@ -35,7 +37,7 @@ export default function ChatListScreen() {
 
     try {
       setLoading(true);
-      const chatResult = await getAllChats();
+      const chatResult = await getAllChats(user.uid);
       let chatsToDisplay = chatResult.data || [];
 
       console.log('📊 ChatListScreen: Found chats from DB', { count: chatsToDisplay.length, data: chatResult });
@@ -108,6 +110,25 @@ export default function ChatListScreen() {
     if (!user) return;
 
     console.log('💬 ChatListScreen: Opening chat:', chat.id);
+    console.log('💬 ChatListScreen: Chat type:', chat.type);
+    console.log('💬 ChatListScreen: Chat participants (local):', chat.participantIds);
+    console.log('💬 ChatListScreen: Current user:', user.uid);
+    
+    // Fetch the chat from Firebase to compare
+    const { getChatFromFirebase } = await import('@/services/firebase-chat.service');
+    const firebaseChat = await getChatFromFirebase(chat.id);
+    
+    if (firebaseChat.success && firebaseChat.data) {
+      console.log('🔥 ChatListScreen: Chat participants (Firebase):', firebaseChat.data.participantIds);
+      
+      // If Firebase has more participants than local, use Firebase data
+      if (firebaseChat.data.participantIds.length > chat.participantIds.length) {
+        console.log('⚠️ ChatListScreen: Local chat data is outdated, using Firebase data');
+        chat = firebaseChat.data;
+      }
+    } else {
+      console.log('⚠️ ChatListScreen: Could not fetch chat from Firebase:', firebaseChat.error);
+    }
 
     // For 1:1 chats, get the other user's info
     if (chat.type === '1:1') {
@@ -115,6 +136,25 @@ export default function ChatListScreen() {
       
       if (!otherUserId) {
         console.error('❌ ChatListScreen: Could not find other user in chat');
+        console.error('❌ ChatListScreen: Participant IDs:', JSON.stringify(chat.participantIds));
+        console.error('❌ ChatListScreen: Current user ID:', user.uid);
+        
+        // If we have exactly one participant and it's not us, that's the other user
+        if (chat.participantIds.length === 1 && chat.participantIds[0] !== user.uid) {
+          const fallbackOtherUserId = chat.participantIds[0];
+          console.log('⚠️ ChatListScreen: Using fallback participant:', fallbackOtherUserId);
+          
+          navigation.navigate('Conversation', {
+            chatId: chat.id,
+            otherUserId: fallbackOtherUserId,
+            otherUserName: chat.name || 'Unknown User',
+            otherUserEmail: 'unknown',
+          });
+          return;
+        }
+        
+        // Otherwise, we can't determine the other user
+        console.error('❌ ChatListScreen: Cannot determine other user, aborting');
         return;
       }
 
@@ -143,20 +183,39 @@ export default function ChatListScreen() {
         otherUserEmail: otherUser.email,
       });
     } else {
-      // For group chats (future implementation)
-      console.log('❌ ChatListScreen: Group chats not yet implemented');
-      // TODO: Implement group chat navigation
+      // For group chats
+      console.log('👥 ChatListScreen: Opening group chat:', chat.id);
+      navigation.navigate('Conversation', {
+        chatId: chat.id,
+        isGroup: true,
+        groupName: chat.name || 'Group Chat'
+      });
     }
   }, [user, navigation]);
 
   // Render chat item
   const renderChatItem = ({ item: chat }: { item: Chat }) => {
     const lastMessage = chat.lastMessage;
-    const preview = lastMessage?.content
-      ? (lastMessage.content.length > 50
-          ? lastMessage.content.substring(0, 50) + '...'
-          : lastMessage.content)
-      : 'No messages yet';
+
+    // Create preview with sender name for group chats
+    let preview: string;
+    if (chat.type === 'group') {
+      if (lastMessage?.senderId && lastMessage?.content) {
+        // For group chats, show sender name + message
+        preview = `${lastMessage.senderId === user?.uid ? 'You' : 'Unknown'}: ${lastMessage.content.length > 40
+          ? lastMessage.content.substring(0, 40) + '...'
+          : lastMessage.content}`;
+      } else {
+        preview = 'No messages yet';
+      }
+    } else {
+      // For 1:1 chats, just show the message
+      preview = lastMessage?.content
+        ? (lastMessage.content.length > 50
+            ? lastMessage.content.substring(0, 50) + '...'
+            : lastMessage.content)
+        : 'No messages yet';
+    }
 
     const timestamp = lastMessage?.timestamp ?? chat.createdAt;
     const relativeTime = getRelativeTime(timestamp);
@@ -176,9 +235,16 @@ export default function ChatListScreen() {
         onPress={() => handleOpenChat(chat)}
       >
         <View style={styles.chatContent}>
-          <Text variant="titleMedium" style={styles.chatName}>
-            {chat.name || `Chat ${chat.id.slice(-4)}`}
-          </Text>
+          <View style={styles.chatNameRow}>
+            <Text variant="titleMedium" style={styles.chatName}>
+              {chat.name || `Chat ${chat.id.slice(-4)}`}
+            </Text>
+            {chat.type === 'group' && (
+              <Text variant="bodySmall" style={styles.groupIndicator}>
+                Group
+              </Text>
+            )}
+          </View>
 
           <Text variant="bodyMedium" style={styles.lastMessage}>
             {preview}
@@ -198,6 +264,12 @@ export default function ChatListScreen() {
                 ]}
               >
                 Online
+              </Text>
+            )}
+
+            {chat.type === 'group' && (
+              <Text variant="bodySmall" style={styles.participantCount}>
+                {chat.participantIds?.length || 0} members
               </Text>
             )}
           </View>
@@ -259,7 +331,7 @@ export default function ChatListScreen() {
 
       <FAB
         icon="plus"
-        style={styles.fab}
+        style={[styles.fab, { bottom: insets.bottom + 16 }]}
         onPress={() => {
           console.log('➕ ChatListScreen: New chat button pressed');
           navigation.navigate('NewChat' as never);
@@ -354,6 +426,25 @@ const styles = StyleSheet.create({
     position: 'absolute',
     margin: 16,
     right: 0,
-    bottom: 0,
+    // bottom: 0, // Now set dynamically with safe area insets
+  },
+  chatNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  groupIndicator: {
+    backgroundColor: '#E3F2FD',
+    color: '#1976D2',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    fontSize: 10,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  participantCount: {
+    color: '#666',
+    fontSize: 12,
   },
 });

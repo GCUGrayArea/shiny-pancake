@@ -17,8 +17,8 @@ export const MESSAGE_CONSTANTS = {
  * Image constraints
  */
 export const IMAGE_CONSTANTS = {
-  /** Maximum image size in bytes (2MB) */
-  MAX_SIZE: 2 * 1024 * 1024,
+  /** Maximum image size in bytes (5MB) */
+  MAX_SIZE: 5 * 1024 * 1024,
   /** Image compression quality (0-1) */
   COMPRESSION_QUALITY: 0.8,
   /** Supported image formats */
