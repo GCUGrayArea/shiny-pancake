@@ -37,6 +37,15 @@
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid"
       }
+    },
+    "typing": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['isTyping', 'timestamp'])"
+        }
+      }
     }
   }
 }

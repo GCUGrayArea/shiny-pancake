@@ -359,3 +359,30 @@ export async function getDatabaseVersion(): Promise<DbResult<number>> {
     };
   }
 }
+
+
+/**
+ * Clear all data from the database (for debugging/testing)
+ * WARNING: This will delete all local data!
+ */
+export async function clearAllData(): Promise<DbResult<void>> {
+  try {
+    const db = await getDatabase();
+
+    await db.execAsync(`
+      DELETE FROM message_status;
+      DELETE FROM chat_participants;
+      DELETE FROM messages;
+      DELETE FROM chats;
+      DELETE FROM users;
+    `);
+
+    console.log("✓ All local database data cleared");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to clear data: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}

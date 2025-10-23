@@ -38,6 +38,31 @@ export default function ChatListScreen() {
 
     try {
       setLoading(true);
+
+      // First, refresh from Firebase to ensure we have latest data with correct participantIds
+      const { getUserChatsFromFirebase } = await import('@/services/firebase-chat.service');
+      const { saveChat: saveChatLocal } = await import('@/services/local-chat.service');
+
+      const firebaseResult = await getUserChatsFromFirebase(user.uid);
+      if (firebaseResult.success && firebaseResult.data) {
+        // If Firebase has no chats, clear local database
+        if (firebaseResult.data.length === 0) {
+          const { clearAllData } = await import('@/services/database.service');
+          await clearAllData();
+          console.log('Cleared local database - Firebase has no chats');
+          // Set chats to empty immediately
+          setChats([]);
+          setHasLoadedOnce(true);
+          setLoading(false);
+          return; // Exit early
+        } else {
+          // Save all chats to local database to fix any stale data
+          for (const chat of firebaseResult.data) {
+            await saveChatLocal(chat);
+          }
+        }
+      }
+
       const chatResult = await getAllChats(user.uid);
       let chatsToDisplay = chatResult.data || [];
 
@@ -61,14 +86,33 @@ export default function ChatListScreen() {
       }
 
       if (userIdsToLoad.size > 0) {
+        const newUserNames = new Map<string, string>();
+
+        // Try to load from local database first
         const usersResult = await getUsers(Array.from(userIdsToLoad));
         if (usersResult.success && usersResult.data) {
-          const newUserNames = new Map<string, string>();
           for (const u of usersResult.data) {
             newUserNames.set(u.uid, u.displayName);
           }
-          setUserNames(newUserNames);
         }
+
+        // For any users not found locally, fetch from Firebase
+        const missingUserIds = Array.from(userIdsToLoad).filter(
+          uid => !newUserNames.has(uid)
+        );
+
+        for (const uid of missingUserIds) {
+          try {
+            const userResult = await getUserFromFirebase(uid);
+            if (userResult.success && userResult.data) {
+              newUserNames.set(uid, userResult.data.displayName);
+            }
+          } catch (error) {
+            // Silently fail for individual users
+          }
+        }
+
+        setUserNames(newUserNames);
       }
 
       setHasLoadedOnce(true);

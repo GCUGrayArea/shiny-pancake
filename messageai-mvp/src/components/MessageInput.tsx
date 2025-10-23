@@ -2,28 +2,34 @@
  * Message Input Component
  * Handles text input and image selection for sending messages
  * Supports both text and image messages with upload progress
+ * Includes typing indicator integration
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, Alert, Image, TouchableOpacity } from 'react-native';
 import { TextInput, IconButton, Text, ActivityIndicator } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { Message, MessageType } from '@/types';
 import { IMAGE_CONSTANTS, MESSAGE_CONSTANTS, ERROR_CODES } from '@/constants';
 import { compressImage, uploadImage, validateImage } from '@/services/image.service';
+import { setTyping, clearTyping } from '@/services/typing.service';
 
 interface MessageInputProps {
   onSendMessage: (content: string, type: MessageType, imageUri?: string, caption?: string) => Promise<void>;
-  chatId?: string; // For image uploads
+  chatId?: string; // For image uploads and typing indicators
+  currentUserId?: string; // For typing indicators
   disabled?: boolean;
   placeholder?: string;
 }
 
 const CAPTION_MAX_LENGTH = 500;
+const TYPING_DEBOUNCE_MS = 300;
+const AUTO_CLEAR_TYPING_MS = 5000;
 
 export default function MessageInput({
   onSendMessage,
   chatId,
+  currentUserId,
   disabled = false,
   placeholder = "Type a message..."
 }: MessageInputProps) {
@@ -31,6 +37,81 @@ export default function MessageInput({
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+
+  // Refs for typing indicator management
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const autoClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isTypingRef = useRef<boolean>(false);
+
+  // Clear typing indicator
+  const clearTypingIndicator = useCallback(async () => {
+    if (chatId && currentUserId && isTypingRef.current) {
+      try {
+        await clearTyping(chatId, currentUserId);
+        isTypingRef.current = false;
+      } catch (error) {
+        // Silently fail - typing indicators are non-critical
+      }
+    }
+  }, [chatId, currentUserId]);
+
+  // Set typing indicator
+  const setTypingIndicator = useCallback(async () => {
+    if (chatId && currentUserId && !isTypingRef.current) {
+      try {
+        await setTyping(chatId, currentUserId, true);
+        isTypingRef.current = true;
+      } catch (error) {
+        // Silently fail - typing indicators are non-critical
+      }
+    }
+  }, [chatId, currentUserId]);
+
+  // Handle text change with debounced typing indicator
+  const handleTextChange = useCallback((text: string) => {
+    setMessageText(text);
+
+    // Clear existing timeouts
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (autoClearTimeoutRef.current) {
+      clearTimeout(autoClearTimeoutRef.current);
+    }
+
+    if (text.trim().length > 0) {
+      // Debounce typing indicator
+      typingTimeoutRef.current = setTimeout(() => {
+        setTypingIndicator();
+
+        // Set up auto-clear
+        autoClearTimeoutRef.current = setTimeout(() => {
+          clearTypingIndicator();
+        }, AUTO_CLEAR_TYPING_MS);
+      }, TYPING_DEBOUNCE_MS);
+    } else {
+      // Empty input - clear typing immediately
+      clearTypingIndicator();
+    }
+  }, [setTypingIndicator, clearTypingIndicator]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Clear timeouts
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      if (autoClearTimeoutRef.current) {
+        clearTimeout(autoClearTimeoutRef.current);
+      }
+
+      // Clear typing indicator
+      if (chatId && currentUserId && isTypingRef.current) {
+        clearTyping(chatId, currentUserId).catch(() => {});
+      }
+    };
+  }, [chatId, currentUserId]);
 
   // Request permissions for image picker
   const requestPermissions = async () => {
@@ -112,6 +193,9 @@ export default function MessageInput({
     try {
       setSending(true);
 
+      // Clear typing indicator immediately when sending
+      await clearTypingIndicator();
+
       if (selectedImage) {
         // Send image message with optional caption
         const caption = messageText.trim() || undefined;
@@ -186,7 +270,7 @@ export default function MessageInput({
           mode="outlined"
           placeholder={selectedImage ? "Add a caption (optional)..." : placeholder}
           value={messageText}
-          onChangeText={setMessageText}
+          onChangeText={handleTextChange}
           multiline
           maxLength={selectedImage ? CAPTION_MAX_LENGTH : MESSAGE_CONSTANTS.MAX_LENGTH}
           disabled={disabled || sending}

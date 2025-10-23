@@ -22,12 +22,14 @@ import { useNetwork } from '@/contexts/NetworkContext';
 import { saveChat } from '@/services/local-chat.service';
 import { saveUser } from '@/services/local-user.service';
 import * as NotificationManager from '@/services/notification-manager.service';
-import { Message } from '@/types';
+import { Message, User } from '@/types';
 import MessageBubble from '@/components/MessageBubble';
 import MessageInput from '@/components/MessageInput';
+import TypingIndicator from '@/components/TypingIndicator';
 // import Avatar from '@/components/Avatar'; // Temporarily disabled due to import issues
 import { computeMessageStatus } from '@/utils/message-status.utils';
 import { getInitials } from '@/utils/chat.utils';
+import { subscribeToTyping, type TypingUser } from '@/services/typing.service';
 
 type ConversationScreenRouteProp = RouteProp<MainStackParamList, 'Conversation'>;
 type ConversationScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'Conversation'>;
@@ -53,6 +55,7 @@ export default function ConversationScreen() {
   const [oldestTimestamp, setOldestTimestamp] = useState<number | undefined>(undefined);
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
   const [loadedOtherUserName, setLoadedOtherUserName] = useState<string | null>(null);
+  const [typingUsers, setTypingUsers] = useState<User[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
   // Set current viewing chat for notification suppression
@@ -247,6 +250,33 @@ export default function ConversationScreen() {
       unsubscribe();
     };
   }, [chatId]);
+
+  // Subscribe to typing indicators
+  useEffect(() => {
+    if (!chatId || !user) return;
+
+    const unsubscribe = subscribeToTyping(chatId, user.uid, async (typingUsersList: TypingUser[]) => {
+      // Fetch full user objects for typing users
+      const fullUsers: User[] = [];
+
+      for (const typingUser of typingUsersList) {
+        try {
+          const userResult = await getUserFromFirebase(typingUser.uid);
+          if (userResult.success && userResult.data) {
+            fullUsers.push(userResult.data);
+          }
+        } catch (error) {
+          // Silently ignore errors fetching user data
+        }
+      }
+
+      setTypingUsers(fullUsers);
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [chatId, user]);
 
   // Load messages (recent or older)
   const loadMessages = async (loadOlder: boolean = false) => {
@@ -659,9 +689,13 @@ export default function ConversationScreen() {
         )}
       </View>
 
+      {/* Typing indicator above message input */}
+      <TypingIndicator typingUsers={typingUsers} />
+
       <MessageInput
         onSendMessage={handleSendMessage}
         chatId={chatId}
+        currentUserId={user?.uid}
         disabled={sending || creatingChat}
         placeholder={`Message ${otherUserName || otherUserEmail}...`}
       />

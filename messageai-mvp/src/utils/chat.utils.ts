@@ -29,7 +29,7 @@ export function getChatDisplayName(
   const otherUserId = chat.participantIds.find(id => id !== currentUserId);
 
   if (!otherUserId) {
-    // Fallback if we can't find the other user
+    // Fallback if we can't find the other user (stale Firebase data)
     return 'Chat';
   }
 
