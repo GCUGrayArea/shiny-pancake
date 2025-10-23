@@ -10,10 +10,11 @@
 
 ### Block 1A: Critical Bug Fixes (Can run in parallel)
 
-#### PR-040: Fix MVP Critical Bugs
+#### PR-040: Fix MVP Critical Bugs ✅ COMPLETED
 **Dependencies:** None
 **Estimated Time:** 2.5 hours (reduced from 3 - removed pull-to-refresh)
 **Prerequisites:** ✅ Ready to start
+**Status:** ✅ Committed (f8efb7a)
 
 **Files Modified:**
 - `src/screens/ConversationScreen.tsx` - Fix header to show correct names
@@ -56,22 +57,23 @@
    - Current implementation loads all messages (acceptable for MVP)
 
 **Validation:**
-- [ ] 1:1 chats show other user's display name in header
-- [ ] 1:1 chats show other user's display name in chat list
-- [ ] Group chats show group name
-- [ ] Group name input clears properly
-- [ ] Chat list displays last messages correctly (not "No messages yet")
-- [ ] Last message shows sender name in groups
-- [ ] Last message shows sender for image messages
-- [ ] All existing tests still pass
-- [ ] No regressions introduced
+- [x] 1:1 chats show other user's display name in header
+- [x] 1:1 chats show other user's display name in chat list
+- [x] Group chats show group name
+- [x] Group name input clears properly
+- [x] Chat list displays last messages correctly (not "No messages yet")
+- [x] Last message shows sender name in groups
+- [x] Last message shows sender for image messages
+- [x] All existing tests still pass
+- [x] No regressions introduced
 
 ---
 
-#### PR-041: Add Image Captions
+#### PR-041: Add Image Captions ✅ COMPLETED
 **Dependencies:** None (parallel with PR-040)
 **Estimated Time:** 2 hours
 **Prerequisites:** ✅ Ready to start
+**Status:** ✅ Committed (f8efb7a)
 
 **Files Modified:**
 - `src/types/index.ts` - Add caption field to Message interface
@@ -109,15 +111,15 @@
    - Test various caption lengths
 
 **Validation:**
-- [ ] Can add caption when sending image
-- [ ] Caption optional (can send without)
-- [ ] Caption displays in chat bubble
-- [ ] Caption visible in full-screen image view
-- [ ] Caption shows in chat list preview with sender
-- [ ] Caption persists across app restart
-- [ ] Character limit enforced (500 chars)
-- [ ] Long captions handled gracefully
-- [ ] Caption syncs to Firebase correctly
+- [x] Can add caption when sending image
+- [x] Caption optional (can send without)
+- [x] Caption displays in chat bubble
+- [x] Caption visible in full-screen image view
+- [x] Caption shows in chat list preview with sender
+- [x] Caption persists across app restart
+- [x] Character limit enforced (500 chars)
+- [x] Long captions handled gracefully
+- [x] Caption syncs to Firebase correctly
 
 ---
 
