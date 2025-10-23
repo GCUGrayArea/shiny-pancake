@@ -1,0 +1,15 @@
+node_modules/
+coverage/
+build/
+dist/
+.expo/
+*.config.js
+babel.config.js
+jest.config.js
+jest.setup.js
+jest.env.mock.js
+jest.integration.setup.js
+test-env-import.js
+test-flow.js
+__mocks__/
+
