@@ -44,12 +44,10 @@ export default function GroupInfoScreen() {
 
     try {
       setLoading(true);
-      console.log('📋 GroupInfoScreen: Loading group info for chat:', chatId);
 
       // Load chat data from Firebase
       const chatResult = await getChatFromFirebase(chatId);
       if (!chatResult.success) {
-        console.error('❌ GroupInfoScreen: Failed to load chat:', chatResult.error);
         Alert.alert('Error', 'Failed to load group information');
         return;
       }
@@ -60,12 +58,10 @@ export default function GroupInfoScreen() {
       // Load participants
       if (chatData.participantIds) {
         const participantIds = Object.keys(chatData.participantIds);
-        console.log('👥 GroupInfoScreen: Loading participants:', participantIds.length);
 
         // Get all users first
         const usersResult = await getAllUsersFromFirebase();
         if (!usersResult.success) {
-          console.error('❌ GroupInfoScreen: Failed to load users:', usersResult.error);
           return;
         }
 
@@ -76,7 +72,6 @@ export default function GroupInfoScreen() {
           participantIds.map(async (participantId) => {
             const firebaseUser = allUsers.find(u => u.uid === participantId);
             if (!firebaseUser) {
-              console.warn('⚠️ GroupInfoScreen: Participant not found:', participantId);
               return null;
             }
 
@@ -88,7 +83,6 @@ export default function GroupInfoScreen() {
                 lastSeen: presence.lastSeen,
               };
             } catch (error) {
-              console.error(`Failed to get presence for ${participantId}:`, error);
               return {
                 ...firebaseUser,
                 isOnline: false,
@@ -100,10 +94,8 @@ export default function GroupInfoScreen() {
 
         const validParticipants = groupParticipants.filter(p => p !== null) as ParticipantWithPresence[];
         setParticipants(validParticipants);
-        console.log('✅ GroupInfoScreen: Loaded participants:', validParticipants.length);
       }
     } catch (error) {
-      console.error('❌ GroupInfoScreen: Error loading group info:', error);
       Alert.alert('Error', 'Failed to load group information');
     } finally {
       setLoading(false);
@@ -127,7 +119,6 @@ export default function GroupInfoScreen() {
           onPress: async () => {
             try {
               setLeaving(true);
-              console.log('🚪 GroupInfoScreen: Leaving group:', chatId);
 
               // TODO: Implement leave group functionality
               // This would involve removing the user from chat.participantIds
@@ -140,7 +131,6 @@ export default function GroupInfoScreen() {
               );
 
             } catch (error) {
-              console.error('❌ GroupInfoScreen: Error leaving group:', error);
               Alert.alert('Error', 'Failed to leave group. Please try again.');
             } finally {
               setLeaving(false);

@@ -20,7 +20,6 @@ let loginTimestamp: number | null = null;
  */
 export function setCurrentViewingChat(chatId: string | null): void {
   currentViewingChatId = chatId;
-  console.log('📱 Notification Manager: Current viewing chat set to', chatId);
 }
 
 /**
@@ -34,10 +33,8 @@ export function setCurrentUser(userId: string | null): void {
   if (userId) {
     // Record when user logged in (with 5 second buffer for clock skew)
     loginTimestamp = Date.now() - 5000;
-    console.log('📱 Notification Manager: Current user set to', userId, '| Login time:', new Date(loginTimestamp).toISOString());
   } else {
     loginTimestamp = null;
-    console.log('📱 Notification Manager: Current user cleared');
   }
 }
 
@@ -55,13 +52,11 @@ export async function handleNewMessage(message: Message): Promise<void> {
     // Don't notify for historical messages (messages from before login)
     // This prevents notification spam when syncing old messages on login
     if (loginTimestamp && message.timestamp < loginTimestamp) {
-      console.log('🔕 Suppressing notification - historical message (before login)');
       return;
     }
 
     // Don't notify if user is currently viewing this chat
     if (message.chatId === currentViewingChatId) {
-      console.log('🔕 Suppressing notification - user is viewing this chat');
       return;
     }
 
@@ -72,24 +67,15 @@ export async function handleNewMessage(message: Message): Promise<void> {
     ]);
 
     if (!chatResult.success || !chatResult.data) {
-      console.error('Failed to fetch chat for notification:', chatResult.error);
       return;
     }
 
     if (!senderResult.success || !senderResult.data) {
-      console.error('Failed to fetch sender for notification:', senderResult.error);
       return;
     }
 
     const chat = chatResult.data;
     const sender = senderResult.data;
-
-    // Schedule notification
-    console.log('🔔 Showing notification for message:', {
-      chatId: message.chatId,
-      sender: sender.displayName,
-      type: message.type,
-    });
 
     await NotificationService.scheduleMessageNotification(
       message,
@@ -98,7 +84,6 @@ export async function handleNewMessage(message: Message): Promise<void> {
       currentUserId || ''
     );
   } catch (error) {
-    console.error('Error handling new message notification:', error);
   }
 }
 

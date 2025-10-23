@@ -62,9 +62,6 @@ export async function sendMessageToFirebase(
 
     // Handle image upload for image messages
     if (message.type === 'image' && message.content.startsWith('file://')) {
-      console.log('📤 FirebaseMessageService: Uploading image for message:', message.localId);
-      console.log('📤 FirebaseMessageService: Chat ID:', message.chatId);
-      console.log('📤 FirebaseMessageService: Image URI:', message.content.substring(0, 100) + '...');
 
       try {
         // Ensure user is authenticated before uploading
@@ -73,21 +70,18 @@ export async function sendMessageToFirebase(
         const user = auth.currentUser;
 
         if (!user) {
-          console.error('❌ FirebaseMessageService: No authenticated user for image upload');
           return {
             success: false,
             error: 'User must be authenticated to upload images',
           };
         }
 
-        console.log('🔐 FirebaseMessageService: User authenticated for upload:', user.uid);
 
         // Generate unique path for the image
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(2);
         const path = `images/${message.chatId}/${timestamp}_${randomSuffix}.jpg`;
 
-        console.log('📤 FirebaseMessageService: Upload path:', path);
 
         // Upload image to Firebase Storage
         const uploadResult = await uploadImage(message.content, path);
@@ -95,9 +89,7 @@ export async function sendMessageToFirebase(
         // Update content with Firebase Storage URL
         messageContent = uploadResult.url;
 
-        console.log('✅ FirebaseMessageService: Image uploaded successfully:', uploadResult.url);
       } catch (uploadError) {
-        console.error('❌ FirebaseMessageService: Image upload failed:', uploadError);
         return {
           success: false,
           error: `Image upload failed: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`,
@@ -147,15 +139,12 @@ export async function getMessagesFromFirebase(
   startAfterTimestamp?: number
 ): Promise<FirebaseResult<Message[]>> {
   try {
-    console.log('📥 FirebaseMessageService: Getting messages for chat:', chatId);
     const db = getFirebaseDatabase();
     const messagesRef = ref(db, `messages/${chatId}`);
-    console.log('📥 FirebaseMessageService: Messages path:', `messages/${chatId}`);
 
     let messagesQuery;
 
     if (startAfterTimestamp) {
-      console.log('📥 FirebaseMessageService: Getting messages before timestamp:', startAfterTimestamp);
       // Get messages before a specific timestamp (for pagination)
       messagesQuery = query(
         messagesRef,
@@ -164,7 +153,6 @@ export async function getMessagesFromFirebase(
         limitToLast(limit)
       );
     } else {
-      console.log('📥 FirebaseMessageService: Getting last', limit, 'messages');
       // Get most recent messages
       messagesQuery = query(
         messagesRef,
@@ -173,7 +161,6 @@ export async function getMessagesFromFirebase(
       );
     }
 
-    console.log('📥 FirebaseMessageService: Executing query...');
     const snapshot = await get(messagesQuery);
 
     const messages: Message[] = [];
@@ -183,14 +170,11 @@ export async function getMessagesFromFirebase(
         const msgData = childSnapshot.val();
         messages.push(msgData as Message);
       });
-      console.log('✅ FirebaseMessageService: Retrieved', messages.length, 'messages');
     } else {
-      console.log('📭 FirebaseMessageService: No messages found in chat');
     }
 
     return { success: true, data: messages };
   } catch (error) {
-    console.error('❌ FirebaseMessageService: Error getting messages:', error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get messages from Firebase',
@@ -213,7 +197,6 @@ export function subscribeToMessages(
     const messageData = snapshot.val();
     callback(messageData as Message);
   }, (error) => {
-    console.error('Error in messages subscription:', error);
   });
 }
 
@@ -232,7 +215,6 @@ export function subscribeToMessageUpdates(
     const messageData = snapshot.val();
     callback(messageData as Message);
   }, (error) => {
-    console.error('Error in message updates subscription:', error);
   });
 }
 

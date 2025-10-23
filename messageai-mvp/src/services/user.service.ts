@@ -8,14 +8,12 @@ export async function createUserProfile(uid: string, email: string, displayName:
   
   // Check if profile already exists
   const snapshot = await get(userRef);
-  
+
   if (snapshot.exists()) {
-    console.log(`✅ UserService: Profile already exists for ${email}, skipping creation`);
     return; // Profile already exists, don't overwrite
   }
-  
+
   // Create new profile
-  console.log(`➕ UserService: Creating new profile for ${email}`);
   const now = Date.now();
   await set(userRef, {
     uid,
@@ -25,7 +23,6 @@ export async function createUserProfile(uid: string, email: string, displayName:
     lastSeen: now,
     isOnline: false,
   });
-  console.log(`✅ UserService: Profile created for ${email}`);
 }
 
 export async function getUserProfile(uid: string): Promise<User | null> {

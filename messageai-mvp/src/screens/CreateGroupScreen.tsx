@@ -98,7 +98,6 @@ export default function CreateGroupScreen() {
 
     try {
       setLoading(true);
-      console.log('🏗️ CreateGroupScreen: Creating group with participants:', participants.length);
 
       // Create group chat in Firebase
       const participantIds = participants.map(p => p.uid);
@@ -118,7 +117,6 @@ export default function CreateGroupScreen() {
       }
 
       const chatId = result.data!;
-      console.log('✅ CreateGroupScreen: Group created successfully:', chatId);
 
       // Navigate to conversation
       navigation.navigate('Conversation', {
@@ -128,7 +126,6 @@ export default function CreateGroupScreen() {
       });
 
     } catch (error) {
-      console.error('❌ CreateGroupScreen: Error creating group:', error);
       Alert.alert(
         'Error',
         'Failed to create group. Please try again.',

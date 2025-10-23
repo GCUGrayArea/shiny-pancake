@@ -75,9 +75,7 @@ export async function setUserOnline(uid: string): Promise<void> {
       lastSeen: serverTimestamp(),
     });
 
-    console.log(`User ${uid} marked as online`);
   } catch (error) {
-    console.error('Error setting user online:', error);
     throw error;
   }
 }
@@ -96,9 +94,7 @@ export async function setUserOffline(uid: string): Promise<void> {
       lastSeen: serverTimestamp(),
     });
 
-    console.log(`User ${uid} marked as offline`);
   } catch (error) {
-    console.error('Error setting user offline:', error);
     throw error;
   }
 }
@@ -168,13 +164,11 @@ function handleAppStateChange(nextAppState: AppStateStatus): void {
 
   if (nextAppState === 'active') {
     // App came to foreground - mark online
-    setUserOnline(currentUserId).catch((error) => {
-      console.error('Failed to set online on foreground:', error);
+    setUserOnline(currentUserId).catch(() => {
     });
   } else if (nextAppState === 'background' || nextAppState === 'inactive') {
     // App went to background - mark offline
-    setUserOffline(currentUserId).catch((error) => {
-      console.error('Failed to set offline on background:', error);
+    setUserOffline(currentUserId).catch(() => {
     });
   }
 }
@@ -191,15 +185,9 @@ function setupConnectionMonitor(uid: string): void {
     const isConnected = snapshot.val() === true;
 
     if (isConnected) {
-      console.log('Firebase connection established');
       // Set user online (this also sets up onDisconnect)
-      setUserOnline(uid).catch((error) => {
-        console.error('Failed to set online on reconnection:', error);
+      setUserOnline(uid).catch(() => {
       });
-    } else {
-      console.log('Firebase connection lost');
-      // Firebase will automatically trigger onDisconnect
-      // No need to manually set offline
     }
   });
 }
@@ -222,8 +210,6 @@ export async function setupPresenceSystem(uid: string): Promise<void> {
 
   // Set up connection monitoring
   setupConnectionMonitor(uid);
-
-  console.log(`Presence system initialized for user ${uid}`);
 }
 
 /**
@@ -252,8 +238,6 @@ export async function teardownPresenceSystem(): Promise<void> {
     await setUserOffline(currentUserId);
     currentUserId = null;
   }
-
-  console.log('Presence system torn down');
 }
 
 /**
@@ -283,7 +267,6 @@ export async function getUserPresence(
       lastSeen: Date.now(),
     };
   } catch (error) {
-    console.error('Error getting user presence:', error);
     // Return offline status on error
     return {
       isOnline: false,

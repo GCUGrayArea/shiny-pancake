@@ -56,7 +56,6 @@ function AuthStackNavigator() {
 }
 
 function MainStackNavigator() {
-  console.log('📋 MainStackNavigator: Rendering main stack');
   return (
     <MainStack.Navigator>
       <MainStack.Screen
@@ -105,17 +104,8 @@ export default function AppNavigator() {
     });
   }, []);
 
-  console.log('🧭 AppNavigator: Rendering', { user: user?.uid, loading, hasUser: !!user });
-
   if (loading) {
-    console.log('⏳ AppNavigator: Showing loading screen');
     return <LoadingScreen message="Initializing…" />;
-  }
-
-  if (user) {
-    console.log('📱 AppNavigator: User authenticated, showing main navigator');
-  } else {
-    console.log('📱 AppNavigator: No user, showing auth navigator');
   }
 
   return (

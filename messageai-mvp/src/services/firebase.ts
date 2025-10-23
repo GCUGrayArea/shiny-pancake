@@ -60,12 +60,9 @@ export function getFirebaseAuth(): Auth {
       if (shouldUseEmulators) {
         try {
           connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-          console.log('🔗 Firebase: Connected to Auth emulator');
         } catch (error) {
-          console.warn('⚠️ Firebase: Could not connect to Auth emulator:', error);
         }
       } else {
-        console.log('🔗 Firebase: Using live Firebase Auth');
       }
 
       return auth;
@@ -78,12 +75,9 @@ export function getFirebaseAuth(): Auth {
         if (shouldUseEmulators) {
           try {
             connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-            console.log('🔗 Firebase: Connected to Auth emulator');
           } catch (emulatorError) {
-            console.warn('⚠️ Firebase: Could not connect to Auth emulator:', emulatorError);
           }
         } else {
-          console.log('🔗 Firebase: Using live Firebase Auth');
         }
 
         return auth;
@@ -106,12 +100,9 @@ export function getFirebaseDatabase(): Database {
       connectDatabaseEmulator(db, "127.0.0.1", 9000, {
         mockUserToken: 'test-user-token'
       });
-      console.log('🔗 Firebase: Connected to Database emulator');
     } catch (error) {
-      console.warn('⚠️ Firebase: Could not connect to Database emulator:', error);
     }
   } else {
-    console.log('🔗 Firebase: Using live Firebase Database');
   }
 
   return db;
@@ -124,13 +115,9 @@ export function getFirebaseStorage(): FirebaseStorage {
   if (shouldUseEmulators) {
     try {
       connectStorageEmulator(getStorage(app), "127.0.0.1", 9199);
-      console.log('🔗 Firebase: Connected to Storage emulator');
     } catch (error) {
-      console.warn('⚠️ Firebase: Could not connect to Storage emulator:', error);
-      console.log('🔗 Firebase: Falling back to live Firebase Storage');
     }
   } else {
-    console.log('🔗 Firebase: Using live Firebase Storage');
   }
 
   return getStorage(app);

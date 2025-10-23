@@ -47,10 +47,8 @@ export async function syncUserToLocal(firebaseUser: User): Promise<void> {
     const result = await LocalUserService.saveUser(firebaseUser);
 
     if (!result.success) {
-      console.error('Failed to sync user to local:', result.error);
     }
   } catch (error) {
-    console.error('Error syncing user to local:', error);
   }
 }
 
@@ -63,10 +61,8 @@ export async function syncChatToLocal(firebaseChat: Chat): Promise<void> {
     const result = await LocalChatService.saveChat(firebaseChat);
 
     if (!result.success) {
-      console.error('Failed to sync chat to local:', result.error);
     }
   } catch (error) {
-    console.error('Error syncing chat to local:', error);
   }
 }
 
@@ -83,7 +79,6 @@ async function syncChatWithParticipants(chat: Chat): Promise<void> {
         await syncUserToLocal(userResult.data);
       }
     } catch (error) {
-      console.error('Failed to sync participant:', participantId, error);
     }
   }
   
@@ -104,15 +99,12 @@ export async function syncMessageToLocal(firebaseMessage: Message): Promise<void
     
     if (!chatResult.success || !chatResult.data) {
       // Chat doesn't exist locally - fetch from Firebase and save with participants
-      console.log('⚠️ Chat not in local DB, fetching from Firebase:', firebaseMessage.chatId);
       const fbChatResult = await FirebaseChatService.getChatFromFirebase(firebaseMessage.chatId);
       
       if (fbChatResult.success && fbChatResult.data) {
         // CRITICAL: Use helper that syncs participants FIRST
         await syncChatWithParticipants(fbChatResult.data);
-        console.log('✅ Chat and participants synced to local DB before message');
       } else {
-        console.error('Failed to fetch chat from Firebase:', fbChatResult.error);
         // Don't save message if we can't get the chat (FK will fail)
         return;
       }
@@ -130,10 +122,8 @@ export async function syncMessageToLocal(firebaseMessage: Message): Promise<void
     const result = await LocalMessageService.saveMessage(firebaseMessage);
 
     if (!result.success) {
-      console.error('Failed to sync message to local:', result.error);
     }
   } catch (error) {
-    console.error('Error syncing message to local:', error);
   }
 }
 
@@ -145,10 +135,8 @@ export async function syncUserToFirebase(localUser: User): Promise<void> {
     const result = await FirebaseUserService.createUserInFirebase(localUser);
 
     if (!result.success) {
-      console.error('Failed to sync user to Firebase:', result.error);
     }
   } catch (error) {
-    console.error('Error syncing user to Firebase:', error);
   }
 }
 
@@ -160,10 +148,8 @@ export async function syncChatToFirebase(localChat: Chat): Promise<void> {
     const result = await FirebaseChatService.createChatInFirebase(localChat);
 
     if (!result.success) {
-      console.error('Failed to sync chat to Firebase:', result.error);
     }
   } catch (error) {
-    console.error('Error syncing chat to Firebase:', error);
   }
 }
 
@@ -175,10 +161,8 @@ export async function syncMessageToFirebase(localMessage: Message): Promise<void
     const result = await FirebaseMessageService.sendMessageToFirebase(localMessage);
 
     if (!result.success) {
-      console.error('Failed to sync message to Firebase:', result.error);
     }
   } catch (error) {
-    console.error('Error syncing message to Firebase:', error);
   }
 }
 
@@ -188,7 +172,6 @@ export async function syncMessageToFirebase(localMessage: Message): Promise<void
  */
 export async function initialSync(userId: string): Promise<void> {
   try {
-    console.log('Starting initial sync for user:', userId);
 
     // 1. Fetch user's chats from Firebase
     const chatsResult = await new Promise<Chat[]>((resolve) => {
@@ -199,7 +182,6 @@ export async function initialSync(userId: string): Promise<void> {
       });
     });
 
-    console.log(`Found ${chatsResult.length} chats to sync`);
 
     // 2. Sync each chat and its recent messages (with error handling)
     for (const chat of chatsResult) {
@@ -212,7 +194,6 @@ export async function initialSync(userId: string): Promise<void> {
             await syncUserToLocal(userResult.data);
           }
         } catch (error) {
-          console.error('Failed to sync user to local:', error);
         }
       }
 
@@ -220,7 +201,6 @@ export async function initialSync(userId: string): Promise<void> {
       try {
         await syncChatToLocal(chat);
       } catch (error) {
-        console.error('Failed to sync chat to local:', error);
       }
 
       // Fetch recent messages (last 50) for this chat
@@ -231,18 +211,14 @@ export async function initialSync(userId: string): Promise<void> {
             try {
               await syncMessageToLocal(message);
             } catch (error) {
-              console.error('Failed to sync message to local:', error);
             }
           }
         }
       } catch (error) {
-        console.error('Failed to fetch messages for chat:', error);
       }
     }
 
-    console.log('Initial sync completed');
   } catch (error) {
-    console.error('Error during initial sync:', error);
     throw error;
   }
 }
@@ -253,7 +229,6 @@ export async function initialSync(userId: string): Promise<void> {
  */
 export async function startRealtimeSync(userId: string): Promise<void> {
   try {
-    console.log('Starting real-time sync for user:', userId);
 
     // Subscribe to user's chats
     activeSubscriptions.userChats = FirebaseChatService.subscribeToUserChats(
@@ -269,7 +244,6 @@ export async function startRealtimeSync(userId: string): Promise<void> {
                 await syncUserToLocal(participantResult.data);
               }
             } catch (error) {
-              console.error('Failed to sync participant to local:', error);
             }
           }
 
@@ -277,7 +251,6 @@ export async function startRealtimeSync(userId: string): Promise<void> {
           try {
             await syncChatToLocal(chat);
           } catch (error) {
-            console.error('Failed to sync chat to local:', error);
           }
 
           // Set up message subscription for this chat if not already subscribed
@@ -302,7 +275,6 @@ export async function startRealtimeSync(userId: string): Promise<void> {
                   // Trigger notification for new message
                   await NotificationManager.handleNewMessage(message);
                 } catch (error) {
-                  console.error('Failed to sync message to local:', error);
                 }
               }
             );
@@ -329,9 +301,7 @@ export async function startRealtimeSync(userId: string): Promise<void> {
       }
     );
 
-    console.log('Real-time sync started');
   } catch (error) {
-    console.error('Error starting real-time sync:', error);
     throw error;
   }
 }
@@ -342,7 +312,6 @@ export async function startRealtimeSync(userId: string): Promise<void> {
  */
 export function stopRealtimeSync(): void {
   try {
-    console.log('Stopping real-time sync');
 
     // Unsubscribe from user chats
     if (activeSubscriptions.userChats) {
@@ -368,9 +337,7 @@ export function stopRealtimeSync(): void {
     });
     activeSubscriptions.userPresenceSubscriptions.clear();
 
-    console.log('Real-time sync stopped');
   } catch (error) {
-    console.error('Error stopping real-time sync:', error);
   }
 }
 

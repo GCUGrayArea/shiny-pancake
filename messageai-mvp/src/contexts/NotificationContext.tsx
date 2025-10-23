@@ -55,14 +55,8 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
     
     // Don't show notification if user is already viewing this chat
     if (data.chatId && data.chatId === currentChatId) {
-      console.log('Suppressing notification - user is viewing this chat');
       return;
     }
-
-    console.log('Notification received:', {
-      chatId: data.chatId,
-      title: notification.request.content.title,
-    });
   };
 
   /**
@@ -72,7 +66,6 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
   const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
     const data = response.notification.request.content.data as NotificationData;
     
-    console.log('Notification tapped:', data);
 
     // Navigate to conversation using navigation handler
     // Pass additional data from notification for better UX
@@ -80,7 +73,6 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
       try {
         navigationHandler(data.chatId, data);
       } catch (error) {
-        console.error('Error navigating from notification:', error);
       }
     }
   };
@@ -135,7 +127,6 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
       await NotificationService.clearAllNotifications();
       await NotificationService.setBadgeCount(0);
 
-      console.log('Notification system initialized');
 
       return () => {
         appStateSubscription.remove();

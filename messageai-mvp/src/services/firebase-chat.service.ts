@@ -213,7 +213,6 @@ export function subscribeToUserChats(
 
     callback(chats);
   }, (error) => {
-    console.error('Error in user chats subscription:', error);
     callback([]);
   });
 }
@@ -290,7 +289,6 @@ export function subscribeToChat(
 
     callback(chat);
   }, (error) => {
-    console.error('Error in chat subscription:', error);
     callback(null);
   });
 }
@@ -304,7 +302,6 @@ export async function findOneOnOneChat(
   userId2: string
 ): Promise<FirebaseResult<string | null>> {
   try {
-    console.log(`🔍 FirebaseChatService: Looking for existing 1:1 chat between ${userId1} and ${userId2}`);
     const db = getFirebaseDatabase();
     const chatsRef = ref(db, 'chats');
 
@@ -335,12 +332,10 @@ export async function findOneOnOneChat(
       });
 
       if (existingChatId) {
-        console.log(`✅ FirebaseChatService: Found existing chat: ${existingChatId}`);
         return { success: true, data: existingChatId };
       }
     }
 
-    console.log(`ℹ️ FirebaseChatService: No existing chat found`);
     return { success: true, data: null };
   } catch (error) {
     return {
@@ -361,14 +356,11 @@ export async function findOrCreateOneOnOneChat(
   userId2: string
 ): Promise<FirebaseResult<string>> {
   try {
-    console.log(`💬 FirebaseChatService: Finding or creating 1:1 chat between ${userId1} and ${userId2}`);
     const db = getFirebaseDatabase();
     const chatsRef = ref(db, 'chats');
 
     // Get all chats
-    console.log(`📊 FirebaseChatService: Attempting to read chats from Firebase...`);
     const snapshot = await get(chatsRef);
-    console.log(`📊 FirebaseChatService: Fetched chats successfully, exists: ${snapshot.exists()}`);
 
     if (snapshot.exists()) {
       // Look for existing 1:1 chat with these two users
@@ -394,13 +386,11 @@ export async function findOrCreateOneOnOneChat(
       });
 
       if (existingChatId) {
-        console.log(`✅ FirebaseChatService: Found existing chat: ${existingChatId}`);
         return { success: true, data: existingChatId };
       }
     }
 
     // No existing chat found, create a new one
-    console.log(`➕ FirebaseChatService: No existing chat found, creating new one`);
     const newChat: Chat = {
       id: '', // Will be generated
       type: '1:1',
@@ -414,9 +404,7 @@ export async function findOrCreateOneOnOneChat(
 
     const result = await createChatInFirebase(newChat);
     if (result.success) {
-      console.log(`✅ FirebaseChatService: Created new chat: ${result.data}`);
     } else {
-      console.error(`❌ FirebaseChatService: Failed to create chat: ${result.error}`);
     }
     return result;
   } catch (error) {

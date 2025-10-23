@@ -73,7 +73,6 @@ export async function requestNotificationPermissions(): Promise<boolean> {
 
     return finalStatus === 'granted';
   } catch (error) {
-    console.error('Error requesting notification permissions:', error);
     return false;
   }
 }
@@ -86,7 +85,6 @@ export async function getNotificationPermissionsStatus(): Promise<string> {
     const { status } = await Notifications.getPermissionsAsync();
     return status;
   } catch (error) {
-    console.error('Error getting notification permissions:', error);
     return 'undetermined';
   }
 }
@@ -138,7 +136,6 @@ export async function scheduleMessageNotification(
 
     return notificationId;
   } catch (error) {
-    console.error('Error scheduling message notification:', error);
     return null;
   }
 }
@@ -150,7 +147,6 @@ export async function cancelNotification(notificationId: string): Promise<void> 
   try {
     await Notifications.cancelScheduledNotificationAsync(notificationId);
   } catch (error) {
-    console.error('Error canceling notification:', error);
   }
 }
 
@@ -161,7 +157,6 @@ export async function cancelAllNotifications(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (error) {
-    console.error('Error canceling all notifications:', error);
   }
 }
 
@@ -172,7 +167,6 @@ export async function setBadgeCount(count: number): Promise<void> {
   try {
     await Notifications.setBadgeCountAsync(count);
   } catch (error) {
-    console.error('Error setting badge count:', error);
   }
 }
 
@@ -183,7 +177,6 @@ export async function clearAllNotifications(): Promise<void> {
   try {
     await Notifications.dismissAllNotificationsAsync();
   } catch (error) {
-    console.error('Error clearing notifications:', error);
   }
 }
 
@@ -205,6 +198,5 @@ export async function savePushTokenToProfile(
   token: string
 ): Promise<void> {
   // Placeholder for future FCM implementation
-  console.log('Push token management not implemented in MVP (local notifications only)');
 }
 

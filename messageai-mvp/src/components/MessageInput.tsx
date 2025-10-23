@@ -44,7 +44,6 @@ export default function MessageInput({
       }
       return true;
     } catch (error) {
-      console.error('❌ MessageInput: Permission request failed:', error);
       return false;
     }
   };
@@ -52,14 +51,11 @@ export default function MessageInput({
   // Handle image selection
   const handleImagePick = async () => {
     try {
-      console.log('📷 MessageInput: Image picker button pressed');
       const hasPermission = await requestPermissions();
       if (!hasPermission) {
-        console.log('📷 MessageInput: Permission denied');
         return;
       }
 
-      console.log('📷 MessageInput: Opening image picker');
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -72,15 +68,6 @@ export default function MessageInput({
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-
-        console.log('📷 MessageInput: Image selected:', asset.uri);
-        console.log('📷 MessageInput: Asset details:', {
-          uri: asset.uri,
-          type: asset.type,
-          fileSize: asset.fileSize,
-          width: asset.width,
-          height: asset.height
-        });
 
         // Validate image
         const isValid = await validateImage(asset);
@@ -103,10 +90,8 @@ export default function MessageInput({
         setSelectedImage(compressed.uri);
         setImagePreview(previewUri);
 
-        console.log('✅ MessageInput: Image processed and ready to send');
       }
     } catch (error) {
-      console.error('❌ MessageInput: Image selection failed:', error);
       Alert.alert(
         'Error',
         'Failed to select image. Please try again.',
@@ -127,7 +112,6 @@ export default function MessageInput({
 
       if (selectedImage) {
         // Send image message - enqueue for background processing
-        console.log('📤 MessageInput: Enqueuing image message');
 
         // Create message with local image URI (upload will happen in background)
         await onSendMessage(selectedImage, 'image');
@@ -136,20 +120,16 @@ export default function MessageInput({
         setSelectedImage(null);
         setImagePreview(null);
 
-        console.log('✅ MessageInput: Image message enqueued for background upload');
       } else {
         // Send text message immediately
-        console.log('📤 MessageInput: Sending text message');
         await onSendMessage(messageText.trim(), 'text');
       }
 
       // Clear text input
       setMessageText('');
 
-      console.log('✅ MessageInput: Message sent successfully');
 
     } catch (error) {
-      console.error('❌ MessageInput: Send failed:', error);
       Alert.alert(
         'Send Failed',
         'Failed to send message. Please try again.',
@@ -191,7 +171,6 @@ export default function MessageInput({
           icon="image"
           size={24}
           onPress={() => {
-            console.log('📷 MessageInput: Image button pressed directly');
             handleImagePick();
           }}
           disabled={disabled || sending}

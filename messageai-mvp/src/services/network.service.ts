@@ -19,7 +19,6 @@ export async function isOnline(): Promise<boolean> {
     const state = await NetInfo.fetch();
     return state.isConnected === true && state.isInternetReachable !== false;
   } catch (error) {
-    console.error('Failed to check network state:', error);
     // Assume online if check fails
     return true;
   }
@@ -82,7 +81,6 @@ export async function getNetworkState(): Promise<{
       type: state.type ?? null,
     };
   } catch (error) {
-    console.error('Failed to get network state:', error);
     return {
       isConnected: false,
       isInternetReachable: null,

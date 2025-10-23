@@ -68,7 +68,6 @@ export async function signUp(email: string, password: string, displayName: strin
   } catch (e: any) {
     // Surface diagnostic info to developer console while keeping UI friendly
     // eslint-disable-next-line no-console
-    console.error('signUp error:', e?.code, e?.message);
     const message = mapFirebaseAuthError(e?.code || 'unknown');
     throw new Error(message);
   }
@@ -87,7 +86,6 @@ export async function signIn(email: string, password: string): Promise<User> {
     return user;
   } catch (e: any) {
     // eslint-disable-next-line no-console
-    console.error('signIn error:', e?.code, e?.message);
     const message = mapFirebaseAuthError(e?.code || 'unknown');
     throw new Error(message);
   }

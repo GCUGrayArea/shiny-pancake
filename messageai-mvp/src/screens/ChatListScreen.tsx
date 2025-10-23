@@ -19,7 +19,6 @@ import { MainStackParamList } from '@/navigation/AppNavigator';
 type ChatListNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ChatList'>;
 
 export default function ChatListScreen() {
-  console.log('💬 ChatListScreen: Component rendering');
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,9 +29,7 @@ export default function ChatListScreen() {
 
   // Load chats from local database
   const loadChats = useCallback(async () => {
-    console.log('🔄 ChatListScreen: Loading chats for user', user?.uid);
     if (!user) {
-      console.log('❌ ChatListScreen: No user found, skipping chat load');
       return;
     }
 
@@ -41,25 +38,15 @@ export default function ChatListScreen() {
       const chatResult = await getAllChats(user.uid);
       let chatsToDisplay = chatResult.data || [];
 
-      console.log('📊 ChatListScreen: Found chats from DB', { count: chatsToDisplay.length, data: chatResult });
-
-      // Don't add sample data - just show empty state
-      // (Sample data was causing infinite loop when chats updated)
-      if (chatsToDisplay.length === 0) {
-        console.log('ℹ️ ChatListScreen: No chats found - showing empty state');
-      }
-
       // Sort by last message timestamp (most recent first)
       const sortedChats = chatsToDisplay.sort((a, b) => {
         const aTime = a.lastMessage?.timestamp ?? a.createdAt;
         const bTime = b.lastMessage?.timestamp ?? b.createdAt;
         return bTime - aTime;
       });
-      console.log('✅ ChatListScreen: Setting chats', { count: sortedChats.length });
       setChats(sortedChats);
       setHasLoadedOnce(true);
     } catch (error) {
-      console.error('❌ Error loading chats:', error);
     } finally {
       setLoading(false);
     }
@@ -83,41 +70,26 @@ export default function ChatListScreen() {
   const handleOpenChat = useCallback(async (chat: Chat) => {
     if (!user) return;
 
-    console.log('💬 ChatListScreen: Opening chat:', chat.id);
-    console.log('💬 ChatListScreen: Chat type:', chat.type);
-    console.log('💬 ChatListScreen: Chat participants (local):', chat.participantIds);
-    console.log('💬 ChatListScreen: Current user:', user.uid);
-    
     // Fetch the chat from Firebase to compare
     const { getChatFromFirebase } = await import('@/services/firebase-chat.service');
     const firebaseChat = await getChatFromFirebase(chat.id);
-    
+
     if (firebaseChat.success && firebaseChat.data) {
-      console.log('🔥 ChatListScreen: Chat participants (Firebase):', firebaseChat.data.participantIds);
-      
       // If Firebase has more participants than local, use Firebase data
       if (firebaseChat.data.participantIds.length > chat.participantIds.length) {
-        console.log('⚠️ ChatListScreen: Local chat data is outdated, using Firebase data');
         chat = firebaseChat.data;
       }
-    } else {
-      console.log('⚠️ ChatListScreen: Could not fetch chat from Firebase:', firebaseChat.error);
     }
 
     // For 1:1 chats, get the other user's info
     if (chat.type === '1:1') {
       const otherUserId = chat.participantIds.find(id => id !== user.uid);
-      
+
       if (!otherUserId) {
-        console.error('❌ ChatListScreen: Could not find other user in chat');
-        console.error('❌ ChatListScreen: Participant IDs:', JSON.stringify(chat.participantIds));
-        console.error('❌ ChatListScreen: Current user ID:', user.uid);
-        
         // If we have exactly one participant and it's not us, that's the other user
         if (chat.participantIds.length === 1 && chat.participantIds[0] !== user.uid) {
           const fallbackOtherUserId = chat.participantIds[0];
-          console.log('⚠️ ChatListScreen: Using fallback participant:', fallbackOtherUserId);
-          
+
           navigation.navigate('Conversation', {
             chatId: chat.id,
             otherUserId: fallbackOtherUserId,
@@ -126,17 +98,13 @@ export default function ChatListScreen() {
           });
           return;
         }
-        
-        // Otherwise, we can't determine the other user
-        console.error('❌ ChatListScreen: Cannot determine other user, aborting');
+
         return;
       }
 
-      console.log('👤 ChatListScreen: Fetching other user info:', otherUserId);
       const userResult = await getUserFromFirebase(otherUserId);
-      
+
       if (!userResult.success || !userResult.data) {
-        console.error('❌ ChatListScreen: Failed to fetch user info:', userResult.error);
         // Navigate anyway with fallback values
         navigation.navigate('Conversation', {
           chatId: chat.id,
@@ -148,8 +116,7 @@ export default function ChatListScreen() {
       }
 
       const otherUser = userResult.data;
-      console.log('✅ ChatListScreen: Navigating to conversation with:', otherUser.displayName);
-      
+
       navigation.navigate('Conversation', {
         chatId: chat.id,
         otherUserId: otherUser.uid,
@@ -158,7 +125,6 @@ export default function ChatListScreen() {
       });
     } else {
       // For group chats
-      console.log('👥 ChatListScreen: Opening group chat:', chat.id);
       navigation.navigate('Conversation', {
         chatId: chat.id,
         isGroup: true,
@@ -265,7 +231,6 @@ export default function ChatListScreen() {
 
   // Render empty state
   const renderEmpty = () => {
-    console.log('📭 ChatListScreen: Rendering empty state');
     return (
       <View style={styles.emptyContainer}>
         <Text variant="headlineSmall" style={styles.emptyTitle}>
@@ -279,7 +244,6 @@ export default function ChatListScreen() {
   };
 
   if (loading) {
-    console.log('⏳ ChatListScreen: Showing loading state');
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator animating size="large" />
@@ -287,8 +251,6 @@ export default function ChatListScreen() {
       </View>
     );
   }
-
-  console.log('📋 ChatListScreen: Rendering chat list', { chatCount: chats.length, user: user?.uid });
 
   return (
     <View style={styles.container}>
@@ -307,7 +269,6 @@ export default function ChatListScreen() {
         icon="plus"
         style={[styles.fab, { bottom: insets.bottom + 16 }]}
         onPress={() => {
-          console.log('➕ ChatListScreen: New chat button pressed');
           navigation.navigate('NewChat' as never);
         }}
       />

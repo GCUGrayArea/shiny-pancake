@@ -58,12 +58,10 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (chatId) {
       NotificationManager.setCurrentViewingChat(chatId);
-      console.log('📱 ConversationScreen: Set current viewing chat:', chatId);
     }
 
     return () => {
       NotificationManager.setCurrentViewingChat(null);
-      console.log('📱 ConversationScreen: Cleared current viewing chat');
     };
   }, [chatId]);
 
@@ -73,7 +71,6 @@ export default function ConversationScreen() {
 
     const loadOtherUser = async () => {
       try {
-        console.log('👤 ConversationScreen: Loading other user info for 1:1 chat');
         const chatResult = await getChatFromFirebase(chatId);
         if (!chatResult.success || !chatResult.data) return;
 
@@ -84,12 +81,10 @@ export default function ConversationScreen() {
         if (otherUserIdFromChat) {
           const userResult = await getUserFromFirebase(otherUserIdFromChat);
           if (userResult.success && userResult.data) {
-            console.log('✅ ConversationScreen: Loaded other user:', userResult.data.displayName);
             setLoadedOtherUserName(userResult.data.displayName);
           }
         }
       } catch (error) {
-        console.error('❌ ConversationScreen: Error loading other user info:', error);
       }
     };
 
@@ -101,7 +96,6 @@ export default function ConversationScreen() {
     if (!isGroup || !chatId) return;
 
     try {
-      console.log('👤 ConversationScreen: Loading user names for group chat');
       const chatResult = await getChatFromFirebase(chatId);
       if (!chatResult.success) return;
 
@@ -122,10 +116,8 @@ export default function ConversationScreen() {
         });
 
         setUserNames(nameMap);
-        console.log('✅ ConversationScreen: Loaded user names:', nameMap.size);
       }
     } catch (error) {
-      console.error('❌ ConversationScreen: Error loading user names:', error);
     }
   }, [isGroup, chatId]);
 
@@ -192,13 +184,8 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    console.log('🔔 ConversationScreen: Subscribing to new messages for chat:', chatId);
     
     const unsubscribe = subscribeToMessages(chatId, async (newMessage) => {
-      console.log('📨 ConversationScreen: Received new message');
-      console.log('  ID:', newMessage.id);
-      console.log('  LocalID:', newMessage.localId);
-      console.log('  Content:', newMessage.content.substring(0, 20));
       
       // Save to local database
       await saveMessage(newMessage);
@@ -209,25 +196,21 @@ export default function ConversationScreen() {
         
         if (existingIndex >= 0) {
           // Message already exists (shouldn't happen with onChildAdded, but handle it)
-          console.log('  → Message already exists, ignoring');
           return prev;
         } else {
           // Check if this replaces an optimistic message by localId
           const localIdMatch = prev.find(m => m.localId === newMessage.localId);
           if (localIdMatch) {
             // Replace the optimistic message with the real one
-            console.log('  → Replacing optimistic message by localId:', newMessage.localId);
             return prev.map(m => m.localId === newMessage.localId ? newMessage : m);
           }
           // Completely new message from other user
-          console.log('  → Adding new message from other user');
           return [...prev, newMessage].sort((a, b) => a.timestamp - b.timestamp);
         }
       });
     });
 
     return () => {
-      console.log('🔕 ConversationScreen: Unsubscribing from new messages');
       unsubscribe();
     };
   }, [chatId]);
@@ -236,13 +219,8 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    console.log('🔔 ConversationScreen: Subscribing to message updates for chat:', chatId);
     
     const unsubscribe = subscribeToMessageUpdates(chatId, async (updatedMessage) => {
-      console.log('🔄 ConversationScreen: Received message update');
-      console.log('  ID:', updatedMessage.id);
-      console.log('  DeliveredTo:', updatedMessage.deliveredTo);
-      console.log('  ReadBy:', updatedMessage.readBy);
       
       // Save to local database
       await saveMessage(updatedMessage);
@@ -252,19 +230,16 @@ export default function ConversationScreen() {
         const existingIndex = prev.findIndex(m => m.id === updatedMessage.id);
         
         if (existingIndex >= 0) {
-          console.log('  → Updating existing message at index', existingIndex);
           const updated = [...prev];
           updated[existingIndex] = updatedMessage;
           return updated;
         } else {
-          console.log('  → Message not found in state, ignoring update');
           return prev;
         }
       });
     });
 
     return () => {
-      console.log('🔕 ConversationScreen: Unsubscribing from message updates');
       unsubscribe();
     };
   }, [chatId]);
@@ -279,16 +254,13 @@ export default function ConversationScreen() {
       } else {
         setLoadingMessages(true);
       }
-      console.log(`📥 ConversationScreen: Loading ${loadOlder ? 'older' : 'recent'} messages for chat:`, chatId);
 
       let firebaseResult;
       if (loadOlder && oldestTimestamp) {
         // Load older messages using pagination
-        console.log('📡 ConversationScreen: Fetching older messages from Firebase');
         firebaseResult = await getMessagesFromFirebase(chatId, 50, oldestTimestamp);
       } else {
         // Always fetch from Firebase to get the latest messages
-        console.log('📡 ConversationScreen: Fetching recent messages from Firebase');
         firebaseResult = await getMessagesFromFirebase(chatId);
       }
       
@@ -296,7 +268,6 @@ export default function ConversationScreen() {
       let allMessages: Message[] = [];
 
       if (firebaseResult.success && firebaseResult.data && firebaseResult.data.length > 0) {
-        console.log(`✅ ConversationScreen: Loaded ${firebaseResult.data.length} messages from Firebase`);
         allMessages = [...firebaseResult.data];
         
         // Save to local DB for offline access
@@ -305,11 +276,9 @@ export default function ConversationScreen() {
         }
       } else {
         // Fallback to local database if Firebase fails or returns no messages
-        console.log('💾 ConversationScreen: Falling back to local database');
         const localResult = await getMessagesByChat(chatId);
         
         if (localResult.success && localResult.data && localResult.data.length > 0) {
-          console.log(`✅ ConversationScreen: Loaded ${localResult.data.length} messages from local DB`);
           allMessages = [...localResult.data];
         }
       }
@@ -321,7 +290,6 @@ export default function ConversationScreen() {
           m.chatId === chatId && m.status === 'sending'  // Only truly pending messages
         );
         if (pendingForThisChat.length > 0) {
-          console.log(`📤 ConversationScreen: Found ${pendingForThisChat.length} pending messages in queue`);
           // Add pending messages that aren't already in allMessages
           for (const pendingMsg of pendingForThisChat) {
             // More robust deduplication: check ID, localId, AND content+timestamp
@@ -337,10 +305,8 @@ export default function ConversationScreen() {
             });
             
             if (!alreadyExists) {
-              console.log(`  ➕ Adding pending message: ${pendingMsg.localId}`);
               allMessages.push(pendingMsg);
             } else {
-              console.log(`  ⏭️ Skipping duplicate: ${pendingMsg.localId}`);
             }
           }
         }
@@ -380,31 +346,19 @@ export default function ConversationScreen() {
             setHasMoreMessages(sortedMessages.length >= 50); // If we got 50 messages, there might be more
           }
         }
-
-        console.log('📋 ConversationScreen: Messages:', sortedMessages.map(m => ({
-          id: m.id || m.localId,
-          content: m.content.substring(0, 20),
-          status: m.status,
-          timestamp: m.timestamp
-        })));
       } else {
         if (!loadOlder) {
-          console.log('⚠️ ConversationScreen: No messages found');
         }
       }
     } catch (error) {
-      console.error('❌ ConversationScreen: Error loading messages:', error);
       // Try local database as last resort
       try {
-        console.log('💾 ConversationScreen: Error occurred, trying local database');
         const localResult = await getMessagesByChat(chatId);
         if (localResult.success && localResult.data) {
-          console.log(`✅ ConversationScreen: Loaded ${localResult.data.length} messages from local DB after error`);
           const sortedMessages = localResult.data.sort((a, b) => a.timestamp - b.timestamp);
           setMessages(sortedMessages);
         }
       } catch (localError) {
-        console.error('❌ ConversationScreen: Error loading from local DB:', localError);
       }
     } finally {
       if (loadOlder) {
@@ -439,7 +393,6 @@ export default function ConversationScreen() {
       if (message.senderId !== user.uid && 
           message.id &&
           !message.deliveredTo?.includes(user.uid)) {
-        console.log('📬 ConversationScreen: Marking message as delivered:', message.id);
         
         // Update in Firebase (adds user.uid to deliveredTo array)
         // Firebase listener will update local state automatically
@@ -462,7 +415,6 @@ export default function ConversationScreen() {
       if (message.senderId !== user.uid && 
           message.id &&
           !message.readBy?.includes(user.uid)) {
-        console.log('👁️ ConversationScreen: Marking message as read:', messageId);
         
         // Update in Firebase (adds user.uid to readBy array)
         // Firebase listener will update local state automatically
@@ -499,43 +451,35 @@ export default function ConversationScreen() {
     
     try {
       setSending(true);
-      console.log('📤 ConversationScreen: Sending message');
-      console.log('🌐 ConversationScreen: Network status:', isOnline ? 'online' : 'offline');
 
       let activeChatId = chatId;
 
       // If no chat exists yet, create it now (first message) - only if online
       if (!activeChatId) {
         if (!isOnline) {
-          console.error('❌ ConversationScreen: Cannot create new chat while offline');
           // TODO: Show error to user (Snackbar)
           return;
         }
 
-        console.log('➕ ConversationScreen: Creating chat on first message');
         setCreatingChat(true);
         
         const chatResult = await findOrCreateOneOnOneChat(user.uid, otherUserId);
         
         if (!chatResult.success) {
-          console.error('❌ ConversationScreen: Failed to create chat:', chatResult.error);
           // TODO: Show error to user (Snackbar or Alert)
           setCreatingChat(false);
           return;
         }
 
         activeChatId = chatResult.data!;
-        console.log('✅ ConversationScreen: Chat created:', activeChatId);
         setChatId(activeChatId);
         setCreatingChat(false);
 
         // Sync chat and users to local database (required for foreign key constraints)
         // This ensures the chat exists in local DB before we try to enqueue a message
         try {
-          console.log('🔄 ConversationScreen: Syncing newly created chat to local');
           await syncChatToLocal(activeChatId);
         } catch (error) {
-          console.error('Failed to sync chat to local:', error);
           // Continue anyway - the check at line 506 will retry if needed
         }
       }
@@ -553,16 +497,12 @@ export default function ConversationScreen() {
         localId, // Temporary local ID for tracking
       };
 
-      console.log('📨 ConversationScreen: Enqueueing message to chat:', activeChatId);
-      console.log('📝 ConversationScreen: Message content:', content.substring(0, 50));
 
       // Sync chat/users to local DB BEFORE enqueueing (required for foreign key constraints)
       if (!chatSyncedToLocal) {
         try {
-          console.log('🔄 ConversationScreen: Syncing chat to local before enqueueing message');
           await syncChatToLocal(activeChatId);
         } catch (error) {
-          console.error('❌ ConversationScreen: Failed to sync chat to local:', error);
           // Continue anyway - the sync function already handles individual failures
         }
       }
@@ -574,14 +514,12 @@ export default function ConversationScreen() {
       const enqueueResult = await enqueueMessage(message);
       
       if (!enqueueResult.success) {
-        console.error('❌ ConversationScreen: Failed to enqueue message:', enqueueResult.error);
         // Remove the failed message from UI
         setMessages(prev => prev.filter(m => m.localId !== localId));
         // TODO: Show error to user (Snackbar or Alert)
         return;
       }
 
-      console.log('✅ ConversationScreen: Message enqueued successfully');
 
       // Trigger NetworkProvider to process queue (single source of truth)
       // NetworkProvider will:
@@ -591,7 +529,6 @@ export default function ConversationScreen() {
       triggerQueueProcessing();
       
     } catch (error) {
-      console.error('❌ ConversationScreen: Error sending message:', error);
       // TODO: Show error to user
     } finally {
       setSending(false);
@@ -601,23 +538,18 @@ export default function ConversationScreen() {
   // Sync current user to local database (needed for message sending)
   const syncCurrentUserToLocal = async () => {
     try {
-      console.log('👤 ConversationScreen: Syncing current user to local database');
       const currentUserData = await getUserFromFirebase(user!.uid);
       if (currentUserData.success && currentUserData.data) {
         await saveUser(currentUserData.data);
-        console.log('✅ ConversationScreen: Current user synced to local database');
       } else {
-        console.error('❌ ConversationScreen: Failed to get current user data from Firebase');
       }
     } catch (error) {
-      console.error('❌ ConversationScreen: Error syncing current user to local:', error);
     }
   };
 
   // Background sync helper (non-blocking)
   const syncChatToLocal = async (chatId: string) => {
     try {
-      console.log('💾 ConversationScreen: Background sync of chat and users');
 
       // Sync current user (needed for message sending)
       await syncCurrentUserToLocal();
@@ -635,10 +567,8 @@ export default function ConversationScreen() {
       if (chatData.success && chatData.data) {
         await saveChat(chatData.data);
         setChatSyncedToLocal(true);
-        console.log('✅ ConversationScreen: Background sync complete');
       }
     } catch (error) {
-      console.error('❌ ConversationScreen: Background sync failed:', error);
     }
   };
 

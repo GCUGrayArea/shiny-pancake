@@ -64,7 +64,6 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
 
       return { success: true };
     } catch (error) {
-      console.error('Error in saveChat:', error);
       return {
         success: false,
         error: `Failed to save chat: ${error instanceof Error ? error.message : String(error)}`,
@@ -112,34 +111,22 @@ export async function getChat(chatId: string): Promise<DbResult<Chat | null>> {
 }
 
 /**
- * Get all chats for a specific user (security: only return chats where user is a participant)
+ * Get all chats (NO user filtering - Firebase already filters by participant)
+ *
+ * IMPORTANT: This function returns ALL chats in the local database.
+ * User filtering is done at the Firebase level before sync.
+ * The sync service only downloads chats where the user is a participant.
  */
 export async function getAllChats(userId?: string): Promise<DbResult<Chat[]>> {
   try {
-    let sql;
-    let params: any[] = [];
+    // Get ALL chats - Firebase has already filtered by participant before sync
+    const sql = `
+      SELECT c.*
+      FROM chats c
+      ORDER BY c.lastMessageTimestamp DESC
+    `;
 
-    if (userId) {
-      // Filter by user participation (secure)
-      sql = `
-        SELECT DISTINCT c.*
-        FROM chats c
-        INNER JOIN chat_participants cp ON c.id = cp.chatId
-        WHERE cp.userId = ?
-        ORDER BY c.lastMessageTimestamp DESC
-      `;
-      params = [userId];
-    } else {
-      // For backward compatibility, but this should not be used in production
-      console.warn('⚠️ getAllChats called without userId - this may show chats user is not part of');
-      sql = `
-        SELECT DISTINCT c.*
-        FROM chats c
-        ORDER BY c.lastMessageTimestamp DESC
-      `;
-    }
-
-    const chatsResult = await executeQuery<any>(sql, params);
+    const chatsResult = await executeQuery<any>(sql, []);
 
     if (!chatsResult.success) {
       return { success: false, error: chatsResult.error };

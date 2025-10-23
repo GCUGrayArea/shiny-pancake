@@ -42,19 +42,15 @@ export default function NewChatScreen() {
 
     try {
       setLoading(true);
-      console.log('🔍 NewChatScreen: Loading users and chat participants');
 
       // Load users from Firebase
       const usersResult = await getAllUsersFromFirebase();
       if (!usersResult.success) {
-        console.error('❌ NewChatScreen: Failed to load users:', usersResult.error);
-        console.error('❌ NewChatScreen: Full error details:', usersResult);
         return;
       }
 
       // Filter out current user from the list
       const firebaseUsers = (usersResult.data || []).filter(u => u.uid !== user.uid);
-      console.log('📊 NewChatScreen: Found users from Firebase (excluding self):', firebaseUsers.length);
 
       // Load existing chats to get participants (filter by current user for security)
       const chatsResult = await getAllChats(user.uid);
@@ -78,21 +74,16 @@ export default function NewChatScreen() {
       });
 
       const chatParticipants = Array.from(participantMap.values());
-      console.log('👥 NewChatScreen: Found chat participants:', chatParticipants.length);
 
       // Combine Firebase users and chat participants (remove duplicates)
       const allUsersMap = new Map<string, User>();
 
-      console.log(`👤 NewChatScreen: Current user UID: ${user.uid}`);
 
       // Add all Firebase users first
       firebaseUsers.forEach(u => {
-        console.log(`🔍 NewChatScreen: Checking Firebase user: ${u.email} (${u.uid})`);
         if (u.uid !== user.uid) {
-          console.log(`✅ NewChatScreen: Adding user to map: ${u.email}`);
           allUsersMap.set(u.uid, u);
         } else {
-          console.log(`⏭️ NewChatScreen: Skipping current user: ${u.email}`);
         }
       });
 
@@ -104,8 +95,6 @@ export default function NewChatScreen() {
       });
 
       const combinedUsers = Array.from(allUsersMap.values());
-      console.log('🔄 NewChatScreen: Combined unique users:', combinedUsers.length);
-      combinedUsers.forEach(u => console.log(`  - ${u.email} (${u.uid})`));
 
       // Enhance all users with real-time presence data
       const usersWithPresence = await Promise.all(
@@ -118,7 +107,6 @@ export default function NewChatScreen() {
               lastSeen: presence.lastSeen,
             };
           } catch (error) {
-            console.error(`Failed to get presence for ${userData.uid}:`, error);
             // Return user with default offline status if presence fetch fails
             return {
               ...userData,
@@ -129,7 +117,6 @@ export default function NewChatScreen() {
         })
       );
 
-      console.log('✅ NewChatScreen: Setting users with presence:', usersWithPresence.length);
       
       // Store all Firebase users for searching
       setUsers(firebaseUsers.filter(u => u.uid !== user.uid));
@@ -146,7 +133,6 @@ export default function NewChatScreen() {
       // Initially show only chat participants (empty if no chats)
       setFilteredUsers(chatParticipantsWithPresence);
     } catch (error) {
-      console.error('❌ NewChatScreen: Error loading users:', error);
     } finally {
       setLoading(false);
     }
@@ -200,7 +186,6 @@ export default function NewChatScreen() {
       setSelectedUsers([]);
     } else {
       // Starting group creation - go directly to group creation screen
-      console.log('🏗️ NewChatScreen: Starting group creation flow');
       setIsMultiSelectMode(true);
       // Note: Users will select participants in this mode, then press Create Group
     }
@@ -212,7 +197,6 @@ export default function NewChatScreen() {
 
     // Prevent chatting with yourself
     if (selectedUser.uid === user.uid) {
-      console.log('⚠️ NewChatScreen: Cannot create chat with yourself');
       return;
     }
 
@@ -230,22 +214,18 @@ export default function NewChatScreen() {
       // Single-select mode - open 1:1 chat
       try {
         setCreatingChat(selectedUser.uid);
-        console.log('💬 NewChatScreen: Opening conversation with user:', selectedUser.uid);
 
         // Check if a chat already exists (but don't create it yet)
         const chatResult = await findOneOnOneChat(user.uid, selectedUser.uid);
 
         if (!chatResult.success) {
-          console.error('❌ NewChatScreen: Failed to check for existing chat:', chatResult.error);
           // Still navigate to conversation - chat will be created on first message
         }
 
         const existingChatId = chatResult.success && chatResult.data ? chatResult.data : undefined;
 
         if (existingChatId) {
-          console.log('✅ NewChatScreen: Found existing chat:', existingChatId);
         } else {
-          console.log('ℹ️ NewChatScreen: No existing chat, will create on first message');
         }
 
         // Navigate to conversation screen
@@ -258,7 +238,6 @@ export default function NewChatScreen() {
         });
 
       } catch (error) {
-        console.error('❌ NewChatScreen: Error opening conversation:', error);
       } finally {
         setCreatingChat(null);
       }
@@ -269,7 +248,6 @@ export default function NewChatScreen() {
   const handleCreateGroup = useCallback(() => {
     if (selectedUsers.length < 2) return;
 
-    console.log('🏗️ NewChatScreen: Creating group with users:', selectedUsers.length);
 
     // Include current user as the first participant (they're creating the group)
     const allParticipants = [
@@ -413,23 +391,19 @@ export default function NewChatScreen() {
         ]}
         onSubmitEditing={async () => {
           if (searchQuery.trim() && searchQuery.includes('@')) {
-            console.log('🔍 NewChatScreen: Email search submitted:', searchQuery);
 
             try {
               // Perform exact email search
               const emailResult = await searchUsers(searchQuery.trim());
 
-              console.log('📊 NewChatScreen: Search result:', emailResult);
 
               if (emailResult.success && emailResult.data && emailResult.data.length > 0) {
-                console.log(`✅ NewChatScreen: Found ${emailResult.data.length} users`);
                 const foundUser = emailResult.data[0];
 
                 // Check if user is already in allUsers
                 const existingUser = allUsers.find(u => u.uid === foundUser.uid);
 
                 if (existingUser) {
-                  console.log('ℹ️ NewChatScreen: User already in allUsers, adding to filtered list:', foundUser.email);
                   
                   // User exists in allUsers, just add to filteredUsers if not already there
                   setFilteredUsers(prev => {
@@ -440,7 +414,6 @@ export default function NewChatScreen() {
                     return [existingUser, ...prev];
                   });
                 } else {
-                  console.log('📧 NewChatScreen: Found new user by email, adding to both lists:', foundUser.email);
 
                   // Add this user to our results (they'll appear at the top)
                   const enhancedUser = {
@@ -455,17 +428,14 @@ export default function NewChatScreen() {
                     enhancedUser.isOnline = presence.isOnline;
                     enhancedUser.lastSeen = presence.lastSeen;
                   } catch (error) {
-                    console.error(`Failed to get presence for ${foundUser.uid}:`, error);
                   }
 
                   setAllUsers(prev => [enhancedUser, ...prev]);
                   setFilteredUsers(prev => [enhancedUser, ...prev]);
                 }
               } else {
-                console.log('❌ NewChatScreen: No user found with email:', searchQuery);
               }
             } catch (error) {
-              console.error('❌ NewChatScreen: Error searching email:', error);
             }
           }
         }}

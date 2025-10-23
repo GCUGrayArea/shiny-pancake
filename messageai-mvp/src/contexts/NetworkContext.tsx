@@ -59,11 +59,9 @@ export function NetworkProvider({ children }: NetworkProviderProps): React.React
         const { sent, failed } = result.data;
         // Only log if something actually happened
         if (sent > 0 || failed > 0) {
-          console.log(`✅ NetworkProvider: Queue processed - sent: ${sent}, failed: ${failed}`);
         }
       }
     } catch (error) {
-      console.error('❌ NetworkProvider: Queue processing error:', error);
     } finally {
       setIsProcessing(false);
     }
@@ -86,7 +84,6 @@ export function NetworkProvider({ children }: NetworkProviderProps): React.React
           await processQueueSafely('initial load');
         }
       } catch (error) {
-        console.error('Failed to check initial network state:', error);
       } finally {
         setChecking(false);
       }
