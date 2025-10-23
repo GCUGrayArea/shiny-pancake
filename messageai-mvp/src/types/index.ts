@@ -58,6 +58,8 @@ export interface Message {
   deliveredTo?: string[];
   /** Array of user UIDs who have read the message (for group chats) */
   readBy?: string[];
+  /** Optional caption for image messages (max 500 chars) */
+  caption?: string;
   /** Additional metadata for the message */
   metadata?: {
     /** Image width in pixels */
@@ -86,6 +88,8 @@ export interface LastMessage {
   timestamp: number;
   /** Type of last message */
   type: MessageType;
+  /** Optional caption for image messages */
+  caption?: string;
 }
 
 /**

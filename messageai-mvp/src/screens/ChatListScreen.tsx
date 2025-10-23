@@ -14,7 +14,9 @@ import { Chat } from '@/types';
 import { getRelativeTime } from '@/utils/time.utils';
 import { getAllChats } from '@/services/local-chat.service';
 import { getUserFromFirebase } from '@/services/firebase-user.service';
+import { getUsers } from '@/services/local-user.service';
 import { MainStackParamList } from '@/navigation/AppNavigator';
+import { getChatDisplayName } from '@/utils/chat.utils';
 
 type ChatListNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ChatList'>;
 
@@ -23,6 +25,7 @@ export default function ChatListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<ChatListNavigationProp>();
@@ -45,6 +48,29 @@ export default function ChatListScreen() {
         return bTime - aTime;
       });
       setChats(sortedChats);
+
+      // Load user names for 1:1 chats
+      const userIdsToLoad = new Set<string>();
+      for (const chat of sortedChats) {
+        if (chat.type === '1:1') {
+          const otherUserId = chat.participantIds.find(id => id !== user.uid);
+          if (otherUserId) {
+            userIdsToLoad.add(otherUserId);
+          }
+        }
+      }
+
+      if (userIdsToLoad.size > 0) {
+        const usersResult = await getUsers(Array.from(userIdsToLoad));
+        if (usersResult.success && usersResult.data) {
+          const newUserNames = new Map<string, string>();
+          for (const u of usersResult.data) {
+            newUserNames.set(u.uid, u.displayName);
+          }
+          setUserNames(newUserNames);
+        }
+      }
+
       setHasLoadedOnce(true);
     } catch (error) {
     } finally {
@@ -137,24 +163,37 @@ export default function ChatListScreen() {
   const renderChatItem = ({ item: chat }: { item: Chat }) => {
     const lastMessage = chat.lastMessage;
 
+    // Get the display name for this chat
+    const chatDisplayName = user ? getChatDisplayName(chat, user.uid, userNames) : 'Chat';
+
     // Create preview with sender name for group chats
     let preview: string;
-    if (chat.type === 'group') {
-      if (lastMessage?.senderId && lastMessage?.content) {
-        // For group chats, show sender name + message
-        preview = `${lastMessage.senderId === user?.uid ? 'You' : 'Unknown'}: ${lastMessage.content.length > 40
-          ? lastMessage.content.substring(0, 40) + '...'
-          : lastMessage.content}`;
+    if (lastMessage) {
+      const isOwnMessage = lastMessage.senderId === user?.uid;
+      const senderName = isOwnMessage ? 'You' : (userNames.get(lastMessage.senderId) || 'Unknown');
+
+      // Format based on message type and chat type
+      if (lastMessage.type === 'image') {
+        const photoText = lastMessage.caption
+          ? `📷 ${lastMessage.caption.substring(0, 30)}${lastMessage.caption.length > 30 ? '...' : ''}`
+          : '📷 Photo';
+
+        preview = chat.type === 'group'
+          ? `${senderName}: ${photoText}`
+          : isOwnMessage
+            ? `You: ${photoText}`
+            : photoText;
       } else {
-        preview = 'No messages yet';
+        const contentPreview = lastMessage.content.length > 40
+          ? lastMessage.content.substring(0, 40) + '...'
+          : lastMessage.content;
+
+        preview = chat.type === 'group'
+          ? `${senderName}: ${contentPreview}`
+          : contentPreview;
       }
     } else {
-      // For 1:1 chats, just show the message
-      preview = lastMessage?.content
-        ? (lastMessage.content.length > 50
-            ? lastMessage.content.substring(0, 50) + '...'
-            : lastMessage.content)
-        : 'No messages yet';
+      preview = 'No messages yet';
     }
 
     const timestamp = lastMessage?.timestamp ?? chat.createdAt;
@@ -177,7 +216,7 @@ export default function ChatListScreen() {
         <View style={styles.chatContent}>
           <View style={styles.chatNameRow}>
             <Text variant="titleMedium" style={styles.chatName}>
-              {chat.name || `Chat ${chat.id.slice(-4)}`}
+              {chatDisplayName}
             </Text>
             {chat.type === 'group' && (
               <Text variant="bodySmall" style={styles.groupIndicator}>

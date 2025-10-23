@@ -108,7 +108,8 @@ async function createSchema(): Promise<void> {
       lastMessageContent TEXT,
       lastMessageSenderId TEXT,
       lastMessageTimestamp INTEGER,
-      lastMessageType TEXT CHECK(lastMessageType IN ('text', 'image'))
+      lastMessageType TEXT CHECK(lastMessageType IN ('text', 'image')),
+      lastMessageCaption TEXT
     );
 
     -- Chat participants table
@@ -131,6 +132,7 @@ async function createSchema(): Promise<void> {
       content TEXT NOT NULL,
       timestamp INTEGER NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('sending', 'sent', 'delivered', 'read')),
+      caption TEXT,
       imageWidth INTEGER,
       imageHeight INTEGER,
       imageSize INTEGER,
@@ -188,6 +190,36 @@ async function initVersioning(): Promise<void> {
       'INSERT INTO database_version (id, version, updated_at) VALUES (?, ?, ?)',
       [1, DB_VERSION, Date.now()]
     );
+  }
+
+  // Run schema migrations
+  await runMigrations();
+}
+
+/**
+ * Run database migrations
+ * Simple migration system: tries to add columns if they don't exist
+ */
+async function runMigrations(): Promise<void> {
+  if (!db) throw new Error('Database not initialized');
+
+  try {
+    // Add caption column to messages table if it doesn't exist
+    await db.execAsync(`
+      ALTER TABLE messages ADD COLUMN caption TEXT;
+    `).catch(() => {
+      // Column already exists, ignore error
+    });
+
+    // Add caption column to chats table if it doesn't exist
+    await db.execAsync(`
+      ALTER TABLE chats ADD COLUMN lastMessageCaption TEXT;
+    `).catch(() => {
+      // Column already exists, ignore error
+    });
+  } catch (error) {
+    // Migrations are best-effort for now
+    console.warn('Migration warning:', error);
   }
 }
 

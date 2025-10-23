@@ -115,6 +115,7 @@ export async function sendMessageToFirebase(
       timestamp: message.timestamp,
       status: 'sent',  // Message is 'sent' once it's in Firebase
       localId: message.localId || null,
+      caption: message.caption || null,
       deliveredTo: message.deliveredTo || [],
       readBy: message.readBy || [],
       metadata: message.metadata || null,

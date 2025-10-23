@@ -170,12 +170,12 @@ export default function CreateGroupScreen() {
     );
   };
 
-  // Set initial group name only once when participants are loaded (if user hasn't edited)
+  // Set initial group name only once when participants are first loaded (if user hasn't edited)
   React.useEffect(() => {
-    if (participants.length > 0 && !groupName && !userHasEdited) {
+    if (participants.length > 0 && !groupName && !userHasEdited && suggestedName) {
       setGroupName(suggestedName);
     }
-  }, [participants.length, suggestedName, userHasEdited]);
+  }, [participants.length]); // Only depend on participants.length to avoid re-triggering
 
   const canCreateGroup = participants.length >= 3 && !loading; // Need current user + at least 2 others
   const suggestedName = participants.length > 0 ? generateGroupName(participants) : '';
@@ -197,7 +197,10 @@ export default function CreateGroupScreen() {
           value={groupName}
           onChangeText={(text) => {
             setGroupName(text);
-            setUserHasEdited(true);
+            // Mark as edited when user types (even if they clear the field)
+            if (!userHasEdited) {
+              setUserHasEdited(true);
+            }
           }}
           placeholder={suggestedName || "Enter group name (optional)"}
           maxLength={50}

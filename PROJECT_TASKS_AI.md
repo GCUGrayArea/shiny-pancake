@@ -11,17 +11,25 @@
 ### Block 1A: Critical Bug Fixes (Can run in parallel)
 
 #### PR-040: Fix MVP Critical Bugs
-**Dependencies:** None  
-**Estimated Time:** 3 hours  
+**Dependencies:** None
+**Estimated Time:** 2.5 hours (reduced from 3 - removed pull-to-refresh)
 **Prerequisites:** ✅ Ready to start
+
+**Files Modified:**
+- `src/screens/ConversationScreen.tsx` - Fix header to show correct names
+- `src/screens/ChatListScreen.tsx` - Fix chat name display in list (renderChatItem function)
+- `src/screens/CreateGroupScreen.tsx` - Fix group name input field behavior
+- `src/services/local-chat.service.ts` - Debug and fix updateChatLastMessage function
+- `src/utils/chat.utils.ts` - NEW FILE: Add getChatDisplayName utility
+- `src/__tests__/utils/chat.utils.test.ts` - NEW FILE: Tests for chat utilities
 
 **Tasks:**
 1. **Fix 1:1 Chat Naming** (1 hour):
    - Update `ConversationScreen.tsx` header logic
    - For 1:1 chats: Display other participant's `displayName`
    - For group chats: Display group `name`
-   - Update `ChatListItem.tsx` name resolution
-   - Add utility function: `getChatDisplayName(chat, currentUserId)` (max 50 lines)
+   - Update `ChatListScreen.tsx` renderChatItem name resolution (line 180)
+   - Add utility function: `getChatDisplayName(chat, currentUserId)` in new chat.utils.ts (max 50 lines)
    - Write unit tests for name resolution
    - Test with multiple 1:1 and group chats
 
@@ -36,44 +44,51 @@
    - Debug `updateChatLastMessage` function in local-chat.service.ts
    - Ensure Firebase listener updates local chat record
    - Verify sync timing (message saved → chat updated)
-   - Update `ChatListItem.tsx` to display:
+   - Update `ChatListScreen.tsx` renderChatItem to display (lines 137-158):
      - "You: {preview}" for own messages
      - "{senderName}: {preview}" for others
-     - "📷 Photo" for image messages
+     - "📷 Photo" for image messages (with sender clarification)
    - Test with rapid messaging, group chats, images
    - Verify updates in real-time
 
-4. **Fix Pull-to-Refresh Position** (30 min):
-   - Move `RefreshControl` trigger to bottom of `ConversationScreen`
-   - Consider FlatList `inverted` prop interaction
-   - Ensure loads older messages (pagination upward)
-   - Test scroll direction and refresh behavior
-   - Verify no UI jank during refresh
+4. ~~**Fix Pull-to-Refresh Position**~~ - **REMOVED FROM SCOPE**
+   - Moved to stretch goals: Message pagination with scroll-up-to-load
+   - Current implementation loads all messages (acceptable for MVP)
 
 **Validation:**
-- [ ] 1:1 chats show other user's display name
+- [ ] 1:1 chats show other user's display name in header
+- [ ] 1:1 chats show other user's display name in chat list
 - [ ] Group chats show group name
 - [ ] Group name input clears properly
-- [ ] Chat list displays last messages correctly
+- [ ] Chat list displays last messages correctly (not "No messages yet")
 - [ ] Last message shows sender name in groups
-- [ ] Pull-to-refresh works from bottom
+- [ ] Last message shows sender for image messages
 - [ ] All existing tests still pass
 - [ ] No regressions introduced
 
 ---
 
 #### PR-041: Add Image Captions
-**Dependencies:** None (parallel with PR-040)  
-**Estimated Time:** 2 hours  
+**Dependencies:** None (parallel with PR-040)
+**Estimated Time:** 2 hours
 **Prerequisites:** ✅ Ready to start
+
+**Files Modified:**
+- `src/types/index.ts` - Add caption field to Message interface
+- `src/services/database.service.ts` - Update SQLite schema (no formal migration system)
+- `src/components/MessageInput.tsx` - Add caption input UI after image selection
+- `src/components/MessageBubble.tsx` - Display caption below images
+- `src/screens/ChatListScreen.tsx` - Show image+caption preview in last message (renderChatItem)
+- `src/services/local-message.service.ts` - Handle caption field in message operations
+- `src/services/firebase-message.service.ts` - Sync caption to/from Firebase
 
 **Tasks:**
 1. **Update Message Model** (30 min):
-   - Add optional `caption?: string` to `Message` interface
-   - Update SQLite schema: `ALTER TABLE messages ADD COLUMN caption TEXT`
-   - Create migration script in `database.service.ts`
-   - Update Firebase RTDB message structure
-   - Test migration on existing database
+   - Add optional `caption?: string` to `Message` interface in types/index.ts
+   - Update SQLite schema in database.service.ts: `ALTER TABLE messages ADD COLUMN caption TEXT`
+   - **NO formal migration system** (out of scope - mark in PRD)
+   - Update Firebase RTDB message structure (just add field, Firebase is schemaless)
+   - Test schema update works on existing database
 
 2. **Update Image Input UI** (1 hour):
    - Modify `MessageInput.tsx` after image selection
@@ -88,28 +103,44 @@
    - Modify `MessageBubble.tsx` for image messages
    - Display caption below image with appropriate styling
    - Caption should be selectable/copyable
-   - In full-screen `ImagePreview.tsx`, show caption
+   - Caption displayed in full-screen view (MessageBubble handles this)
    - Handle long captions (scrollable if needed)
+   - Update ChatListScreen.tsx to show "📷 Photo: [caption preview]" with sender
    - Test various caption lengths
 
 **Validation:**
 - [ ] Can add caption when sending image
 - [ ] Caption optional (can send without)
 - [ ] Caption displays in chat bubble
-- [ ] Caption visible in full-screen view
+- [ ] Caption visible in full-screen image view
+- [ ] Caption shows in chat list preview with sender
 - [ ] Caption persists across app restart
-- [ ] Character limit enforced
+- [ ] Character limit enforced (500 chars)
 - [ ] Long captions handled gracefully
-- [ ] Unit tests for caption handling pass
+- [ ] Caption syncs to Firebase correctly
 
 ---
 
 ### Block 1B: AI Foundation Setup
 
 #### PR-042: OpenAI Swarm Setup & Architecture
-**Dependencies:** PR-040, PR-041 (should complete first to ensure stability)  
-**Estimated Time:** 3 hours  
+**Dependencies:** PR-040, PR-041 (should complete first to ensure stability)
+**Estimated Time:** 3 hours
 **Prerequisites:** ✅ PR-040, PR-041 merged
+
+**Files Modified:**
+- `messageai-mvp/package.json` - Add OpenAI dependencies
+- `messageai-mvp/package-lock.json` - Auto-updated by npm
+- `.env.example` - Add OpenAI API key configuration
+- `messageai-mvp/src/services/ai/ai-client.ts` - NEW FILE: OpenAI client wrapper
+- `messageai-mvp/src/services/ai/rag.service.ts` - NEW FILE: RAG pipeline for context
+- `messageai-mvp/src/services/ai/types.ts` - NEW FILE: AI-specific TypeScript types
+- `messageai-mvp/src/services/ai/agents/base-agent.ts` - NEW FILE: Base Swarm agent config
+- `messageai-mvp/src/services/ai/tools/message-tools.ts` - NEW FILE: Message function calling tools
+- `messageai-mvp/src/services/ai/tools/user-tools.ts` - NEW FILE: User function calling tools
+- `messageai-mvp/src/services/ai/prompts/system-prompts.ts` - NEW FILE: Prompt templates
+- `messageai-mvp/src/__tests__/services/ai/ai-client.test.ts` - NEW FILE: Tests for AI client
+- `messageai-mvp/src/__tests__/services/ai/rag.service.test.ts` - NEW FILE: Tests for RAG service
 
 **Tasks:**
 1. **Install Dependencies** (15 min):

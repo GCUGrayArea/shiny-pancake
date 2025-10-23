@@ -148,7 +148,7 @@ Architecture docs, demo video, final testing, submission preparation.
 1. **Update Message Model** (30 min):
    - Add optional `caption: string` field to Message interface
    - Update local SQLite schema
-   - Create migration for existing messages
+   - ~~Create migration for existing messages~~ **OUT OF SCOPE** - Simple ALTER TABLE approach used (pre-1.0)
    - Update Firebase RTDB structure
 
 2. **Update Image Input UI** (1 hour):

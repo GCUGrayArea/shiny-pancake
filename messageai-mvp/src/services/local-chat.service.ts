@@ -23,8 +23,8 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
     const chatSql = `
       INSERT OR REPLACE INTO chats (
         id, type, name, createdAt, lastMessageContent,
-        lastMessageSenderId, lastMessageTimestamp, lastMessageType
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        lastMessageSenderId, lastMessageTimestamp, lastMessageType, lastMessageCaption
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     queries.push({
@@ -38,6 +38,7 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
         chat.lastMessage?.senderId ?? null,
         chat.lastMessage?.timestamp ?? null,
         chat.lastMessage?.type ?? null,
+        chat.lastMessage?.caption ?? null,
       ],
     });
 
@@ -167,7 +168,8 @@ export async function updateChatLastMessage(
       SET lastMessageContent = ?,
           lastMessageSenderId = ?,
           lastMessageTimestamp = ?,
-          lastMessageType = ?
+          lastMessageType = ?,
+          lastMessageCaption = ?
       WHERE id = ?
     `;
 
@@ -176,6 +178,7 @@ export async function updateChatLastMessage(
       message.senderId,
       message.timestamp,
       message.type,
+      message.caption ?? null,
       chatId,
     ];
 
@@ -365,6 +368,7 @@ function mapRowToChat(chatRow: any, participantRows: any[]): Chat {
       senderId: chatRow.lastMessageSenderId,
       timestamp: chatRow.lastMessageTimestamp,
       type: chatRow.lastMessageType,
+      ...(chatRow.lastMessageCaption && { caption: chatRow.lastMessageCaption }),
     };
   }
 

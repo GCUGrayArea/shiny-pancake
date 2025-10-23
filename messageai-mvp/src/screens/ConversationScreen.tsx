@@ -27,6 +27,7 @@ import MessageBubble from '@/components/MessageBubble';
 import MessageInput from '@/components/MessageInput';
 // import Avatar from '@/components/Avatar'; // Temporarily disabled due to import issues
 import { computeMessageStatus } from '@/utils/message-status.utils';
+import { getInitials } from '@/utils/chat.utils';
 
 type ConversationScreenRouteProp = RouteProp<MainStackParamList, 'Conversation'>;
 type ConversationScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'Conversation'>;
@@ -131,18 +132,21 @@ export default function ConversationScreen() {
   // Set the header title and right button based on chat type
   useEffect(() => {
     const effectiveOtherUserName = otherUserName || loadedOtherUserName;
-    const title = isGroup ? (groupName || 'Group Chat') : (effectiveOtherUserName || otherUserEmail);
+
+    // For 1:1 chats: show other user's name, for group chats: show group name
+    const displayName = isGroup
+      ? (groupName || 'Group Chat')
+      : (effectiveOtherUserName || otherUserEmail || 'Unknown');
 
     navigation.setOptions({
-      title: !isGroup ? effectiveOtherUserName || otherUserEmail : title,
-      headerTitle: isGroup ? title : () => {
-        const displayName = effectiveOtherUserName || otherUserEmail || 'Unknown';
-        const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+      title: displayName,
+      headerTitle: isGroup ? displayName : () => {
+        const initials = getInitials(displayName);
 
         return (
           <View style={styles.headerTitleContainer}>
             <View style={[styles.avatarCircle, { backgroundColor: '#2196F3' }]}>
-              <Text style={styles.avatarText}>{initials || '?'}</Text>
+              <Text style={styles.avatarText}>{initials}</Text>
             </View>
             <Text style={styles.headerTitleText}>
               {displayName}
@@ -164,7 +168,7 @@ export default function ConversationScreen() {
         />
       ) : undefined,
     });
-  }, [navigation, otherUserName, loadedOtherUserName, otherUserEmail, isGroup, groupName, chatId, otherUserId]);
+  }, [navigation, otherUserName, loadedOtherUserName, otherUserEmail, isGroup, groupName, chatId]);
 
   // Load messages when chat ID is available
   useEffect(() => {
@@ -446,9 +450,9 @@ export default function ConversationScreen() {
     }
   }, [messages.length]); // Only run when message count changes
 
-  const handleSendMessage = async (content: string, type: 'text' | 'image', imageUri?: string) => {
+  const handleSendMessage = async (content: string, type: 'text' | 'image', imageUri?: string, caption?: string) => {
     if (!user || sending) return;
-    
+
     try {
       setSending(true);
 
@@ -462,9 +466,9 @@ export default function ConversationScreen() {
         }
 
         setCreatingChat(true);
-        
+
         const chatResult = await findOrCreateOneOnOneChat(user.uid, otherUserId);
-        
+
         if (!chatResult.success) {
           // TODO: Show error to user (Snackbar or Alert)
           setCreatingChat(false);
@@ -495,6 +499,7 @@ export default function ConversationScreen() {
         timestamp: Date.now(),
         status: 'sending',
         localId, // Temporary local ID for tracking
+        ...(caption && { caption }), // Add caption if provided
       };
 
 

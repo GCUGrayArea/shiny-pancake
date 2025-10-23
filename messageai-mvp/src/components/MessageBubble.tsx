@@ -178,19 +178,32 @@ export default function MessageBubble({
             {message.content}
           </RNText>
         ) : message.type === 'image' ? (
-          <TouchableOpacity
-            onPress={() => setImagePreviewVisible(true)}
-            style={styles.imageContainer}
-          >
-            <Image
-              source={{ uri: message.content }}
-              style={[
-                styles.messageImage,
-                isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
-              ]}
-              resizeMode="cover"
-            />
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              onPress={() => setImagePreviewVisible(true)}
+              style={styles.imageContainer}
+            >
+              <Image
+                source={{ uri: message.content }}
+                style={[
+                  styles.messageImage,
+                  isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
+                ]}
+                resizeMode="cover"
+              />
+            </TouchableOpacity>
+            {message.caption && (
+              <RNText
+                style={[
+                  styles.captionText,
+                  isOwnMessage ? styles.ownCaptionText : styles.otherCaptionText,
+                ]}
+                selectable
+              >
+                {message.caption}
+              </RNText>
+            )}
+          </>
         ) : null}
 
         {/* Timestamp and status */}
@@ -235,6 +248,13 @@ export default function MessageBubble({
               style={styles.fullScreenImage}
               resizeMode="contain"
             />
+            {message.caption && (
+              <View style={styles.modalCaptionContainer}>
+                <RNText style={styles.modalCaptionText} selectable>
+                  {message.caption}
+                </RNText>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
       </View>
@@ -409,6 +429,18 @@ const styles = StyleSheet.create({
   otherMessageImage: {
     // Same as bubble styling
   },
+  // Caption styles
+  captionText: {
+    fontSize: 14,
+    lineHeight: 18,
+    marginTop: 8,
+  },
+  ownCaptionText: {
+    color: '#FFFFFF',
+  },
+  otherCaptionText: {
+    color: '#000000',
+  },
   // Modal styles for full-screen image preview
   modalContainer: {
     flex: 1,
@@ -436,6 +468,21 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 8,
     zIndex: 1,
+  },
+  modalCaptionContainer: {
+    position: 'absolute',
+    bottom: 50,
+    left: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 8,
+    padding: 12,
+    maxHeight: 150,
+  },
+  modalCaptionText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 18,
   },
 });
 

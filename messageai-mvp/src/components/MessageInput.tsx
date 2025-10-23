@@ -13,11 +13,13 @@ import { IMAGE_CONSTANTS, MESSAGE_CONSTANTS, ERROR_CODES } from '@/constants';
 import { compressImage, uploadImage, validateImage } from '@/services/image.service';
 
 interface MessageInputProps {
-  onSendMessage: (content: string, type: MessageType, imageUri?: string) => Promise<void>;
+  onSendMessage: (content: string, type: MessageType, imageUri?: string, caption?: string) => Promise<void>;
   chatId?: string; // For image uploads
   disabled?: boolean;
   placeholder?: string;
 }
+
+const CAPTION_MAX_LENGTH = 500;
 
 export default function MessageInput({
   onSendMessage,
@@ -111,10 +113,11 @@ export default function MessageInput({
       setSending(true);
 
       if (selectedImage) {
-        // Send image message - enqueue for background processing
+        // Send image message with optional caption
+        const caption = messageText.trim() || undefined;
 
         // Create message with local image URI (upload will happen in background)
-        await onSendMessage(selectedImage, 'image');
+        await onSendMessage(selectedImage, 'image', undefined, caption);
 
         // Clear image state immediately (upload happens in background)
         setSelectedImage(null);
@@ -181,11 +184,11 @@ export default function MessageInput({
         <TextInput
           style={styles.input}
           mode="outlined"
-          placeholder={placeholder}
+          placeholder={selectedImage ? "Add a caption (optional)..." : placeholder}
           value={messageText}
           onChangeText={setMessageText}
           multiline
-          maxLength={MESSAGE_CONSTANTS.MAX_LENGTH}
+          maxLength={selectedImage ? CAPTION_MAX_LENGTH : MESSAGE_CONSTANTS.MAX_LENGTH}
           disabled={disabled || sending}
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
@@ -206,7 +209,15 @@ export default function MessageInput({
       </View>
 
       {/* Character count */}
-      {messageText.length > MESSAGE_CONSTANTS.MAX_LENGTH * 0.8 && (
+      {selectedImage && messageText.length > 0 && (
+        <Text style={[
+          styles.characterCount,
+          messageText.length >= CAPTION_MAX_LENGTH && styles.characterCountWarning
+        ]}>
+          Caption: {messageText.length}/{CAPTION_MAX_LENGTH}
+        </Text>
+      )}
+      {!selectedImage && messageText.length > MESSAGE_CONSTANTS.MAX_LENGTH * 0.8 && (
         <Text style={[
           styles.characterCount,
           messageText.length >= MESSAGE_CONSTANTS.MAX_LENGTH && styles.characterCountWarning

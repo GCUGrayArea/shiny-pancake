@@ -32,8 +32,8 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
     const messageSql = `
       INSERT OR REPLACE INTO messages (
         id, localId, chatId, senderId, type, content,
-        timestamp, status, imageWidth, imageHeight, imageSize
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        timestamp, status, caption, imageWidth, imageHeight, imageSize
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     queries.push({
@@ -47,6 +47,7 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
         message.content,
         message.timestamp,
         message.status,
+        message.caption ?? null,
         message.metadata?.imageWidth ?? null,
         message.metadata?.imageHeight ?? null,
         message.metadata?.imageSize ?? null,
@@ -87,6 +88,16 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
     if (!result.success) {
       return { success: false, error: result.error };
     }
+
+    // Update the chat's last message
+    const { updateChatLastMessage } = await import('./local-chat.service');
+    await updateChatLastMessage(message.chatId, {
+      content: message.content,
+      senderId: message.senderId,
+      timestamp: message.timestamp,
+      type: message.type,
+      caption: message.caption,
+    });
 
     return { success: true };
   } catch (error) {
@@ -352,6 +363,10 @@ function mapRowToMessage(row: any, deliveries: MessageDelivery[]): Message {
 
   if (row.localId) {
     message.localId = row.localId;
+  }
+
+  if (row.caption) {
+    message.caption = row.caption;
   }
 
   if (deliveries.length > 0) {
