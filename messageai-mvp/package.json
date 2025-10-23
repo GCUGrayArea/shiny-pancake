@@ -30,6 +30,8 @@
     "expo-sqlite": "^16.0.8",
     "expo-status-bar": "~3.0.8",
     "firebase": "^12.4.0",
+    "openai": "^6.6.0",
+    "openai-swarm": "^1.0.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
