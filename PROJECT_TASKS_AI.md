@@ -1496,12 +1496,22 @@
 ---
 
 #### PR-054: UI Polish & Consistency
-**Dependencies:** All previous PRs  
-**Estimated Time:** 3 hours  
+**Dependencies:** All previous PRs
+**Estimated Time:** 3 hours
 **Prerequisites:** ✅ All feature PRs merged
 
 **Tasks:**
-1. **Design System Audit** (1 hour):
+1. **Critical UX Fixes** (30 min):
+   - **Add Logout Button**:
+     - Add logout button to user profile page (EditProfileScreen or dedicated ProfileScreen)
+     - Currently no way to log out after app setup
+     - Place prominently but not accidentally triggerable
+     - Add confirmation dialog: "Are you sure you want to log out?"
+     - Clear local data on logout (messages, chats, user data)
+     - Navigate to login screen after logout
+     - Test logout flow thoroughly
+
+2. **Design System Audit** (1 hour):
    - Review `/src/styles/theme.ts`:
      - Ensure all colors defined
      - Consistent color usage
@@ -1523,7 +1533,7 @@
      - Spacing scale
      - Component patterns
 
-2. **Animation Polish** (1 hour):
+3. **Animation Polish** (1 hour):
    - Screen transitions:
      - Ensure smooth navigation transitions
      - Consistent animation timing (300ms)
@@ -1546,7 +1556,7 @@
      - Use KeyboardAvoidingView properly
    - Test all animations on physical device
 
-3. **Empty States** (1 hour):
+4. **Empty States** (1 hour):
    - Review and improve empty states:
      - **ChatListScreen** - no chats:
        - Friendly illustration or icon
@@ -1575,6 +1585,8 @@
    - Test by triggering all empty states
 
 **Validation:**
+- [ ] Logout button added to profile page
+- [ ] Logout flow works correctly (confirmation, clears data, navigates to login)
 - [ ] UI consistent across all screens
 - [ ] Colors match theme throughout
 - [ ] Typography consistent
