@@ -3,6 +3,7 @@ import {
   initializeAuth,
   getAuth,
   connectAuthEmulator,
+  getReactNativePersistence,
   type Auth
 } from 'firebase/auth';
 import { getDatabase, connectDatabaseEmulator, type Database } from 'firebase/database';
@@ -67,10 +68,11 @@ export function getFirebaseAuth(): Auth {
   if (!authInitialized) {
     authInitialized = true;
     try {
-      // Initialize without custom persistence for now
-      // Firebase will use memory persistence (session-based)
-      // TODO: Implement proper AsyncStorage persistence later
-      const auth = initializeAuth(app);
+      // Initialize with AsyncStorage persistence for React Native
+      // This ensures auth state persists across app restarts (killed state)
+      const auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+      });
 
       // Connect to Auth emulator if explicitly enabled
       if (shouldUseEmulators) {
