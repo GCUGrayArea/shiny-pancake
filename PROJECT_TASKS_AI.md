@@ -245,9 +245,23 @@
 ### Block 2A: Core Translation Features (Sequential within block, but block runs in parallel with 2B)
 
 #### PR-043: Language Detection & Auto-Translate
-**Dependencies:** PR-042  
-**Estimated Time:** 4 hours  
+**Dependencies:** PR-042
+**Estimated Time:** 4 hours
 **Prerequisites:** ✅ PR-042 merged
+**Status:** 🔄 IN PROGRESS (Agent working on this)
+
+**Files to Create:**
+- `messageai-mvp/src/services/ai/language-detection.service.ts` - Language detection with caching
+- `messageai-mvp/src/services/ai/translation.service.ts` - Translation service
+- `messageai-mvp/src/screens/AISettingsScreen.tsx` - AI settings UI
+- `messageai-mvp/src/__tests__/services/ai/language-detection.service.test.ts` - Tests
+- `messageai-mvp/src/__tests__/services/ai/translation.service.test.ts` - Tests
+
+**Files to Modify:**
+- `messageai-mvp/src/types/index.ts` - Add language fields to User and Message interfaces
+- `messageai-mvp/src/components/MessageBubble.tsx` - Display translations
+- `messageai-mvp/src/services/sync.service.ts` - Auto-translate on receive
+- `messageai-mvp/src/services/database.service.ts` - Update schema for translation fields
 
 **Tasks:**
 1. **Language Detection Service** (1.5 hours):
