@@ -34,6 +34,7 @@ export default function AISettingsScreen() {
   const { user, refreshUser } = useAuth();
   const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState('en');
+  const [culturalHintsEnabled, setCulturalHintsEnabled] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -43,6 +44,7 @@ export default function AISettingsScreen() {
     if (user) {
       setAutoTranslateEnabled(user.autoTranslateEnabled || false);
       setPreferredLanguage(user.preferredLanguage || 'en');
+      setCulturalHintsEnabled(user.culturalHintsEnabled || false);
       setLoading(false);
     }
   }, [user]);
@@ -52,7 +54,8 @@ export default function AISettingsScreen() {
    */
   const saveSettings = async (
     newAutoTranslate: boolean,
-    newLanguage: string
+    newLanguage: string,
+    newCulturalHints: boolean
   ) => {
     if (!user) return;
 
@@ -62,6 +65,7 @@ export default function AISettingsScreen() {
       const updates = {
         autoTranslateEnabled: newAutoTranslate,
         preferredLanguage: newLanguage,
+        culturalHintsEnabled: newCulturalHints,
       };
 
       // Update Firebase
@@ -85,7 +89,7 @@ export default function AISettingsScreen() {
   const handleAutoTranslateToggle = async () => {
     const newValue = !autoTranslateEnabled;
     setAutoTranslateEnabled(newValue);
-    await saveSettings(newValue, preferredLanguage);
+    await saveSettings(newValue, preferredLanguage, culturalHintsEnabled);
   };
 
   /**
@@ -94,7 +98,16 @@ export default function AISettingsScreen() {
   const handleLanguageChange = async (language: string) => {
     setPreferredLanguage(language);
     setMenuVisible(false);
-    await saveSettings(autoTranslateEnabled, language);
+    await saveSettings(autoTranslateEnabled, language, culturalHintsEnabled);
+  };
+
+  /**
+   * Handle cultural hints toggle
+   */
+  const handleCulturalHintsToggle = async () => {
+    const newValue = !culturalHintsEnabled;
+    setCulturalHintsEnabled(newValue);
+    await saveSettings(autoTranslateEnabled, preferredLanguage, newValue);
   };
 
   /**
@@ -187,6 +200,33 @@ export default function AISettingsScreen() {
 
       <View style={styles.section}>
         <Text variant="titleMedium" style={styles.sectionTitle}>
+          Cultural Understanding
+        </Text>
+        <Text variant="bodySmall" style={styles.sectionDescription}>
+          Get explanations for cultural references in messages
+        </Text>
+      </View>
+
+      <Divider />
+
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text variant="bodyLarge">Cultural Context Hints</Text>
+          <Text variant="bodySmall" style={styles.settingDescription}>
+            Analyze messages for cultural references, idioms, and customs
+          </Text>
+        </View>
+        <Switch
+          value={culturalHintsEnabled}
+          onValueChange={handleCulturalHintsToggle}
+          disabled={saving}
+        />
+      </View>
+
+      <Divider />
+
+      <View style={styles.section}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>
           How it Works
         </Text>
         <Text variant="bodySmall" style={styles.helpText}>
@@ -197,6 +237,11 @@ export default function AISettingsScreen() {
         <Text variant="bodySmall" style={styles.helpText}>
           Translation is powered by AI and works best for common languages.
           The original message is always preserved.
+        </Text>
+        <Text variant="bodySmall" style={styles.helpText}>
+          When cultural hints are enabled, you can long-press any message and
+          select "Analyze Cultural Context" to get explanations of holidays,
+          idioms, customs, and other cultural references.
         </Text>
       </View>
 

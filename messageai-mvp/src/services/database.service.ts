@@ -151,6 +151,21 @@ async function createSchema(): Promise<void> {
       FOREIGN KEY (userId) REFERENCES users(uid) ON DELETE CASCADE
     );
 
+    -- Cultural context hints table
+    CREATE TABLE IF NOT EXISTS cultural_hints (
+      id TEXT PRIMARY KEY,
+      messageId TEXT NOT NULL,
+      phrase TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      culturalBackground TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('holiday', 'idiom', 'custom', 'historical', 'norm')),
+      startIndex INTEGER NOT NULL,
+      endIndex INTEGER NOT NULL,
+      seen INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL,
+      FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
     -- Create indexes for performance
     CREATE INDEX IF NOT EXISTS idx_messages_chatId_timestamp
       ON messages(chatId, timestamp DESC);
@@ -163,6 +178,9 @@ async function createSchema(): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_chat_participants_userId
       ON chat_participants(userId);
+
+    CREATE INDEX IF NOT EXISTS idx_cultural_hints_messageId
+      ON cultural_hints(messageId);
   `);
 }
 
@@ -243,6 +261,11 @@ async function runMigrations(): Promise<void> {
     // Add profile picture URL to users table
     await db.execAsync(`
       ALTER TABLE users ADD COLUMN profilePictureUrl TEXT;
+    `).catch(() => {});
+
+    // Add cultural hints preference to users table
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN culturalHintsEnabled INTEGER DEFAULT 0;
     `).catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now
