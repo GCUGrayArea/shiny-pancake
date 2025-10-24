@@ -1497,11 +1497,11 @@
 
 #### PR-054: UI Polish & Consistency
 **Dependencies:** All previous PRs
-**Estimated Time:** 3 hours
+**Estimated Time:** 3.5 hours
 **Prerequisites:** ✅ All feature PRs merged
 
 **Tasks:**
-1. **Critical UX Fixes** (30 min):
+1. **Critical UX Fixes** (1 hour):
    - **Add Logout Button**:
      - Add logout button to user profile page (EditProfileScreen or dedicated ProfileScreen)
      - Currently no way to log out after app setup
@@ -1510,6 +1510,29 @@
      - Clear local data on logout (messages, chats, user data)
      - Navigate to login screen after logout
      - Test logout flow thoroughly
+
+   - **Fix Login Loading Feedback**:
+     - Login takes several seconds but spinner only shows for ~1 second
+     - Keep loading indicator visible for entire login duration
+     - Add loading overlay or persistent spinner during authentication
+     - Show clear error message if login fails
+     - Disable login button while processing to prevent double-taps
+     - Test with slow network conditions
+
+   - **Fix Chat List Auto-Refresh on Notification**:
+     - Incoming message produces notification but doesn't refresh chat list
+     - When notification received (foreground or background), trigger chat list refresh
+     - Update chat order and last message preview immediately
+     - Ensure unread count updates
+     - Test: send message from Alice to Bob, verify Bob's chat list updates
+
+   - **Fix Chat List Sender Display**:
+     - Chat list message preview doesn't identify sender of last message
+     - For group chats: show "Alice: message preview" format
+     - For 1:1 chats: show just the message preview (sender is obvious)
+     - For own messages: show "You: message preview"
+     - Match WhatsApp/Telegram pattern
+     - Test with group chats and 1:1 chats
 
 2. **Design System Audit** (1 hour):
    - Review `/src/styles/theme.ts`:
@@ -1587,6 +1610,10 @@
 **Validation:**
 - [ ] Logout button added to profile page
 - [ ] Logout flow works correctly (confirmation, clears data, navigates to login)
+- [ ] Login loading indicator persists for entire authentication duration
+- [ ] Login errors display clearly to user
+- [ ] Chat list refreshes automatically when notification received
+- [ ] Chat list shows sender name for last message (groups and own messages)
 - [ ] UI consistent across all screens
 - [ ] Colors match theme throughout
 - [ ] Typography consistent
