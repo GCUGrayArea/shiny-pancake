@@ -16,7 +16,6 @@ module.exports = {
       ]
     ],
     notification: {
-      icon: "./assets/notification-icon.png",
       color: "#2196F3",
       androidMode: "default",
       androidCollapsedTitle: "New message"
