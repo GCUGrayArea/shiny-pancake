@@ -39,7 +39,23 @@ function getFirebaseApp(): FirebaseApp {
     appId: (FIREBASE_APP_ID as string)?.trim?.() || FIREBASE_APP_ID,
   } as const;
 
-  return initializeApp(config);
+  // Validate that we have all required config values
+  const missingKeys = Object.entries(config)
+    .filter(([key, value]) => !value || value === 'undefined' || value === 'your_firebase_api_key_here')
+    .map(([key]) => key);
+
+  if (missingKeys.length > 0) {
+    const errorMsg = `Firebase configuration error: Missing or invalid values for: ${missingKeys.join(', ')}. Check your .env file.`;
+    console.error(errorMsg);
+    throw new Error(errorMsg);
+  }
+
+  try {
+    return initializeApp(config);
+  } catch (error) {
+    console.error('Failed to initialize Firebase:', error);
+    throw error;
+  }
 }
 
 let authInitialized = false;

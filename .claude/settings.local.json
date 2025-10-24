@@ -7,7 +7,11 @@
       "Bash(npm install:*)",
       "Bash(npm search:*)",
       "Bash(git log:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(git add:*)",
+      "Bash(npm run lint:*)",
+      "Bash(eas secret:create:*)",
+      "Read(//c/Users/tgrah/Documents/Gauntlet/repos/**)"
     ],
     "deny": [],
     "ask": []

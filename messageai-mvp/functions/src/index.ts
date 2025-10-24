@@ -86,15 +86,15 @@ export const sendMessageNotification = functions.database
 
       // Prepare notification payload
       const isGroupChat = chat.type === "group";
-      const title = isGroupChat
-        ? `${sender.displayName} in ${chat.name || "Group Chat"}`
-        : sender.displayName;
+      const title = isGroupChat ?
+        `${sender.displayName} in ${chat.name || "Group Chat"}` :
+        sender.displayName;
 
-      const body = type === "text"
-        ? content.length > 100
-          ? `${content.substring(0, 97)}...`
-          : content
-        : "📷 Photo";
+      const body = type === "text" ?
+        content.length > 100 ?
+          `${content.substring(0, 97)}...` :
+          content :
+        "📷 Photo";
 
       // Get total unread count for each recipient
       const unreadCountPromises = validTokens.map(async (data) => {
@@ -209,7 +209,7 @@ export const sendMessageNotification = functions.database
  */
 export const cleanupOldMessages = functions.pubsub
   .schedule("every 24 hours")
-  .onRun(async (context) => {
+  .onRun(async (_context) => {
     const now = Date.now();
     const ninetyDaysAgo = now - (90 * 24 * 60 * 60 * 1000);
 

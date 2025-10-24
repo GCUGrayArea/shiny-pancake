@@ -19,16 +19,17 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
   try {
     const queries = [];
 
-    // Insert or update chat
-    const chatSql = `
-      INSERT OR REPLACE INTO chats (
-        id, type, name, createdAt, lastMessageContent,
-        lastMessageSenderId, lastMessageTimestamp, lastMessageType, lastMessageCaption
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    // Use INSERT OR IGNORE + UPDATE pattern (standard SQLite upsert)
+    // This avoids DELETE + INSERT which would trigger CASCADE DELETE
 
+    // First, try to insert (will be ignored if chat exists)
     queries.push({
-      sql: chatSql,
+      sql: `
+        INSERT OR IGNORE INTO chats (
+          id, type, name, createdAt, lastMessageContent,
+          lastMessageSenderId, lastMessageTimestamp, lastMessageType, lastMessageCaption
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
       params: [
         chat.id,
         chat.type,
@@ -39,6 +40,80 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
         chat.lastMessage?.timestamp ?? null,
         chat.lastMessage?.type ?? null,
         chat.lastMessage?.caption ?? null,
+      ],
+    });
+
+    // Then update (will only affect existing rows)
+    // IMPORTANT: Only update lastMessage if the new chat has a newer timestamp
+    queries.push({
+      sql: `
+        UPDATE chats
+        SET type = ?,
+            name = ?,
+            createdAt = ?,
+            lastMessageContent = CASE
+              WHEN ? IS NULL THEN lastMessageContent
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageContent
+            END,
+            lastMessageSenderId = CASE
+              WHEN ? IS NULL THEN lastMessageSenderId
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageSenderId
+            END,
+            lastMessageTimestamp = CASE
+              WHEN ? IS NULL THEN lastMessageTimestamp
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageTimestamp
+            END,
+            lastMessageType = CASE
+              WHEN ? IS NULL THEN lastMessageType
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageType
+            END,
+            lastMessageCaption = CASE
+              WHEN ? IS NULL THEN lastMessageCaption
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageCaption
+            END
+        WHERE id = ?
+      `,
+      params: [
+        chat.type,
+        chat.name ?? null,
+        chat.createdAt,
+        // lastMessageContent CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.content ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.content ?? null,
+        // lastMessageSenderId CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.senderId ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.senderId ?? null,
+        // lastMessageTimestamp CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        // lastMessageType CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.type ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.type ?? null,
+        // lastMessageCaption CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.caption ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.caption ?? null,
+        // WHERE clause
+        chat.id,
       ],
     });
 

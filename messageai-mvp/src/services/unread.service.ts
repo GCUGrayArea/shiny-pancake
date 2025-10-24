@@ -3,7 +3,7 @@
  * Manages per-chat and global unread message counts
  */
 
-import { database } from './firebase';
+import { getFirebaseDatabase } from './firebase';
 import { ref, get, set, increment, onValue, off } from 'firebase/database';
 
 /**
@@ -14,6 +14,7 @@ export async function getChatUnreadCount(
   userId: string
 ): Promise<number> {
   try {
+    const database = getFirebaseDatabase();
     const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
     const snapshot = await get(unreadRef);
     return snapshot.val() || 0;
@@ -28,6 +29,7 @@ export async function getChatUnreadCount(
  */
 export async function getTotalUnreadCount(userId: string): Promise<number> {
   try {
+    const database = getFirebaseDatabase();
     const chatsRef = ref(database, '/chats');
     const snapshot = await get(chatsRef);
 
@@ -39,7 +41,10 @@ export async function getTotalUnreadCount(userId: string): Promise<number> {
     snapshot.forEach((chatSnapshot) => {
       const chat = chatSnapshot.val();
       // Check if user is a participant
-      if (chat.participantIds && chat.participantIds.includes(userId)) {
+      const participantIds = Array.isArray(chat.participantIds)
+        ? chat.participantIds
+        : Object.keys(chat.participantIds || {});
+      if (participantIds.includes(userId)) {
         const unreadCount = chat.unreadCount?.[userId] || 0;
         total += unreadCount;
       }
@@ -60,6 +65,7 @@ export async function markChatAsRead(
   userId: string
 ): Promise<void> {
   try {
+    const database = getFirebaseDatabase();
     const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
     await set(unreadRef, 0);
   } catch (error) {
@@ -76,6 +82,7 @@ export async function incrementUnreadCount(
   userId: string
 ): Promise<void> {
   try {
+    const database = getFirebaseDatabase();
     const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
     await set(unreadRef, increment(1));
   } catch (error) {
@@ -92,6 +99,7 @@ export function subscribeToChatUnreadCount(
   userId: string,
   callback: (count: number) => void
 ): () => void {
+  const database = getFirebaseDatabase();
   const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
 
   const listener = onValue(unreadRef, (snapshot) => {
@@ -113,6 +121,7 @@ export function subscribeToTotalUnreadCount(
   userId: string,
   callback: (count: number) => void
 ): () => void {
+  const database = getFirebaseDatabase();
   const chatsRef = ref(database, '/chats');
 
   const listener = onValue(chatsRef, (snapshot) => {
@@ -121,7 +130,10 @@ export function subscribeToTotalUnreadCount(
     if (snapshot.exists()) {
       snapshot.forEach((chatSnapshot) => {
         const chat = chatSnapshot.val();
-        if (chat.participantIds && chat.participantIds.includes(userId)) {
+        const participantIds = Array.isArray(chat.participantIds)
+          ? chat.participantIds
+          : Object.keys(chat.participantIds || {});
+        if (participantIds.includes(userId)) {
           const unreadCount = chat.unreadCount?.[userId] || 0;
           total += unreadCount;
         }
@@ -145,6 +157,7 @@ export async function getAllChatUnreadCounts(
   userId: string
 ): Promise<Map<string, number>> {
   try {
+    const database = getFirebaseDatabase();
     const chatsRef = ref(database, '/chats');
     const snapshot = await get(chatsRef);
 
@@ -155,7 +168,10 @@ export async function getAllChatUnreadCounts(
         const chatId = chatSnapshot.key;
         const chat = chatSnapshot.val();
 
-        if (chat.participantIds && chat.participantIds.includes(userId) && chatId) {
+        const participantIds = Array.isArray(chat.participantIds)
+          ? chat.participantIds
+          : Object.keys(chat.participantIds || {});
+        if (participantIds.includes(userId) && chatId) {
           const unreadCount = chat.unreadCount?.[userId] || 0;
           counts.set(chatId, unreadCount);
         }

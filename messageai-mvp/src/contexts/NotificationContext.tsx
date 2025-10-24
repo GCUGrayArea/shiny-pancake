@@ -193,10 +193,18 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
       cleanup.then((cleanupFn) => cleanupFn?.());
 
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        try {
+          Notifications.removeNotificationSubscription?.(notificationListener.current);
+        } catch (error) {
+          console.log('Notification cleanup error (can be ignored):', error);
+        }
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        try {
+          Notifications.removeNotificationSubscription?.(responseListener.current);
+        } catch (error) {
+          console.log('Notification cleanup error (can be ignored):', error);
+        }
       }
     };
   }, [enabled, user?.uid]);

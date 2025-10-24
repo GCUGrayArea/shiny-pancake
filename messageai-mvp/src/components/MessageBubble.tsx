@@ -6,11 +6,17 @@
  */
 
 import React, { useState } from 'react';
-import { View, StyleSheet, Text as RNText, TouchableOpacity, Image, Modal, Dimensions } from 'react-native';
+import { View, StyleSheet, Text as RNText, TouchableOpacity, Image, Modal, Dimensions, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Message } from '@/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { computeMessageStatus, getDeliveryCount, getReadCount } from '@/utils/message-status.utils';
+import MessageContextMenu, { MenuAction } from './MessageContextMenu';
+import LanguagePickerModal from './LanguagePickerModal';
+import TranslationBubble from './TranslationBubble';
+import { detectLanguage } from '@/services/ai/language-detection.service';
+import { translateMessageOnDemand } from '@/services/ai/translation.service';
+import type { LanguageCode } from '@/services/ai/types';
 // import Avatar from '@/components/Avatar'; // Temporarily disabled - using inline avatar
 
 interface MessageBubbleProps {
@@ -21,6 +27,8 @@ interface MessageBubbleProps {
   currentUserId?: string; // For computing status
   isGroup?: boolean; // For showing delivery counts in group chats
   showSenderIndicator?: boolean; // Only show when sender changes from previous message
+  preferredLanguage?: LanguageCode; // User's preferred language for translations
+  onTranslationUpdate?: (messageId: string, translation: string, targetLang: LanguageCode) => void;
 }
 
 export default function MessageBubble({
@@ -31,19 +39,136 @@ export default function MessageBubble({
   currentUserId,
   isGroup = false,
   showSenderIndicator = false,
+  preferredLanguage = 'en',
+  onTranslationUpdate,
 }: MessageBubbleProps) {
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | undefined>();
+
+  // On-demand translation state (separate from auto-translation)
+  const [onDemandTranslation, setOnDemandTranslation] = useState<string | null>(null);
+  const [onDemandTargetLang, setOnDemandTargetLang] = useState<LanguageCode | null>(null);
+  const [translating, setTranslating] = useState(false);
+  const [translationError, setTranslationError] = useState<string | null>(null);
 
   // Compute the actual status from message data
   const displayStatus = computeMessageStatus(message, currentUserId);
   
   // Format timestamp
   const formatTime = (timestamp: number) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: '2-digit',
+      minute: '2-digit'
     });
+  };
+
+  // Handle long press on message
+  const handleLongPress = (event: any) => {
+    if (message.type !== 'text') return; // Only for text messages
+
+    const { pageX, pageY } = event.nativeEvent;
+    setMenuPosition({ x: pageX, y: pageY });
+    setContextMenuVisible(true);
+  };
+
+  // Handle translation to preferred language
+  const handleTranslate = async () => {
+    await performTranslation(preferredLanguage);
+  };
+
+  // Handle translation to custom language
+  const handleTranslateTo = () => {
+    setLanguagePickerVisible(true);
+  };
+
+  // Perform the actual translation
+  const performTranslation = async (targetLang: LanguageCode) => {
+    if (message.type !== 'text') return;
+
+    setTranslating(true);
+    setTranslationError(null);
+
+    try {
+      // Detect source language
+      const sourceLang = message.detectedLanguage as LanguageCode || await detectLanguage(message.content);
+
+      // Translate
+      const translation = await translateMessageOnDemand(
+        message.content,
+        sourceLang,
+        targetLang,
+        message.id
+      );
+
+      setOnDemandTranslation(translation);
+      setOnDemandTargetLang(targetLang);
+      setShowOriginal(false);
+
+      // Notify parent component if callback provided
+      if (onTranslationUpdate) {
+        onTranslationUpdate(message.id, translation, targetLang);
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      setTranslationError('Translation failed. Please try again.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
+  // Handle language selection from picker
+  const handleLanguageSelect = async (language: LanguageCode) => {
+    setLanguagePickerVisible(false);
+    await performTranslation(language);
+  };
+
+  // Handle context menu actions
+  const handleMenuAction = (actionId: string) => {
+    switch (actionId) {
+      case 'translate':
+        handleTranslate();
+        break;
+      case 'translate-to':
+        handleTranslateTo();
+        break;
+      case 'copy':
+        // TODO: Implement copy functionality
+        console.log('Copy message:', message.content);
+        break;
+    }
+  };
+
+  // Build context menu actions
+  const getMenuActions = (): MenuAction[] => {
+    const actions: MenuAction[] = [];
+
+    // Always show translate option for text messages
+    if (message.type === 'text') {
+      actions.push({
+        id: 'translate',
+        label: `Translate to ${preferredLanguage.toUpperCase()}`,
+        icon: 'translate',
+        color: '#2196F3',
+      });
+
+      actions.push({
+        id: 'translate-to',
+        label: 'Translate to...',
+        icon: 'earth',
+        color: '#2196F3',
+      });
+
+      actions.push({
+        id: 'copy',
+        label: 'Copy',
+        icon: 'content-copy',
+      });
+    }
+
+    return actions;
   };
 
   // Render delivery status indicators (only for sent messages)
@@ -140,122 +265,6 @@ export default function MessageBubble({
     }
   };
 
-  return (
-    <View
-      style={[
-        styles.container,
-        isOwnMessage ? styles.ownMessageContainer : styles.otherMessageContainer,
-      ]}
-    >
-      {/* Sender name and avatar for group chats */}
-      {showSenderIndicator && senderName && (
-        <View style={styles.senderHeader}>
-          <View style={[styles.avatarCircle, { backgroundColor: '#2196F3' }]}>
-            <Text style={styles.avatarText}>
-              {senderName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || '?'}
-            </Text>
-          </View>
-          <Text variant="bodySmall" style={styles.senderName}>
-            {senderName}
-          </Text>
-        </View>
-      )}
-
-      {/* Message bubble */}
-      <View
-        style={[
-          styles.bubble,
-          isOwnMessage ? styles.ownBubble : styles.otherBubble,
-        ]}
-      >
-        {/* Message content */}
-        {message.type === 'text' ? (
-          <>
-            <RNText
-              style={[
-                styles.messageText,
-                isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
-              ]}
-            >
-              {showOriginal || !message.translatedText
-                ? message.content
-                : message.translatedText}
-            </RNText>
-            {message.translatedText && (
-              <View style={styles.translationInfo}>
-                <Text
-                  variant="bodySmall"
-                  style={[
-                    styles.translationLabel,
-                    isOwnMessage ? styles.ownTranslationLabel : styles.otherTranslationLabel,
-                  ]}
-                >
-                  {showOriginal
-                    ? `Original (${message.detectedLanguage?.toUpperCase() || 'unknown'})`
-                    : `Translated from ${message.detectedLanguage?.toUpperCase() || 'unknown'}`}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setShowOriginal(!showOriginal)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                >
-                  <Text
-                    variant="bodySmall"
-                    style={[
-                      styles.translationToggle,
-                      isOwnMessage ? styles.ownTranslationToggle : styles.otherTranslationToggle,
-                    ]}
-                  >
-                    {showOriginal ? 'Show Translation' : 'Show Original'}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </>
-        ) : message.type === 'image' ? (
-          <>
-            <TouchableOpacity
-              onPress={() => setImagePreviewVisible(true)}
-              style={styles.imageContainer}
-            >
-              <Image
-                source={{ uri: message.content }}
-                style={[
-                  styles.messageImage,
-                  isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
-                ]}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
-            {message.caption && (
-              <RNText
-                style={[
-                  styles.captionText,
-                  isOwnMessage ? styles.ownCaptionText : styles.otherCaptionText,
-                ]}
-                selectable
-              >
-                {message.caption}
-              </RNText>
-            )}
-          </>
-        ) : null}
-
-        {/* Timestamp and status */}
-        <View style={styles.footer}>
-          <RNText
-            style={[
-              styles.timestamp,
-              isOwnMessage ? styles.ownTimestamp : styles.otherTimestamp,
-            ]}
-          >
-            {formatTime(message.timestamp)}
-          </RNText>
-          {renderStatusIndicator()}
-        </View>
-      </View>
-    </View>
-  );
-
   // Image Preview Modal Component
   const ImagePreview = () => (
     <Modal
@@ -319,7 +328,9 @@ export default function MessageBubble({
         )}
 
         {/* Message bubble */}
-        <View
+        <Pressable
+          onLongPress={handleLongPress}
+          delayLongPress={500}
           style={[
             styles.bubble,
             isOwnMessage ? styles.ownBubble : styles.otherBubble,
@@ -327,28 +338,91 @@ export default function MessageBubble({
         >
           {/* Message content */}
           {message.type === 'text' ? (
-            <RNText
-              style={[
-                styles.messageText,
-                isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
-              ]}
-            >
-              {message.content}
-            </RNText>
+            <>
+              {/* Show on-demand translation if available, otherwise auto-translation, otherwise original */}
+              {onDemandTranslation && onDemandTargetLang ? (
+                <TranslationBubble
+                  original={message.content}
+                  translated={onDemandTranslation}
+                  fromLang={(message.detectedLanguage as LanguageCode) || 'unknown'}
+                  toLang={onDemandTargetLang}
+                  loading={translating}
+                  error={translationError || undefined}
+                  isOwnMessage={isOwnMessage}
+                  onToggleOriginal={() => setShowOriginal(!showOriginal)}
+                  showingOriginal={showOriginal}
+                />
+              ) : (
+                <>
+                  <RNText
+                    style={[
+                      styles.messageText,
+                      isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
+                    ]}
+                  >
+                    {showOriginal || !message.translatedText
+                      ? message.content
+                      : message.translatedText}
+                  </RNText>
+                  {message.translatedText && (
+                    <View style={styles.translationInfo}>
+                      <Text
+                        variant="bodySmall"
+                        style={[
+                          styles.translationLabel,
+                          isOwnMessage ? styles.ownTranslationLabel : styles.otherTranslationLabel,
+                        ]}
+                      >
+                        {showOriginal
+                          ? `Original (${message.detectedLanguage?.toUpperCase() || 'unknown'})`
+                          : `Translated from ${message.detectedLanguage?.toUpperCase() || 'unknown'}`}
+                      </Text>
+                      <TouchableOpacity
+                        onPress={() => setShowOriginal(!showOriginal)}
+                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                      >
+                        <Text
+                          variant="bodySmall"
+                          style={[
+                            styles.translationToggle,
+                            isOwnMessage ? styles.ownTranslationToggle : styles.otherTranslationToggle,
+                          ]}
+                        >
+                          {showOriginal ? 'Show Translation' : 'Show Original'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </>
+              )}
+            </>
           ) : message.type === 'image' ? (
-            <TouchableOpacity
-              onPress={() => setImagePreviewVisible(true)}
-              style={styles.imageContainer}
-            >
-              <Image
-                source={{ uri: message.content }}
-                style={[
-                  styles.messageImage,
-                  isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
-                ]}
-                resizeMode="cover"
-              />
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity
+                onPress={() => setImagePreviewVisible(true)}
+                style={styles.imageContainer}
+              >
+                <Image
+                  source={{ uri: message.content }}
+                  style={[
+                    styles.messageImage,
+                    isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
+                  ]}
+                  resizeMode="cover"
+                />
+              </TouchableOpacity>
+              {message.caption && (
+                <RNText
+                  style={[
+                    styles.captionText,
+                    isOwnMessage ? styles.ownCaptionText : styles.otherCaptionText,
+                  ]}
+                  selectable
+                >
+                  {message.caption}
+                </RNText>
+              )}
+            </>
           ) : null}
 
           {/* Timestamp and status */}
@@ -363,11 +437,29 @@ export default function MessageBubble({
             </RNText>
             {renderStatusIndicator()}
           </View>
-        </View>
+        </Pressable>
       </View>
 
       {/* Image preview modal */}
       {message.type === 'image' && <ImagePreview />}
+
+      {/* Context menu for message actions */}
+      <MessageContextMenu
+        visible={contextMenuVisible}
+        actions={getMenuActions()}
+        onActionPress={handleMenuAction}
+        onClose={() => setContextMenuVisible(false)}
+        position={menuPosition}
+      />
+
+      {/* Language picker for "Translate to..." */}
+      <LanguagePickerModal
+        visible={languagePickerVisible}
+        selectedLanguage={onDemandTargetLang || preferredLanguage}
+        onSelect={handleLanguageSelect}
+        onClose={() => setLanguagePickerVisible(false)}
+        title="Translate to"
+      />
     </>
   );
 }

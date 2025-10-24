@@ -44,11 +44,16 @@ const activeSubscriptions: SyncSubscriptions = {
  */
 export async function syncUserToLocal(firebaseUser: User): Promise<void> {
   try {
+    console.log('[sync.service] Saving user to local DB:', firebaseUser.uid);
     const result = await LocalUserService.saveUser(firebaseUser);
 
     if (!result.success) {
+      console.error('[sync.service] FAILED to save user:', firebaseUser.uid, result.error);
+    } else {
+      console.log('[sync.service] Successfully saved user:', firebaseUser.uid);
     }
   } catch (error) {
+    console.error('[sync.service] Exception saving user:', error);
   }
 }
 
@@ -58,11 +63,16 @@ export async function syncUserToLocal(firebaseUser: User): Promise<void> {
  */
 export async function syncChatToLocal(firebaseChat: Chat): Promise<void> {
   try {
+    console.log('[sync.service] Saving chat to local DB:', firebaseChat.id);
     const result = await LocalChatService.saveChat(firebaseChat);
 
     if (!result.success) {
+      console.error('[sync.service] FAILED to save chat:', firebaseChat.id, result.error);
+    } else {
+      console.log('[sync.service] Successfully saved chat:', firebaseChat.id);
     }
   } catch (error) {
+    console.error('[sync.service] Exception saving chat:', error);
   }
 }
 
@@ -107,13 +117,19 @@ async function processIncomingMessage(
     // Get current user's preferences
     const userResult = await LocalUserService.getUser(currentUserId);
     if (!userResult.success || !userResult.data) {
+      console.log('[auto-translate] Could not get user preferences');
       return message;
     }
 
     const user = userResult.data;
+    console.log('[auto-translate] User preferences:', {
+      autoTranslateEnabled: user.autoTranslateEnabled,
+      preferredLanguage: user.preferredLanguage
+    });
 
     // Check if auto-translate is enabled
     if (!user.autoTranslateEnabled || !user.preferredLanguage) {
+      console.log('[auto-translate] Auto-translate disabled or no preferred language');
       return message;
     }
 
@@ -124,9 +140,11 @@ async function processIncomingMessage(
     // Detect message language
     const detectedLang = await detectLanguage(message.content);
     message.detectedLanguage = detectedLang;
+    console.log('[auto-translate] Detected language:', detectedLang, 'for message:', message.content.substring(0, 30));
 
     // Translate if language is different from preferred
     if (detectedLang !== 'unknown' && detectedLang !== user.preferredLanguage) {
+      console.log('[auto-translate] Translating from', detectedLang, 'to', user.preferredLanguage);
       const translatedText = await translateText(
         message.content,
         detectedLang as any,
@@ -136,6 +154,9 @@ async function processIncomingMessage(
 
       message.translatedText = translatedText;
       message.translationTargetLang = user.preferredLanguage;
+      console.log('[auto-translate] Translation complete:', translatedText.substring(0, 30));
+    } else {
+      console.log('[auto-translate] Skipping translation - same language or unknown');
     }
 
     return message;
@@ -156,18 +177,24 @@ export async function syncMessageToLocal(
   currentUserId?: string
 ): Promise<void> {
   try {
+    console.log('[sync.service] Syncing message to local:', firebaseMessage.id);
+
     // CRITICAL FIX: Ensure chat exists before saving message (FK constraint)
     // Check if chat exists in local DB
     const chatResult = await LocalChatService.getChat(firebaseMessage.chatId);
 
     if (!chatResult.success || !chatResult.data) {
+      console.log('[sync.service] Chat not in local DB, fetching from Firebase:', firebaseMessage.chatId);
       // Chat doesn't exist locally - fetch from Firebase and save with participants
       const fbChatResult = await FirebaseChatService.getChatFromFirebase(firebaseMessage.chatId);
 
       if (fbChatResult.success && fbChatResult.data) {
         // CRITICAL: Use helper that syncs participants FIRST
+        console.log('[sync.service] Syncing chat and participants for:', firebaseMessage.chatId);
         await syncChatWithParticipants(fbChatResult.data);
+        console.log('[sync.service] Chat sync complete for:', firebaseMessage.chatId);
       } else {
+        console.error('[sync.service] Could not fetch chat from Firebase, aborting message sync');
         // Don't save message if we can't get the chat (FK will fail)
         return;
       }
@@ -176,6 +203,7 @@ export async function syncMessageToLocal(
     // Also ensure the message sender exists in local DB
     const senderResult = await LocalUserService.getUser(firebaseMessage.senderId);
     if (!senderResult.success || !senderResult.data) {
+      console.log('[sync.service] Sender not in local DB, fetching from Firebase:', firebaseMessage.senderId);
       const fbSenderResult = await FirebaseUserService.getUserFromFirebase(firebaseMessage.senderId);
       if (fbSenderResult.success && fbSenderResult.data) {
         await syncUserToLocal(fbSenderResult.data);
@@ -185,15 +213,20 @@ export async function syncMessageToLocal(
     // Process message for auto-translation if currentUserId provided
     let processedMessage = firebaseMessage;
     if (currentUserId) {
+      console.log('[sync.service] Processing message for auto-translation');
       processedMessage = await processIncomingMessage(firebaseMessage, currentUserId);
     }
 
+    console.log('[sync.service] Saving message to local DB:', processedMessage.id);
     const result = await LocalMessageService.saveMessage(processedMessage);
 
     if (!result.success) {
-      console.error('Failed to save message:', result.error);
+      console.error('[sync.service] FAILED to save message:', processedMessage.id, result.error);
+    } else {
+      console.log('[sync.service] Successfully saved message:', processedMessage.id);
     }
   } catch (error) {
+    console.error('[sync.service] Exception in syncMessageToLocal:', error);
   }
 }
 

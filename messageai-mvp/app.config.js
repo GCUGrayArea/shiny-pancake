@@ -34,7 +34,7 @@ module.exports = {
         ITSAppUsesNonExemptEncryption: false
       },
       bundleIdentifier: "com.gauntletai.gray.messageai.ios",
-      googleServicesFile: process.env.GOOGLE_SERVICE_INFO_PLIST
+      googleServicesFile: process.env.GOOGLE_SERVICE_INFO_PLIST || "./GoogleService-Info.plist"
     },
     android: {
       adaptiveIcon: {
@@ -43,7 +43,7 @@ module.exports = {
       },
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
-      googleServicesFile: process.env.GOOGLE_SERVICES_JSON,
+      googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
       useNextNotificationsApi: true,
       permissions: [
         "android.permission.RECEIVE_BOOT_COMPLETED",

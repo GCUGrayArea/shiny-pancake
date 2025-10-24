@@ -8,6 +8,8 @@ import {
   clearCache,
   getCacheStats,
   invalidateMessageCache,
+  translateMessageOnDemand,
+  hasTranslationInCache,
 } from '@/services/ai/translation.service';
 import * as AIClient from '@/services/ai/ai-client';
 
@@ -19,6 +21,8 @@ describe('Translation Service', () => {
     // Clear cache before each test
     clearCache();
     jest.clearAllMocks();
+    // Mock isInitialized to return true by default
+    (AIClient.isInitialized as jest.Mock).mockReturnValue(true);
   });
 
   describe('translateText', () => {
@@ -231,6 +235,77 @@ describe('Translation Service', () => {
 
       expect(systemMessage).toContain('English');
       expect(systemMessage).toContain('Spanish');
+    });
+  });
+
+  describe('translateMessageOnDemand', () => {
+    it('should translate message on-demand', async () => {
+      (AIClient.callCompletion as jest.Mock).mockResolvedValue('Hola');
+
+      const result = await translateMessageOnDemand('Hello', 'en', 'es', 'msg-123');
+
+      expect(result).toBe('Hola');
+      expect(AIClient.callCompletion).toHaveBeenCalledTimes(1);
+    });
+
+    it('should use same caching as translateText', async () => {
+      (AIClient.callCompletion as jest.Mock).mockResolvedValue('Hola');
+
+      const messageId = 'msg-456';
+
+      // First call
+      await translateMessageOnDemand('Hello', 'en', 'es', messageId);
+      expect(AIClient.callCompletion).toHaveBeenCalledTimes(1);
+
+      // Second call - should be cached
+      await translateMessageOnDemand('Hello', 'en', 'es', messageId);
+      expect(AIClient.callCompletion).toHaveBeenCalledTimes(1);
+    });
+
+    it('should work without message ID', async () => {
+      (AIClient.callCompletion as jest.Mock).mockResolvedValue('Bonjour');
+
+      const result = await translateMessageOnDemand('Hello', 'en', 'fr');
+
+      expect(result).toBe('Bonjour');
+    });
+  });
+
+  describe('hasTranslationInCache', () => {
+    it('should return true when translation is cached', async () => {
+      (AIClient.callCompletion as jest.Mock).mockResolvedValue('Hola');
+
+      // Cache the translation
+      await translateText('Hello', 'en', 'es');
+
+      // Check if cached
+      const isCached = hasTranslationInCache('Hello', 'en', 'es');
+      expect(isCached).toBe(true);
+    });
+
+    it('should return false when translation is not cached', () => {
+      const isCached = hasTranslationInCache('Goodbye', 'en', 'es');
+      expect(isCached).toBe(false);
+    });
+
+    it('should return true for cached message ID translations', async () => {
+      (AIClient.callCompletion as jest.Mock).mockResolvedValue('Hola');
+
+      const messageId = 'msg-789';
+      await translateText('Hello', 'en', 'es', messageId);
+
+      const isCached = hasTranslationInCache('Hello', 'en', 'es', messageId);
+      expect(isCached).toBe(true);
+    });
+
+    it('should return false after cache is cleared', async () => {
+      (AIClient.callCompletion as jest.Mock).mockResolvedValue('Hola');
+
+      await translateText('Hello', 'en', 'es');
+      expect(hasTranslationInCache('Hello', 'en', 'es')).toBe(true);
+
+      clearCache();
+      expect(hasTranslationInCache('Hello', 'en', 'es')).toBe(false);
     });
   });
 });

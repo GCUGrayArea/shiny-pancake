@@ -182,7 +182,7 @@ export async function clearAllNotifications(): Promise<void> {
 
 /**
  * Get push notification token from Expo
- * Returns the device's push token for FCM/APNS
+ * Returns the device's native FCM/APNS token for direct Firebase Cloud Messaging
  */
 export async function getPushToken(): Promise<string | null> {
   try {
@@ -200,12 +200,13 @@ export async function getPushToken(): Promise<string | null> {
       return null;
     }
 
-    // Get the push token
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: 'your-project-id', // TODO: Replace with actual Expo project ID
-    });
+    // Get the native device token (FCM for Android, APNS for iOS)
+    // This is different from Expo push token and works with Firebase Cloud Functions
+    const devicePushToken = await Notifications.getDevicePushTokenAsync();
 
-    return tokenData.data;
+    console.log('Got device push token:', devicePushToken.type, devicePushToken.data);
+
+    return devicePushToken.data;
   } catch (error) {
     console.error('Error getting push token:', error);
     return null;
@@ -220,11 +221,17 @@ export async function savePushTokenToProfile(
   token: string
 ): Promise<void> {
   try {
-    // This will be implemented by the auth service
-    // For now, just log it
-    console.log(`Would save push token for user ${userId}: ${token}`);
+    const { getFirebaseDatabase } = await import('./firebase');
+    const { ref, set } = await import('firebase/database');
+
+    const database = getFirebaseDatabase();
+    const tokenRef = ref(database, `/users/${userId}/pushToken`);
+
+    await set(tokenRef, token);
+    console.log(`Successfully saved push token for user ${userId}`);
   } catch (error) {
     console.error('Error saving push token:', error);
+    throw error;
   }
 }
 

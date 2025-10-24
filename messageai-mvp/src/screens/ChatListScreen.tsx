@@ -68,18 +68,20 @@ export default function ChatListScreen() {
 
       const firebaseResult = await getUserChatsFromFirebase(user.uid);
       if (firebaseResult.success && firebaseResult.data) {
-        // If Firebase has no chats, clear local database
-        if (firebaseResult.data.length === 0) {
-          const { clearAllData } = await import('@/services/database.service');
-          await clearAllData();
-          console.log('Cleared local database - Firebase has no chats');
-          // Set chats to empty immediately
-          setChats([]);
-          setHasLoadedOnce(true);
-          setLoading(false);
-          return; // Exit early
-        } else {
-          // Save all chats to local database to fix any stale data
+        // DISABLED: This was deleting all local data including messages!
+        // The sync service handles keeping local DB in sync with Firebase
+        // if (firebaseResult.data.length === 0) {
+        //   const { clearAllData } = await import('@/services/database.service');
+        //   await clearAllData();
+        //   console.log('Cleared local database - Firebase has no chats');
+        //   setChats([]);
+        //   setHasLoadedOnce(true);
+        //   setLoading(false);
+        //   return;
+        // }
+
+        // Save all chats to local database to fix any stale data
+        if (firebaseResult.data.length > 0) {
           for (const chat of firebaseResult.data) {
             await saveChatLocal(chat);
           }

@@ -41,10 +41,7 @@
       "$chatId": {
         ".read": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
         ".write": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
-        ".indexOn": ["timestamp"],
-        "$messageId": {
-          ".validate": "newData.hasChildren(['id', 'chatId', 'senderId', 'type', 'content', 'timestamp', 'status'])"
-        }
+        ".indexOn": ["timestamp"]
       }
     },
     "presence": {

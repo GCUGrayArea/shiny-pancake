@@ -136,7 +136,7 @@ async function createSchema(): Promise<void> {
       imageWidth INTEGER,
       imageHeight INTEGER,
       imageSize INTEGER,
-      FOREIGN KEY (chatId) REFERENCES chats(id) ON DELETE CASCADE,
+      FOREIGN KEY (chatId) REFERENCES chats(id),
       FOREIGN KEY (senderId) REFERENCES users(uid)
     );
 

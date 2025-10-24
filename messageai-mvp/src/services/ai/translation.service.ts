@@ -240,3 +240,30 @@ export function invalidateMessageCache(messageId: string): void {
     }
   }
 }
+
+/**
+ * Translate message on-demand (for user-triggered translation)
+ * Uses the translation agent for enhanced formatting preservation
+ */
+export async function translateMessageOnDemand(
+  text: string,
+  fromLang: LanguageCode,
+  toLang: LanguageCode,
+  messageId?: string
+): Promise<string> {
+  // Reuse the existing translateText function which already has caching
+  return translateText(text, fromLang, toLang, messageId);
+}
+
+/**
+ * Check if translation is available in cache
+ */
+export function hasTranslationInCache(
+  text: string,
+  fromLang: LanguageCode,
+  toLang: LanguageCode,
+  messageId?: string
+): boolean {
+  const cached = getCached(text, fromLang, toLang, messageId);
+  return cached !== null;
+}

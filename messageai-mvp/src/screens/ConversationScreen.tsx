@@ -31,6 +31,7 @@ import TypingIndicator from '@/components/TypingIndicator';
 import { computeMessageStatus } from '@/utils/message-status.utils';
 import { getInitials } from '@/utils/chat.utils';
 import { subscribeToTyping, type TypingUser } from '@/services/typing.service';
+import type { LanguageCode } from '@/services/ai/types';
 
 type ConversationScreenRouteProp = RouteProp<MainStackParamList, 'Conversation'>;
 type ConversationScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'Conversation'>;
@@ -196,13 +197,16 @@ export default function ConversationScreen() {
 
     
     const unsubscribe = subscribeToMessages(chatId, async (newMessage) => {
+      console.log('[ConversationScreen] New message callback triggered:', newMessage.id);
       // The sync service handles saving messages with translations
       // Wait briefly for sync to complete, then reload from local DB
       setTimeout(async () => {
         try {
+          console.log('[ConversationScreen] Reloading messages from local DB');
           const localResult = await getMessagesByChat(chatId);
           if (localResult.success && localResult.data) {
             const sortedMessages = localResult.data.sort((a, b) => a.timestamp - b.timestamp);
+            console.log('[ConversationScreen] Loaded', sortedMessages.length, 'messages');
             setMessages(sortedMessages);
           }
         } catch (error) {
@@ -640,6 +644,7 @@ export default function ConversationScreen() {
                   showSenderIndicator={shouldShowSenderIndicator}
                   senderName={shouldShowSenderIndicator ? senderName : undefined}
                   isGroup={isGroup}
+                  preferredLanguage={(user?.preferredLanguage as LanguageCode) || 'en'}
                 />
               );
             }}
