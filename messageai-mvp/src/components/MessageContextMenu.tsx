@@ -10,7 +10,7 @@ import {
   Modal,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -48,14 +48,15 @@ export default function MessageContextMenu({
   onClose,
   position,
 }: MessageContextMenuProps) {
+  const { width, height } = useWindowDimensions();
+
   const handleActionPress = (actionId: string) => {
     onActionPress(actionId);
     onClose();
   };
 
-  const screenHeight = Dimensions.get('window').height;
   const menuHeight = actions.length * 56 + 16; // Approximate height
-  const shouldPositionAbove = position && position.y > screenHeight / 2;
+  const shouldPositionAbove = position && position.y > height / 2;
 
   return (
     <Modal
@@ -73,7 +74,7 @@ export default function MessageContextMenu({
                 styles.menu,
                 position && {
                   position: 'absolute',
-                  left: Math.max(16, Math.min(position.x - 100, Dimensions.get('window').width - 216)),
+                  left: Math.max(16, Math.min(position.x - 100, width - 216)),
                   top: shouldPositionAbove
                     ? Math.max(16, position.y - menuHeight - 8)
                     : position.y + 8,
