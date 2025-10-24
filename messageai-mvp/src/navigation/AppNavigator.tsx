@@ -11,6 +11,7 @@ import ConversationScreen from '@/screens/ConversationScreen';
 import CreateGroupScreen from '@/screens/CreateGroupScreen';
 import GroupInfoScreen from '@/screens/GroupInfoScreen';
 import AISettingsScreen from '@/screens/AISettingsScreen';
+import EditProfileScreen from '@/screens/EditProfileScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export type AuthStackParamList = {
@@ -43,6 +44,7 @@ export type MainStackParamList = {
     chatName: string;
   };
   AISettings: undefined;
+  EditProfile: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -89,6 +91,11 @@ function MainStackNavigator() {
         name="AISettings"
         component={AISettingsScreen}
         options={{ title: 'AI Settings' }}
+      />
+      <MainStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Edit Profile' }}
       />
     </MainStack.Navigator>
   );

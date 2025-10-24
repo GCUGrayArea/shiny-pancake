@@ -19,7 +19,9 @@ import {
   type DatabaseReference,
   type Unsubscribe,
 } from 'firebase/database';
-import { getFirebaseDatabase } from './firebase';
+import { ref as storageRef, deleteObject } from 'firebase/storage';
+import { getFirebaseDatabase, getFirebaseStorage } from './firebase';
+import { compressImage, uploadImage } from './image.service';
 import type { User } from '../types';
 
 /**
@@ -54,6 +56,7 @@ export async function createUserInFirebase(user: User): Promise<FirebaseResult<v
       pushToken: user.pushToken || null,
       autoTranslateEnabled: user.autoTranslateEnabled || false,
       preferredLanguage: user.preferredLanguage || 'en',
+      profilePictureUrl: user.profilePictureUrl || null,
     });
 
     return { success: true };
@@ -226,6 +229,79 @@ export async function getAllUsersFromFirebase(): Promise<FirebaseResult<User[]>>
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get all users',
+    };
+  }
+}
+
+/**
+ * Upload a profile picture and update user profile
+ * @param uid - User ID
+ * @param imageUri - Local image URI
+ * @param onProgress - Optional progress callback
+ * @returns FirebaseResult with download URL
+ */
+export async function uploadProfilePicture(
+  uid: string,
+  imageUri: string,
+  onProgress?: (progress: number) => void
+): Promise<FirebaseResult<string>> {
+  try {
+    // Compress image to 512x512, max 200KB
+    const compressed = await compressImage(imageUri, 200 * 1024); // 200KB
+
+    // Resize to 512x512 square
+    const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
+    const resized = await manipulateAsync(
+      compressed.uri,
+      [{ resize: { width: 512, height: 512 } }],
+      { compress: 0.8, format: SaveFormat.JPEG }
+    );
+
+    // Upload to Firebase Storage
+    const storagePath = `profile-pictures/${uid}.jpg`;
+    const uploadResult = await uploadImage(resized.uri, storagePath, onProgress);
+
+    // Update user profile in Firebase RTDB
+    await updateUserInFirebase(uid, {
+      profilePictureUrl: uploadResult.url,
+    });
+
+    return { success: true, data: uploadResult.url };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to upload profile picture',
+    };
+  }
+}
+
+/**
+ * Remove a user's profile picture
+ * @param uid - User ID
+ * @returns FirebaseResult
+ */
+export async function removeProfilePicture(uid: string): Promise<FirebaseResult<void>> {
+  try {
+    const storage = getFirebaseStorage();
+    const photoRef = storageRef(storage, `profile-pictures/${uid}.jpg`);
+
+    // Delete from Storage (ignore errors if file doesn't exist)
+    try {
+      await deleteObject(photoRef);
+    } catch (deleteError) {
+      // File might not exist, that's okay
+    }
+
+    // Update user profile in Firebase RTDB
+    await updateUserInFirebase(uid, {
+      profilePictureUrl: undefined,
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to remove profile picture',
     };
   }
 }

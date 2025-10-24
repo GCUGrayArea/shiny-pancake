@@ -88,6 +88,7 @@ export const AVATAR_SIZES = {
   small: 32,
   medium: 48,
   large: 64,
+  xlarge: 96,
 } as const;
 
 export type AvatarSize = keyof typeof AVATAR_SIZES;

@@ -345,9 +345,10 @@
 ---
 
 #### PR-044: Real-Time Inline Translation
-**Dependencies:** PR-043  
-**Estimated Time:** 3 hours  
+**Dependencies:** PR-043
+**Estimated Time:** 3 hours
 **Prerequisites:** ✅ PR-043 merged
+**Status:** 🔄 IN PROGRESS (Agent working on this)
 
 **Tasks:**
 1. **Translation UI Component** (1 hour):
@@ -1023,9 +1024,24 @@
 ---
 
 #### PR-051: Profile Pictures
-**Dependencies:** PR-023 (image upload service from MVP)  
-**Estimated Time:** 3 hours  
-**Prerequisites:** ✅ PR-023 merged (can start in parallel with AI features)
+**Dependencies:** PR-023 (image upload service from MVP)
+**Estimated Time:** 3 hours
+**Prerequisites:** ✅ PR-023 merged
+**Status:** ✅ **COMPLETE** - All tasks implemented
+
+**Files Created:**
+- `messageai-mvp/src/screens/EditProfileScreen.tsx` - Profile editing screen with photo upload
+
+**Files Modified:**
+- `messageai-mvp/src/types/index.ts` - Added profilePictureUrl to User interface
+- `messageai-mvp/src/components/Avatar.tsx` - Added support for profile pictures with fallback to initials
+- `messageai-mvp/src/services/database.service.ts` - Updated user schema with profilePictureUrl column
+- `messageai-mvp/src/services/firebase-user.service.ts` - Added uploadProfilePicture and removeProfilePicture functions
+- `messageai-mvp/src/services/local-user.service.ts` - Added profilePictureUrl to saveUser and mapRowToUser
+- `messageai-mvp/src/navigation/AppNavigator.tsx` - Added EditProfile screen to navigation
+- `messageai-mvp/src/screens/ChatListScreen.tsx` - Added profile button in header
+- `messageai-mvp/src/components/UserListItem.tsx` - Pass profilePictureUrl to Avatar
+- `messageai-mvp/src/utils/avatar.utils.ts` - Added xlarge size (96px) for profile screen
 
 **Tasks:**
 1. **Profile Picture Upload** (1.5 hours):

@@ -31,16 +31,24 @@ export default function ChatListScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<ChatListNavigationProp>();
 
-  // Add AI Settings button to header
+  // Add AI Settings and Profile buttons to header
   useLayoutEffect(() => {
     navigation.setOptions({
       headerRight: () => (
-        <TouchableOpacity
-          onPress={() => navigation.navigate('AISettings')}
-          style={{ marginRight: 8 }}
-        >
-          <MaterialCommunityIcons name="robot" size={24} color="#6200ee" />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 8 }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EditProfile')}
+            style={{ padding: 4 }}
+          >
+            <MaterialCommunityIcons name="account-circle" size={24} color="#6200ee" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('AISettings')}
+            style={{ padding: 4 }}
+          >
+            <MaterialCommunityIcons name="robot" size={24} color="#6200ee" />
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation]);

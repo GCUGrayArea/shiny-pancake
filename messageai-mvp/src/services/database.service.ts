@@ -239,6 +239,11 @@ async function runMigrations(): Promise<void> {
     await db.execAsync(`
       ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'en';
     `).catch(() => {});
+
+    // Add profile picture URL to users table
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN profilePictureUrl TEXT;
+    `).catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now
     console.warn('Migration warning:', error);

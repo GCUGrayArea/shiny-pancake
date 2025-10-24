@@ -27,7 +27,8 @@ export interface User {
   autoTranslateEnabled?: boolean;
   /** User's preferred language for translations (ISO 639-1 code) */
   preferredLanguage?: string;
-  // Future: profilePictureUrl?: string;
+  /** URL to user's profile picture in Firebase Storage */
+  profilePictureUrl?: string;
 }
 
 /**

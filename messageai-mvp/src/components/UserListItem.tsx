@@ -49,6 +49,7 @@ export default function UserListItem({
         <Avatar
           displayName={user.displayName}
           userId={user.uid}
+          profilePictureUrl={user.profilePictureUrl}
           size="medium"
           showOnlineStatus={showOnlineStatus && !loading}
           isOnline={user.isOnline}
