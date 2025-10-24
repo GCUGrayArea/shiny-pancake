@@ -194,11 +194,8 @@ export function subscribeToMessages(
   const db = getFirebaseDatabase();
   const messagesRef = ref(db, `messages/${chatId}`);
 
-  console.log('[Firebase] Subscribing to new messages for chat:', chatId);
-
   return onChildAdded(messagesRef, (snapshot) => {
     const messageData = snapshot.val();
-    console.log('[Firebase] New message received:', messageData?.id || 'unknown');
     callback(messageData as Message);
   }, (error) => {
     console.error('[Firebase] Error in message subscription:', error);

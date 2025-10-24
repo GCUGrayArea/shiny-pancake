@@ -113,7 +113,6 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
       const token = await NotificationService.getPushToken();
       if (token) {
         await NotificationService.savePushTokenToProfile(userId, token);
-        console.log('Push token registered successfully');
       }
     } catch (error) {
       console.error('Error registering push token:', error);

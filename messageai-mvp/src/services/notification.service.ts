@@ -196,15 +196,12 @@ export async function getPushToken(): Promise<string | null> {
     }
 
     if (finalStatus !== 'granted') {
-      console.log('Push notification permission not granted');
       return null;
     }
 
     // Get the native device token (FCM for Android, APNS for iOS)
     // This is different from Expo push token and works with Firebase Cloud Functions
     const devicePushToken = await Notifications.getDevicePushTokenAsync();
-
-    console.log('Got device push token:', devicePushToken.type, devicePushToken.data);
 
     return devicePushToken.data;
   } catch (error) {
@@ -228,7 +225,6 @@ export async function savePushTokenToProfile(
     const tokenRef = ref(database, `/users/${userId}/pushToken`);
 
     await set(tokenRef, token);
-    console.log(`Successfully saved push token for user ${userId}`);
   } catch (error) {
     console.error('Error saving push token:', error);
     throw error;
