@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, StyleSheet, Text as RNText, TouchableOpacity, Image, Modal, Dimensions, Pressable } from 'react-native';
+import { View, StyleSheet, Text as RNText, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
 import { Message } from '@/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -691,8 +691,8 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     position: 'relative',
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
+    width: '100%',
+    height: '100%',
   },
   fullScreenImage: {
     width: '100%',

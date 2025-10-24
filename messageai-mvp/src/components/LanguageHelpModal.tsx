@@ -11,7 +11,8 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
+  Pressable,
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -98,6 +99,8 @@ export default function LanguageHelpModal({
   error = null,
 }: LanguageHelpModalProps) {
   const totalItems = culturalHints.length + slangItems.length;
+  const { height } = useWindowDimensions();
+  const modalHeight = height * 0.85;
 
   return (
     <Modal
@@ -109,18 +112,25 @@ export default function LanguageHelpModal({
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.overlay}>
-          <TouchableWithoutFeedback>
-            <View style={styles.modalContainer}>
-              {/* Header */}
-              <View style={styles.header}>
-                <Text style={styles.title}>Language Help</Text>
-                <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                  <MaterialCommunityIcons name="close" size={24} color="#666" />
-                </TouchableOpacity>
-              </View>
+          <Pressable style={[styles.modalContainer, { height: modalHeight }]}>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.title}>Language Help</Text>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <MaterialCommunityIcons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
 
-              {/* Content */}
-              <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            {/* Content */}
+            <ScrollView
+              style={styles.content}
+              showsVerticalScrollIndicator={true}
+              indicatorStyle="black"
+              scrollEventThrottle={16}
+              directionalLockEnabled={false}
+              alwaysBounceVertical={true}
+              bounces={true}
+            >
                 {loading && (
                   <View style={styles.centerContent}>
                     <MaterialCommunityIcons name="loading" size={32} color="#2196F3" />
@@ -259,8 +269,7 @@ export default function LanguageHelpModal({
                   <Text style={styles.closeButtonText}>Close</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-          </TouchableWithoutFeedback>
+            </Pressable>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
@@ -277,7 +286,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: Dimensions.get('window').height * 0.85,
   },
   header: {
     flexDirection: 'row',
@@ -297,7 +305,8 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   content: {
-    paddingHorizontal: 20,
+    paddingLeft: 30,
+    paddingRight: 30,
     paddingTop: 16,
   },
   centerContent: {
@@ -480,7 +489,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },

@@ -177,15 +177,29 @@ function parseAIResponse(response: string): DetectedReference[] {
       return [];
     }
 
+    // Valid cultural context categories for database constraint
+    const validCategories = ['holiday', 'idiom', 'custom', 'historical', 'norm'];
+
     // Validate and filter references
-    return parsed.filter(ref =>
-      ref.phrase &&
-      ref.explanation &&
-      ref.culturalBackground &&
-      ref.category &&
-      typeof ref.startIndex === 'number' &&
-      typeof ref.endIndex === 'number'
-    );
+    return parsed.filter(ref => {
+      const hasValidFields = (
+        ref.phrase &&
+        ref.explanation &&
+        ref.culturalBackground &&
+        ref.category &&
+        typeof ref.startIndex === 'number' &&
+        typeof ref.endIndex === 'number'
+      );
+
+      // Check if category is valid for cultural_hints table
+      const hasValidCategory = validCategories.includes(ref.category);
+
+      if (hasValidFields && !hasValidCategory) {
+        console.warn(`Skipping cultural hint with invalid category: ${ref.category} (phrase: "${ref.phrase}")`);
+      }
+
+      return hasValidFields && hasValidCategory;
+    });
   } catch (error) {
     console.error('Error parsing AI response:', error);
     console.error('Response was:', response);

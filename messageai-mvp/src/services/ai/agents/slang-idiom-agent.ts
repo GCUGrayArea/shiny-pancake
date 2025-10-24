@@ -183,9 +183,12 @@ function parseAIResponse(response: string): DetectedSlang[] {
       return [];
     }
 
+    // Valid slang categories for database constraint
+    const validCategories = ['slang', 'idiom', 'colloquialism', 'internet-slang'];
+
     // Validate and filter items
     const validItems = parsed.filter(item => {
-      return (
+      const hasValidFields = (
         item &&
         typeof item.phrase === 'string' &&
         typeof item.literal === 'string' &&
@@ -196,6 +199,15 @@ function parseAIResponse(response: string): DetectedSlang[] {
         typeof item.startIndex === 'number' &&
         typeof item.endIndex === 'number'
       );
+
+      // Check if category is valid for slang_items table
+      const hasValidCategory = validCategories.includes(item.category);
+
+      if (hasValidFields && !hasValidCategory) {
+        console.warn(`Skipping slang item with invalid category: ${item.category} (phrase: "${item.phrase}")`);
+      }
+
+      return hasValidFields && hasValidCategory;
     });
 
     return validItems as DetectedSlang[];
