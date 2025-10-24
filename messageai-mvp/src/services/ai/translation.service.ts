@@ -267,3 +267,56 @@ export function hasTranslationInCache(
   const cached = getCached(text, fromLang, toLang, messageId);
   return cached !== null;
 }
+
+/**
+ * Translate text and optionally detect slang/idioms
+ * Used for auto-translation when receiving messages
+ *
+ * @param text - Text to translate
+ * @param fromLang - Source language
+ * @param toLang - Target language
+ * @param messageId - ID of the message
+ * @param detectSlang - Whether to also detect slang in the original text
+ * @param userPreferredLanguage - User's preferred language for slang explanations
+ * @returns Object with translated text and optional slang items
+ */
+export async function translateWithSlangDetection(
+  text: string,
+  fromLang: LanguageCode,
+  toLang: LanguageCode,
+  messageId: string,
+  detectSlang: boolean,
+  userPreferredLanguage: LanguageCode = 'en'
+): Promise<{ translatedText: string; slangItems?: import('./types').SlangItem[] }> {
+  // First translate the text
+  const translatedText = await translateText(text, fromLang, toLang, messageId);
+
+  // If slang detection is disabled, return just the translation
+  if (!detectSlang) {
+    return { translatedText };
+  }
+
+  // Detect slang in the ORIGINAL text (not translation)
+  // We detect in original because that's where slang actually appears
+  try {
+    const { detectSlangIdioms } = await import('./agents/slang-idiom-agent');
+    const slangItems = await detectSlangIdioms(
+      text,
+      fromLang,
+      messageId,
+      userPreferredLanguage
+    );
+
+    // Save slang items if any were found
+    if (slangItems.length > 0) {
+      const { saveSlangItems } = await import('../slang-glossary.service');
+      await saveSlangItems(slangItems);
+    }
+
+    return { translatedText, slangItems };
+  } catch (error) {
+    console.error('Error detecting slang during translation:', error);
+    // Return translation even if slang detection fails
+    return { translatedText };
+  }
+}

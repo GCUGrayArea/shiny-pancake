@@ -31,6 +31,8 @@ export interface User {
   profilePictureUrl?: string;
   /** Show cultural context hints for messages */
   culturalHintsEnabled?: boolean;
+  /** Show slang and idiom explanations for messages */
+  slangExplanationsEnabled?: boolean;
 }
 
 /**

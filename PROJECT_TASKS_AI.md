@@ -655,10 +655,60 @@
 
 ---
 
-#### PR-047: Slang & Idiom Explanations
-**Dependencies:** PR-042, PR-043, PR-044  
-**Estimated Time:** 3 hours  
+#### PR-047: Language Help (Cultural Context + Slang & Idioms) - CONSOLIDATED
+**Dependencies:** PR-042, PR-043, PR-044
+**Estimated Time:** 3 hours
 **Prerequisites:** ✅ PR-042, PR-043, PR-044 merged
+**Status:** 🔄 IN PROGRESS - Modal scrolling issue needs fixing
+**Agent:** Claude Code Assistant
+
+**Implementation Notes:**
+- **CONSOLIDATED** cultural context and slang features into single "Language Help" feature
+- Both agents run in parallel when user taps "Language Help" menu item
+- Results displayed in combined modal with separate sections for cultural references vs slang
+- One unified toggle in settings (simpler UX)
+- On-demand analysis (not automatic during translation)
+- Backwards compatible: uses `culturalHintsEnabled` as master toggle
+
+**⚠️ BEFORE CLOSING PR:**
+- Remove all purely informational console.log statements from PR files (keep error logging only)
+- Example: Remove "Analyzing slang...", "Found X items", etc.
+- Keep: All console.error() statements in catch blocks
+- Affected files: database.service.ts, MessageBubble.tsx, AISettingsScreen.tsx, slang-related services
+
+**Files Created:**
+- ✅ `messageai-mvp/src/services/ai/agents/slang-idiom-agent.ts` - Slang detection agent with OpenAI
+- ✅ `messageai-mvp/src/components/LanguageHelpModal.tsx` - **Combined modal** for both features
+- ✅ `messageai-mvp/src/services/slang-glossary.service.ts` - SQLite storage and caching service
+- ✅ `messageai-mvp/src/__tests__/services/ai/agents/slang-idiom-agent.test.ts` - Unit tests (11/11 passing)
+- ❌ `SlangExplanationModal.tsx` - Deprecated (replaced by combined modal)
+- ❌ `ContextHintModal.tsx` - Deprecated (replaced by combined modal)
+
+**Files Modified:**
+- ✅ `messageai-mvp/src/services/ai/types.ts` - Added SlangItem, SlangCategory interfaces
+- ✅ `messageai-mvp/src/types/index.ts` - Added slangExplanationsEnabled to User
+- ✅ `messageai-mvp/src/services/ai/translation.service.ts` - Added translateWithSlangDetection() function
+- ✅ `messageai-mvp/src/components/MessageBubble.tsx` - Added slang modal and context menu item
+- ✅ `messageai-mvp/src/screens/AISettingsScreen.tsx` - Added slang explanations toggle
+- ✅ `messageai-mvp/src/screens/ConversationScreen.tsx` - Pass slangExplanationsEnabled prop to MessageBubble
+- ✅ `messageai-mvp/src/services/database.service.ts` - Added slang_items table with indexes
+- ✅ `messageai-mvp/src/services/local-user.service.ts` - Added slangExplanationsEnabled support
+
+**Features Implemented:**
+- ✅ **Unified "Language Help" feature** combining cultural hints + slang detection
+- ✅ **Parallel analysis** for better performance (both agents run simultaneously)
+- ✅ **Combined modal** with two sections:
+  - Cultural References (holidays, customs, historical refs, norms)
+  - Slang & Informal Language (slang, idioms, colloquialisms, internet slang)
+- ✅ Detailed explanations with literal vs actual meanings
+- ✅ Example usage sentences and formality notes
+- ✅ Regional information for slang expressions
+- ✅ "Got it!" / "I know this" buttons to mark items as known
+- ✅ SQLite persistence with caching for both types
+- ✅ **One unified toggle** in AI Settings (simpler UX)
+- ✅ **One context menu item** - "Language Help" 💡
+- ✅ Multilingual explanation support
+- ✅ No duplicate explanations (e.g., "mola un montón" shown once, not twice)
 
 **Tasks:**
 1. **Slang/Idiom Detection** (1.5 hours):
@@ -725,6 +775,16 @@
    - Analytics (optional):
      - Track which slang is most commonly explained
      - Use to improve detection
+
+4. **Fix Modal Scrolling** (30 min):
+   - Fix LanguageHelpModal scrolling when content exceeds available height
+   - Issue: Modal doesn't scroll when both cultural references and slang items are present
+   - User cannot see slang section when cultural references fill the screen
+   - Requirements:
+     - ScrollView must properly scroll through all content
+     - Header and footer should remain fixed
+     - All content (cultural + slang sections) must be accessible
+     - Modal should not break when scrolling is enabled
 
 **Validation:**
 - [ ] Detects slang/idioms accurately (>80% precision)

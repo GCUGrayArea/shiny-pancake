@@ -57,6 +57,8 @@ export async function createUserInFirebase(user: User): Promise<FirebaseResult<v
       autoTranslateEnabled: user.autoTranslateEnabled || false,
       preferredLanguage: user.preferredLanguage || 'en',
       profilePictureUrl: user.profilePictureUrl || null,
+      culturalHintsEnabled: user.culturalHintsEnabled || false,
+      slangExplanationsEnabled: user.slangExplanationsEnabled || false,
     });
 
     return { success: true };

@@ -34,7 +34,7 @@ export default function AISettingsScreen() {
   const { user, refreshUser } = useAuth();
   const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState('en');
-  const [culturalHintsEnabled, setCulturalHintsEnabled] = useState(false);
+  const [languageHelpEnabled, setLanguageHelpEnabled] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -42,9 +42,13 @@ export default function AISettingsScreen() {
   // Load current settings
   useEffect(() => {
     if (user) {
+      // Use culturalHintsEnabled as the master toggle for language help
+      // (slangExplanationsEnabled is deprecated but kept for backwards compat)
+      const languageHelp = user.culturalHintsEnabled || user.slangExplanationsEnabled || false;
+
       setAutoTranslateEnabled(user.autoTranslateEnabled || false);
       setPreferredLanguage(user.preferredLanguage || 'en');
-      setCulturalHintsEnabled(user.culturalHintsEnabled || false);
+      setLanguageHelpEnabled(languageHelp);
       setLoading(false);
     }
   }, [user]);
@@ -55,7 +59,7 @@ export default function AISettingsScreen() {
   const saveSettings = async (
     newAutoTranslate: boolean,
     newLanguage: string,
-    newCulturalHints: boolean
+    newLanguageHelp: boolean
   ) => {
     if (!user) return;
 
@@ -65,7 +69,8 @@ export default function AISettingsScreen() {
       const updates = {
         autoTranslateEnabled: newAutoTranslate,
         preferredLanguage: newLanguage,
-        culturalHintsEnabled: newCulturalHints,
+        culturalHintsEnabled: newLanguageHelp, // Master toggle
+        slangExplanationsEnabled: newLanguageHelp, // Keep in sync for backwards compat
       };
 
       // Update Firebase
@@ -89,7 +94,7 @@ export default function AISettingsScreen() {
   const handleAutoTranslateToggle = async () => {
     const newValue = !autoTranslateEnabled;
     setAutoTranslateEnabled(newValue);
-    await saveSettings(newValue, preferredLanguage, culturalHintsEnabled);
+    await saveSettings(newValue, preferredLanguage, languageHelpEnabled);
   };
 
   /**
@@ -98,15 +103,15 @@ export default function AISettingsScreen() {
   const handleLanguageChange = async (language: string) => {
     setPreferredLanguage(language);
     setMenuVisible(false);
-    await saveSettings(autoTranslateEnabled, language, culturalHintsEnabled);
+    await saveSettings(autoTranslateEnabled, language, languageHelpEnabled);
   };
 
   /**
-   * Handle cultural hints toggle
+   * Handle language help toggle
    */
-  const handleCulturalHintsToggle = async () => {
-    const newValue = !culturalHintsEnabled;
-    setCulturalHintsEnabled(newValue);
+  const handleLanguageHelpToggle = async () => {
+    const newValue = !languageHelpEnabled;
+    setLanguageHelpEnabled(newValue);
     await saveSettings(autoTranslateEnabled, preferredLanguage, newValue);
   };
 
@@ -200,10 +205,10 @@ export default function AISettingsScreen() {
 
       <View style={styles.section}>
         <Text variant="titleMedium" style={styles.sectionTitle}>
-          Cultural Understanding
+          Language Help
         </Text>
         <Text variant="bodySmall" style={styles.sectionDescription}>
-          Get explanations for cultural references in messages
+          Understand cultural references, slang, and informal language
         </Text>
       </View>
 
@@ -211,14 +216,14 @@ export default function AISettingsScreen() {
 
       <View style={styles.settingRow}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge">Cultural Context Hints</Text>
+          <Text variant="bodyLarge">Language Help</Text>
           <Text variant="bodySmall" style={styles.settingDescription}>
-            Analyze messages for cultural references, idioms, and customs
+            Explain cultural references, slang, idioms, and informal expressions
           </Text>
         </View>
         <Switch
-          value={culturalHintsEnabled}
-          onValueChange={handleCulturalHintsToggle}
+          value={languageHelpEnabled}
+          onValueChange={handleLanguageHelpToggle}
           disabled={saving}
         />
       </View>

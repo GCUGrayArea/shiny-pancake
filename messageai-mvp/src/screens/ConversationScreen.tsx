@@ -195,18 +195,15 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    
+
     const unsubscribe = subscribeToMessages(chatId, async (newMessage) => {
-      console.log('[ConversationScreen] New message callback triggered:', newMessage.id);
       // The sync service handles saving messages with translations
       // Wait briefly for sync to complete, then reload from local DB
       setTimeout(async () => {
         try {
-          console.log('[ConversationScreen] Reloading messages from local DB');
           const localResult = await getMessagesByChat(chatId);
           if (localResult.success && localResult.data) {
             const sortedMessages = localResult.data.sort((a, b) => a.timestamp - b.timestamp);
-            console.log('[ConversationScreen] Loaded', sortedMessages.length, 'messages');
             setMessages(sortedMessages);
           }
         } catch (error) {
@@ -224,7 +221,7 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    
+
     const unsubscribe = subscribeToMessageUpdates(chatId, async (updatedMessage) => {
       // Reload from local DB to get the latest version (including translations if added)
       setTimeout(async () => {
@@ -645,7 +642,7 @@ export default function ConversationScreen() {
                   senderName={shouldShowSenderIndicator ? senderName : undefined}
                   isGroup={isGroup}
                   preferredLanguage={(user?.preferredLanguage as LanguageCode) || 'en'}
-                  culturalHintsEnabled={user?.culturalHintsEnabled || false}
+                  languageHelpEnabled={user?.culturalHintsEnabled || user?.slangExplanationsEnabled || false}
                 />
               );
             }}

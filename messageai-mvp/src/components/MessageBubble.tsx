@@ -14,13 +14,15 @@ import { computeMessageStatus, getDeliveryCount, getReadCount } from '@/utils/me
 import MessageContextMenu, { MenuAction } from './MessageContextMenu';
 import LanguagePickerModal from './LanguagePickerModal';
 import TranslationBubble from './TranslationBubble';
-import ContextHintModal from './ContextHintModal';
+import LanguageHelpModal from './LanguageHelpModal';
 import { detectLanguage } from '@/services/ai/language-detection.service';
 import { translateMessageOnDemand } from '@/services/ai/translation.service';
-import type { LanguageCode, ContextHint } from '@/services/ai/types';
+import type { LanguageCode, ContextHint, SlangItem } from '@/services/ai/types';
 import Avatar from '@/components/Avatar';
 import { analyzeCulturalContext } from '@/services/ai/agents/cultural-context-agent';
 import { getCulturalHints, saveCulturalHints, markHintAsSeen } from '@/services/cultural-hints.service';
+import { detectSlangIdioms } from '@/services/ai/agents/slang-idiom-agent';
+import { getSlangItems, saveSlangItems, markSlangAsKnown } from '@/services/slang-glossary.service';
 
 interface MessageBubbleProps {
   message: Message;
@@ -34,7 +36,7 @@ interface MessageBubbleProps {
   showSenderIndicator?: boolean; // Only show when sender changes from previous message
   preferredLanguage?: LanguageCode; // User's preferred language for translations
   onTranslationUpdate?: (messageId: string, translation: string, targetLang: LanguageCode) => void;
-  culturalHintsEnabled?: boolean; // Whether cultural hints feature is enabled
+  languageHelpEnabled?: boolean; // Whether language help feature is enabled (cultural + slang)
 }
 
 export default function MessageBubble({
@@ -49,7 +51,7 @@ export default function MessageBubble({
   showSenderIndicator = false,
   preferredLanguage = 'en',
   onTranslationUpdate,
-  culturalHintsEnabled = false,
+  languageHelpEnabled = false,
 }: MessageBubbleProps) {
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
@@ -63,11 +65,12 @@ export default function MessageBubble({
   const [translating, setTranslating] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
 
-  // Cultural hints state
+  // Language help state (combined cultural + slang)
   const [culturalHints, setCulturalHints] = useState<ContextHint[]>([]);
-  const [analyzingCulturalContext, setAnalyzingCulturalContext] = useState(false);
-  const [culturalContextError, setCulturalContextError] = useState<string | null>(null);
-  const [culturalHintModalVisible, setCulturalHintModalVisible] = useState(false);
+  const [slangItems, setSlangItems] = useState<SlangItem[]>([]);
+  const [analyzingLanguage, setAnalyzingLanguage] = useState(false);
+  const [languageError, setLanguageError] = useState<string | null>(null);
+  const [languageHelpModalVisible, setLanguageHelpModalVisible] = useState(false);
 
   // Compute the actual status from message data
   const displayStatus = computeMessageStatus(message, currentUserId);
@@ -149,8 +152,8 @@ export default function MessageBubble({
       case 'translate-to':
         handleTranslateTo();
         break;
-      case 'cultural-context':
-        handleAnalyzeCulturalContext();
+      case 'language-help':
+        handleLanguageHelp();
         break;
       case 'copy':
         // TODO: Implement copy functionality
@@ -159,38 +162,49 @@ export default function MessageBubble({
     }
   };
 
-  // Handle cultural context analysis
-  const handleAnalyzeCulturalContext = async () => {
-    setAnalyzingCulturalContext(true);
-    setCulturalContextError(null);
-    setCulturalHintModalVisible(true); // Open modal immediately
+  // Handle combined language help (cultural context + slang)
+  const handleLanguageHelp = async () => {
+    setAnalyzingLanguage(true);
+    setLanguageError(null);
+    setLanguageHelpModalVisible(true); // Open modal immediately
 
     try {
-      // First check if we already have hints cached
-      const cachedHints = await getCulturalHints(message.id);
-      if (cachedHints.length > 0) {
-        setCulturalHints(cachedHints);
-        setAnalyzingCulturalContext(false);
-        return;
-      }
-
       // Detect language for the message if not already detected
       const messageLanguage = message.detectedLanguage as LanguageCode || await detectLanguage(message.content);
 
-      // Analyze cultural context with user's preferred language for explanations
-      const hints = await analyzeCulturalContext(message.content, messageLanguage, message.id, preferredLanguage);
+      // Check cache first
+      const cachedHints = await getCulturalHints(message.id);
+      const cachedSlang = await getSlangItems(message.id);
 
-      // Save hints to database
+      // If we have cached data, use it
+      if (cachedHints.length > 0 || cachedSlang.length > 0) {
+        setCulturalHints(cachedHints);
+        setSlangItems(cachedSlang);
+        setAnalyzingLanguage(false);
+        return;
+      }
+
+      // Run both analyses in parallel for better performance
+      const [hints, items] = await Promise.all([
+        analyzeCulturalContext(message.content, messageLanguage, message.id, preferredLanguage),
+        detectSlangIdioms(message.content, messageLanguage, message.id, preferredLanguage),
+      ]);
+
+      // Save results to database
       if (hints.length > 0) {
         await saveCulturalHints(hints);
       }
+      if (items.length > 0) {
+        await saveSlangItems(items);
+      }
 
       setCulturalHints(hints);
+      setSlangItems(items);
     } catch (error) {
-      console.error('Error analyzing cultural context:', error);
-      setCulturalContextError('Failed to analyze cultural context');
+      console.error('Error analyzing language:', error);
+      setLanguageError('Failed to analyze language');
     } finally {
-      setAnalyzingCulturalContext(false);
+      setAnalyzingLanguage(false);
     }
   };
 
@@ -201,6 +215,17 @@ export default function MessageBubble({
     setCulturalHints(prev =>
       prev.map(hint =>
         hint.id === hintId ? { ...hint, seen: true } : hint
+      )
+    );
+  };
+
+  // Handle marking slang as known
+  const handleMarkSlangAsKnown = async (itemId: string) => {
+    await markSlangAsKnown(itemId);
+    // Update local state
+    setSlangItems(prev =>
+      prev.map(item =>
+        item.id === itemId ? { ...item, known: true } : item
       )
     );
   };
@@ -225,13 +250,13 @@ export default function MessageBubble({
         color: '#2196F3',
       });
 
-      // Show cultural context option if feature is enabled
-      if (culturalHintsEnabled) {
+      // Show language help option if feature is enabled
+      if (languageHelpEnabled) {
         actions.push({
-          id: 'cultural-context',
-          label: 'Analyze Cultural Context',
-          icon: 'earth-box',
-          color: '#9C27B0',
+          id: 'language-help',
+          label: 'Language Help',
+          icon: 'lightbulb-on-outline',
+          color: '#FF6F00',
         });
       }
 
@@ -536,14 +561,16 @@ export default function MessageBubble({
         title="Translate to"
       />
 
-      {/* Cultural context hints modal */}
-      <ContextHintModal
-        visible={culturalHintModalVisible}
-        hints={culturalHints}
-        onClose={() => setCulturalHintModalVisible(false)}
-        onMarkAsSeen={handleMarkHintAsSeen}
-        loading={analyzingCulturalContext}
-        error={culturalContextError}
+      {/* Language help modal (combined cultural + slang) */}
+      <LanguageHelpModal
+        visible={languageHelpModalVisible}
+        culturalHints={culturalHints}
+        slangItems={slangItems}
+        onClose={() => setLanguageHelpModalVisible(false)}
+        onMarkHintAsSeen={handleMarkHintAsSeen}
+        onMarkSlangAsKnown={handleMarkSlangAsKnown}
+        loading={analyzingLanguage}
+        error={languageError}
       />
     </>
   );

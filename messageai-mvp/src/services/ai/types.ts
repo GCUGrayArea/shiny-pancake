@@ -287,3 +287,46 @@ export interface FormalityAdjustmentResult {
   /** Target formality level */
   toLevel: FormalityLevel;
 }
+
+/**
+ * Slang or idiom item category
+ */
+export type SlangCategory =
+  | 'slang'           // Informal vocabulary
+  | 'idiom'           // Figurative expressions
+  | 'colloquialism'   // Regional phrases
+  | 'internet-slang'; // Online/text abbreviations (LOL, FOMO, etc.)
+
+/**
+ * Slang or idiom detection item
+ */
+export interface SlangItem {
+  /** Unique identifier for the slang item */
+  id: string;
+  /** Message ID this slang is associated with */
+  messageId: string;
+  /** The slang phrase or idiom */
+  phrase: string;
+  /** Word-for-word/literal meaning */
+  literal: string;
+  /** What it actually means */
+  actual: string;
+  /** Example sentence showing usage */
+  usage: string;
+  /** Formality notes (when to use/avoid) */
+  formality: string;
+  /** Category of slang */
+  category: SlangCategory;
+  /** Regions where it's common (e.g., ['US', 'UK']) */
+  regions?: string[];
+  /** Language of the slang phrase */
+  language: LanguageCode;
+  /** Start position of phrase in message (for highlighting) */
+  startIndex: number;
+  /** End position of phrase in message (for highlighting) */
+  endIndex: number;
+  /** Whether user has marked as known */
+  known?: boolean;
+  /** Timestamp when item was created */
+  timestamp?: number;
+}

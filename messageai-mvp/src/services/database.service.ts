@@ -166,6 +166,25 @@ async function createSchema(): Promise<void> {
       FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
     );
 
+    -- Slang and idiom items table
+    CREATE TABLE IF NOT EXISTS slang_items (
+      id TEXT PRIMARY KEY,
+      messageId TEXT NOT NULL,
+      phrase TEXT NOT NULL,
+      literal TEXT NOT NULL,
+      actual TEXT NOT NULL,
+      usage TEXT NOT NULL,
+      formality TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('slang', 'idiom', 'colloquialism', 'internet-slang')),
+      regions TEXT,
+      language TEXT NOT NULL,
+      startIndex INTEGER NOT NULL,
+      endIndex INTEGER NOT NULL,
+      known INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL,
+      FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
     -- Create indexes for performance
     CREATE INDEX IF NOT EXISTS idx_messages_chatId_timestamp
       ON messages(chatId, timestamp DESC);
@@ -181,6 +200,12 @@ async function createSchema(): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_cultural_hints_messageId
       ON cultural_hints(messageId);
+
+    CREATE INDEX IF NOT EXISTS idx_slang_items_messageId
+      ON slang_items(messageId);
+
+    CREATE INDEX IF NOT EXISTS idx_slang_items_phrase
+      ON slang_items(phrase COLLATE NOCASE);
   `);
 }
 
@@ -266,6 +291,11 @@ async function runMigrations(): Promise<void> {
     // Add cultural hints preference to users table
     await db.execAsync(`
       ALTER TABLE users ADD COLUMN culturalHintsEnabled INTEGER DEFAULT 0;
+    `).catch(() => {});
+
+    // Add slang explanations preference to users table
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN slangExplanationsEnabled INTEGER DEFAULT 0;
     `).catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now
