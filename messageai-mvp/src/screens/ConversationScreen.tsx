@@ -645,7 +645,6 @@ export default function ConversationScreen() {
                   senderName={shouldShowSenderIndicator ? senderName : undefined}
                   isGroup={isGroup}
                   preferredLanguage={(user?.preferredLanguage as LanguageCode) || 'en'}
-                  culturalHintsEnabled={user?.culturalHintsEnabled || false}
                 />
               );
             }}

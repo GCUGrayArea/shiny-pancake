@@ -14,13 +14,10 @@ import { computeMessageStatus, getDeliveryCount, getReadCount } from '@/utils/me
 import MessageContextMenu, { MenuAction } from './MessageContextMenu';
 import LanguagePickerModal from './LanguagePickerModal';
 import TranslationBubble from './TranslationBubble';
-import ContextHintModal from './ContextHintModal';
 import { detectLanguage } from '@/services/ai/language-detection.service';
 import { translateMessageOnDemand } from '@/services/ai/translation.service';
-import type { LanguageCode, ContextHint } from '@/services/ai/types';
+import type { LanguageCode } from '@/services/ai/types';
 import Avatar from '@/components/Avatar';
-import { analyzeCulturalContext } from '@/services/ai/agents/cultural-context-agent';
-import { getCulturalHints, saveCulturalHints, markHintAsSeen } from '@/services/cultural-hints.service';
 
 interface MessageBubbleProps {
   message: Message;
@@ -34,7 +31,6 @@ interface MessageBubbleProps {
   showSenderIndicator?: boolean; // Only show when sender changes from previous message
   preferredLanguage?: LanguageCode; // User's preferred language for translations
   onTranslationUpdate?: (messageId: string, translation: string, targetLang: LanguageCode) => void;
-  culturalHintsEnabled?: boolean; // Whether cultural hints feature is enabled
 }
 
 export default function MessageBubble({
@@ -49,7 +45,6 @@ export default function MessageBubble({
   showSenderIndicator = false,
   preferredLanguage = 'en',
   onTranslationUpdate,
-  culturalHintsEnabled = false,
 }: MessageBubbleProps) {
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
@@ -62,12 +57,6 @@ export default function MessageBubble({
   const [onDemandTargetLang, setOnDemandTargetLang] = useState<LanguageCode | null>(null);
   const [translating, setTranslating] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
-
-  // Cultural hints state
-  const [culturalHints, setCulturalHints] = useState<ContextHint[]>([]);
-  const [analyzingCulturalContext, setAnalyzingCulturalContext] = useState(false);
-  const [culturalContextError, setCulturalContextError] = useState<string | null>(null);
-  const [culturalHintModalVisible, setCulturalHintModalVisible] = useState(false);
 
   // Compute the actual status from message data
   const displayStatus = computeMessageStatus(message, currentUserId);
@@ -149,60 +138,11 @@ export default function MessageBubble({
       case 'translate-to':
         handleTranslateTo();
         break;
-      case 'cultural-context':
-        handleAnalyzeCulturalContext();
-        break;
       case 'copy':
         // TODO: Implement copy functionality
         console.log('Copy message:', message.content);
         break;
     }
-  };
-
-  // Handle cultural context analysis
-  const handleAnalyzeCulturalContext = async () => {
-    setAnalyzingCulturalContext(true);
-    setCulturalContextError(null);
-    setCulturalHintModalVisible(true); // Open modal immediately
-
-    try {
-      // First check if we already have hints cached
-      const cachedHints = await getCulturalHints(message.id);
-      if (cachedHints.length > 0) {
-        setCulturalHints(cachedHints);
-        setAnalyzingCulturalContext(false);
-        return;
-      }
-
-      // Detect language for the message if not already detected
-      const messageLanguage = message.detectedLanguage as LanguageCode || await detectLanguage(message.content);
-
-      // Analyze cultural context
-      const hints = await analyzeCulturalContext(message.content, messageLanguage, message.id);
-
-      // Save hints to database
-      if (hints.length > 0) {
-        await saveCulturalHints(hints);
-      }
-
-      setCulturalHints(hints);
-    } catch (error) {
-      console.error('Error analyzing cultural context:', error);
-      setCulturalContextError('Failed to analyze cultural context');
-    } finally {
-      setAnalyzingCulturalContext(false);
-    }
-  };
-
-  // Handle marking hint as seen
-  const handleMarkHintAsSeen = async (hintId: string) => {
-    await markHintAsSeen(hintId);
-    // Update local state
-    setCulturalHints(prev =>
-      prev.map(hint =>
-        hint.id === hintId ? { ...hint, seen: true } : hint
-      )
-    );
   };
 
   // Build context menu actions
@@ -224,16 +164,6 @@ export default function MessageBubble({
         icon: 'earth',
         color: '#2196F3',
       });
-
-      // Show cultural context option if feature is enabled
-      if (culturalHintsEnabled) {
-        actions.push({
-          id: 'cultural-context',
-          label: 'Analyze Cultural Context',
-          icon: 'earth-box',
-          color: '#9C27B0',
-        });
-      }
 
       actions.push({
         id: 'copy',
@@ -534,16 +464,6 @@ export default function MessageBubble({
         onSelect={handleLanguageSelect}
         onClose={() => setLanguagePickerVisible(false)}
         title="Translate to"
-      />
-
-      {/* Cultural context hints modal */}
-      <ContextHintModal
-        visible={culturalHintModalVisible}
-        hints={culturalHints}
-        onClose={() => setCulturalHintModalVisible(false)}
-        onMarkAsSeen={handleMarkHintAsSeen}
-        loading={analyzingCulturalContext}
-        error={culturalContextError}
       />
     </>
   );

@@ -29,8 +29,6 @@ export interface User {
   preferredLanguage?: string;
   /** URL to user's profile picture in Firebase Storage */
   profilePictureUrl?: string;
-  /** Show cultural context hints for messages */
-  culturalHintsEnabled?: boolean;
 }
 
 /**
