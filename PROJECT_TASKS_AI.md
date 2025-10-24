@@ -1111,9 +1111,10 @@
 ---
 
 #### PR-052: Background/Killed Push Notifications
-**Dependencies:** PR-031 (foreground notifications from MVP)  
-**Estimated Time:** 2 hours  
+**Dependencies:** PR-031 (foreground notifications from MVP)
+**Estimated Time:** 2 hours
 **Prerequisites:** ✅ PR-031 merged (can start in parallel with AI features)
+**Status:** 🔄 IN PROGRESS (Agent working on FCM integration)
 
 **Tasks:**
 1. **Background Notification Handling** (1 hour):
