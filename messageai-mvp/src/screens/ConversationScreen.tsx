@@ -22,6 +22,7 @@ import { useNetwork } from '@/contexts/NetworkContext';
 import { saveChat } from '@/services/local-chat.service';
 import { saveUser } from '@/services/local-user.service';
 import * as NotificationManager from '@/services/notification-manager.service';
+import * as UnreadService from '@/services/unread.service';
 import { Message, User } from '@/types';
 import MessageBubble from '@/components/MessageBubble';
 import MessageInput from '@/components/MessageInput';
@@ -58,16 +59,18 @@ export default function ConversationScreen() {
   const [typingUsers, setTypingUsers] = useState<User[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
-  // Set current viewing chat for notification suppression
+  // Set current viewing chat for notification suppression and mark as read
   useEffect(() => {
-    if (chatId) {
+    if (chatId && user?.uid) {
       NotificationManager.setCurrentViewingChat(chatId);
+      // Mark chat as read when user opens it
+      UnreadService.markChatAsRead(chatId, user.uid);
     }
 
     return () => {
       NotificationManager.setCurrentViewingChat(null);
     };
-  }, [chatId]);
+  }, [chatId, user?.uid]);
 
   // Load other user's info if not provided (when opening from notification)
   useEffect(() => {

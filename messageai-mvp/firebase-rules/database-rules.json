@@ -5,7 +5,15 @@
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid",
-        ".validate": "newData.hasChildren(['uid', 'email', 'displayName', 'createdAt', 'lastSeen', 'isOnline'])"
+        ".validate": "newData.hasChildren(['uid', 'email', 'displayName', 'createdAt', 'lastSeen', 'isOnline'])",
+        "pushToken": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString()"
+        },
+        "fcmToken": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString()"
+        }
       }
     },
     "chats": {
@@ -19,6 +27,13 @@
         ".validate": "newData.hasChildren(['id', 'type', 'participantIds', 'createdAt'])",
         "participantIds": {
           ".validate": "newData.hasChildren()"
+        },
+        "unreadCount": {
+          "$uid": {
+            ".read": "auth != null && auth.uid == $uid",
+            ".write": "auth != null",
+            ".validate": "newData.isNumber()"
+          }
         }
       }
     },

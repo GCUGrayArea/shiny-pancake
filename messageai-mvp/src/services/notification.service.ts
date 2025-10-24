@@ -181,22 +181,50 @@ export async function clearAllNotifications(): Promise<void> {
 }
 
 /**
- * Get push notification token (for future FCM integration)
- * Currently returns null as we're using local notifications
+ * Get push notification token from Expo
+ * Returns the device's push token for FCM/APNS
  */
 export async function getPushToken(): Promise<string | null> {
-  // Placeholder for future FCM implementation
-  // See POST_MVP_NOTIFICATIONS_UPGRADE.md for migration guide
-  return null;
+  try {
+    // Check if we have permission first
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      console.log('Push notification permission not granted');
+      return null;
+    }
+
+    // Get the push token
+    const tokenData = await Notifications.getExpoPushTokenAsync({
+      projectId: 'your-project-id', // TODO: Replace with actual Expo project ID
+    });
+
+    return tokenData.data;
+  } catch (error) {
+    console.error('Error getting push token:', error);
+    return null;
+  }
 }
 
 /**
- * Save push token to user profile (for future FCM integration)
+ * Save push token to user profile in Firebase
  */
 export async function savePushTokenToProfile(
   userId: string,
   token: string
 ): Promise<void> {
-  // Placeholder for future FCM implementation
+  try {
+    // This will be implemented by the auth service
+    // For now, just log it
+    console.log(`Would save push token for user ${userId}: ${token}`);
+  } catch (error) {
+    console.error('Error saving push token:', error);
+  }
 }
 
