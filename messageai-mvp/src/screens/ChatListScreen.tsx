@@ -11,13 +11,14 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
-import { Chat } from '@/types';
+import { Chat, User } from '@/types';
 import { getRelativeTime } from '@/utils/time.utils';
 import { getAllChats } from '@/services/local-chat.service';
 import { getUserFromFirebase } from '@/services/firebase-user.service';
 import { getUsers } from '@/services/local-user.service';
 import { MainStackParamList } from '@/navigation/AppNavigator';
 import { getChatDisplayName } from '@/utils/chat.utils';
+import Avatar from '@/components/Avatar';
 
 type ChatListNavigationProp = NativeStackNavigationProp<MainStackParamList, 'ChatList'>;
 
@@ -27,6 +28,7 @@ export default function ChatListScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
+  const [userDataMap, setUserDataMap] = useState<Map<string, User>>(new Map());
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<ChatListNavigationProp>();
@@ -115,12 +117,14 @@ export default function ChatListScreen() {
 
       if (userIdsToLoad.size > 0) {
         const newUserNames = new Map<string, string>();
+        const newUserData = new Map<string, User>();
 
         // Try to load from local database first
         const usersResult = await getUsers(Array.from(userIdsToLoad));
         if (usersResult.success && usersResult.data) {
           for (const u of usersResult.data) {
             newUserNames.set(u.uid, u.displayName);
+            newUserData.set(u.uid, u);
           }
         }
 
@@ -134,6 +138,7 @@ export default function ChatListScreen() {
             const userResult = await getUserFromFirebase(uid);
             if (userResult.success && userResult.data) {
               newUserNames.set(uid, userResult.data.displayName);
+              newUserData.set(uid, userResult.data);
             }
           } catch (error) {
             // Silently fail for individual users
@@ -141,6 +146,7 @@ export default function ChatListScreen() {
         }
 
         setUserNames(newUserNames);
+        setUserDataMap(newUserData);
       }
 
       setHasLoadedOnce(true);
@@ -289,6 +295,11 @@ export default function ChatListScreen() {
       ? participantIds.find(id => id !== user?.uid)
       : null;
 
+    // Get avatar info for 1:1 chats (show other participant's avatar)
+    const avatarUser = isOneOnOne && otherParticipantId
+      ? userDataMap.get(otherParticipantId)
+      : null;
+
     return (
       <Pressable
         style={({ pressed }) => [
@@ -297,6 +308,26 @@ export default function ChatListScreen() {
         ]}
         onPress={() => handleOpenChat(chat)}
       >
+        {/* Avatar */}
+        {isOneOnOne && avatarUser ? (
+          <Avatar
+            displayName={avatarUser.displayName}
+            userId={avatarUser.uid}
+            profilePictureUrl={avatarUser.profilePictureUrl}
+            size="medium"
+            showOnlineStatus={true}
+            isOnline={avatarUser.isOnline}
+            style={styles.avatar}
+          />
+        ) : (
+          <Avatar
+            displayName={chatDisplayName}
+            userId={chat.id}
+            size="medium"
+            style={styles.avatar}
+          />
+        )}
+
         <View style={styles.chatContent}>
           <View style={styles.chatNameRow}>
             <Text variant="titleMedium" style={styles.chatName}>
@@ -444,6 +475,9 @@ const styles = StyleSheet.create({
   },
   chatItemPressed: {
     backgroundColor: '#F5F5F5',
+  },
+  avatar: {
+    marginRight: 12,
   },
   chatContent: {
     flex: 1,

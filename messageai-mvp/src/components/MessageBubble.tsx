@@ -17,13 +17,15 @@ import TranslationBubble from './TranslationBubble';
 import { detectLanguage } from '@/services/ai/language-detection.service';
 import { translateMessageOnDemand } from '@/services/ai/translation.service';
 import type { LanguageCode } from '@/services/ai/types';
-// import Avatar from '@/components/Avatar'; // Temporarily disabled - using inline avatar
+import Avatar from '@/components/Avatar';
 
 interface MessageBubbleProps {
   message: Message;
   isOwnMessage: boolean;
   showSenderName?: boolean; // For group chats
   senderName?: string;
+  senderProfilePictureUrl?: string; // Profile picture URL for sender
+  senderId?: string; // Sender's user ID for avatar color
   currentUserId?: string; // For computing status
   isGroup?: boolean; // For showing delivery counts in group chats
   showSenderIndicator?: boolean; // Only show when sender changes from previous message
@@ -36,6 +38,8 @@ export default function MessageBubble({
   isOwnMessage,
   showSenderName = false,
   senderName,
+  senderProfilePictureUrl,
+  senderId,
   currentUserId,
   isGroup = false,
   showSenderIndicator = false,
@@ -316,11 +320,12 @@ export default function MessageBubble({
         {/* Sender name and avatar for group chats */}
         {showSenderIndicator && senderName && (
           <View style={styles.senderHeader}>
-            <View style={[styles.avatarCircle, { backgroundColor: '#2196F3' }]}>
-              <Text style={styles.avatarText}>
-                {senderName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2) || '?'}
-              </Text>
-            </View>
+            <Avatar
+              displayName={senderName}
+              userId={senderId || message.senderId}
+              profilePictureUrl={senderProfilePictureUrl}
+              size="small"
+            />
             <Text variant="bodySmall" style={styles.senderName}>
               {senderName}
             </Text>
