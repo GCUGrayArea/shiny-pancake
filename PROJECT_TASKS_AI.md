@@ -547,6 +547,13 @@
 - Hints include phrase, explanation, cultural background, and position indexes
 - Modal design provides clear, educational explanations
 - Integration follows PR-044 pattern (context menu → analysis → modal display)
+- Fixed uuid crypto error by replacing with React Native compatible ID generation
+- AI explanations now respond in user's preferred language (not just message language)
+
+**Known Limitations (deferred to stretch goals - see PRD_AI.md "Bonus Feature Set 0"):**
+- UI labels remain in English (TranslationBubble, ContextHintModal, context menus, AISettingsScreen)
+- No automatic device language detection on signup (user must manually select language in AI Settings)
+- Core AI functionality works multilingually; UI localization is polish work for future
 
 ---
 

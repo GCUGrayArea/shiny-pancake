@@ -5,7 +5,40 @@
 
 import { callCompletion } from '../ai-client';
 import { ContextHint, ContextHintCategory, LanguageCode } from '../types';
-import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Generate a unique ID for React Native
+ * Uses timestamp + random number for uniqueness
+ */
+function generateId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+}
+
+/**
+ * Get human-readable language name from language code
+ */
+function getLanguageName(code: LanguageCode): string {
+  const names: Record<LanguageCode, string> = {
+    'en': 'English',
+    'es': 'Spanish',
+    'fr': 'French',
+    'de': 'German',
+    'it': 'Italian',
+    'pt': 'Portuguese',
+    'ru': 'Russian',
+    'zh': 'Chinese',
+    'ja': 'Japanese',
+    'ko': 'Korean',
+    'ar': 'Arabic',
+    'hi': 'Hindi',
+    'nl': 'Dutch',
+    'pl': 'Polish',
+    'sv': 'Swedish',
+    'tr': 'Turkish',
+    'unknown': 'English',
+  };
+  return names[code] || 'English';
+}
 
 /**
  * System prompt for cultural context detection
@@ -57,12 +90,14 @@ interface DetectedReference {
  * @param messageText - The message text to analyze
  * @param language - The language of the message
  * @param messageId - ID of the message being analyzed
+ * @param preferredLanguage - User's preferred language for explanations (optional, defaults to English)
  * @returns Array of cultural context hints
  */
 export async function analyzeCulturalContext(
   messageText: string,
   language: LanguageCode,
-  messageId: string
+  messageId: string,
+  preferredLanguage: LanguageCode = 'en'
 ): Promise<ContextHint[]> {
   try {
     // Skip if message is too short (likely no cultural references)
@@ -71,11 +106,14 @@ export async function analyzeCulturalContext(
     }
 
     // Build the analysis prompt
-    const userPrompt = `Analyze this ${language} message for cultural references:
+    const explanationLanguage = getLanguageName(preferredLanguage);
+    const userPrompt = `Analyze this ${getLanguageName(language)} message for cultural references:
 
 "${messageText}"
 
-Identify any holidays, idioms, customs, historical references, or cultural norms that might need explanation for someone from a different cultural background.`;
+Identify any holidays, idioms, customs, historical references, or cultural norms that might need explanation for someone from a different cultural background.
+
+IMPORTANT: Provide all explanations and cultural background text in ${explanationLanguage}. The user's preferred language is ${explanationLanguage}, so write your response entirely in that language.`;
 
     // Call OpenAI for analysis
     const response = await callCompletion(
@@ -94,7 +132,7 @@ Identify any holidays, idioms, customs, historical references, or cultural norms
 
     // Convert detected references to ContextHints
     const hints: ContextHint[] = detectedReferences.map(ref => ({
-      id: uuidv4(),
+      id: generateId(),
       messageId,
       phrase: ref.phrase,
       explanation: ref.explanation,
@@ -159,10 +197,12 @@ function parseAIResponse(response: string): DetectedReference[] {
  * Analyze multiple messages in batch for efficiency
  *
  * @param messages - Array of messages to analyze
+ * @param preferredLanguage - User's preferred language for explanations
  * @returns Map of messageId to array of hints
  */
 export async function analyzeCulturalContextBatch(
-  messages: Array<{ id: string; text: string; language: LanguageCode }>
+  messages: Array<{ id: string; text: string; language: LanguageCode }>,
+  preferredLanguage: LanguageCode = 'en'
 ): Promise<Map<string, ContextHint[]>> {
   const results = new Map<string, ContextHint[]>();
 
@@ -171,7 +211,7 @@ export async function analyzeCulturalContextBatch(
   for (let i = 0; i < messages.length; i += BATCH_SIZE) {
     const batch = messages.slice(i, i + BATCH_SIZE);
     const promises = batch.map(msg =>
-      analyzeCulturalContext(msg.text, msg.language, msg.id)
+      analyzeCulturalContext(msg.text, msg.language, msg.id, preferredLanguage)
     );
 
     const batchResults = await Promise.all(promises);

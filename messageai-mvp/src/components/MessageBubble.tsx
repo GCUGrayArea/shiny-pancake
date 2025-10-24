@@ -177,8 +177,8 @@ export default function MessageBubble({
       // Detect language for the message if not already detected
       const messageLanguage = message.detectedLanguage as LanguageCode || await detectLanguage(message.content);
 
-      // Analyze cultural context
-      const hints = await analyzeCulturalContext(message.content, messageLanguage, message.id);
+      // Analyze cultural context with user's preferred language for explanations
+      const hints = await analyzeCulturalContext(message.content, messageLanguage, message.id, preferredLanguage);
 
       // Save hints to database
       if (hints.length > 0) {

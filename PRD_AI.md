@@ -1192,6 +1192,39 @@ Architecture docs, demo video, final testing, submission preparation.
 
 ## Stretch Goals (If Time Permits)
 
+### Bonus Feature Set 0: Full UI Localization (+3 points polish)
+**Estimated Time:** 6-8 hours
+**Status:** Partially implemented
+
+**Current State:**
+- ✅ AI-generated content (cultural context explanations, formality adjustments) responds in user's preferred language
+- ✅ Message translation works multilingually
+- ❌ UI labels/buttons remain in English (TranslationBubble, ContextHintModal, MessageBubble context menu, AISettingsScreen)
+- ❌ No automatic device language detection on signup
+
+**Tasks:**
+- Install and configure i18n library (react-i18next or expo-localization)
+- Create translation files for 16+ supported languages
+- Localize all UI strings (~25 strings across 4 components):
+  - TranslationBubble: "Translating...", "Translation failed", "Show Translation", "Show Original"
+  - ContextHintModal: "Cultural Context", "Analyzing...", "No cultural references detected", "Got it!", "Close", category names
+  - MessageBubble: Context menu items ("Translate to...", "Analyze Cultural Context", "Copy")
+  - AISettingsScreen: All setting labels and descriptions
+- Implement automatic device language detection on user signup
+- Test language switching across all screens
+- Handle edge cases (pluralization, interpolation)
+
+**Validation:**
+- [ ] All UI strings translated for target languages
+- [ ] Language switching works without app restart
+- [ ] Device language auto-detected on first launch
+- [ ] Translations accurate and natural
+- [ ] No hardcoded English strings remaining
+
+**Note:** This is LOW priority - AI features working multilingually is more important than UI labels. English UI is acceptable for grading.
+
+---
+
 ### Bonus Feature Set 1: Enhanced Messaging (+2 points)
 **Estimated Time:** 3 hours
 
