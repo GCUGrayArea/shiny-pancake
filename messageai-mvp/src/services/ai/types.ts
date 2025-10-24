@@ -249,3 +249,41 @@ export interface ContextHint {
   /** Timestamp when hint was created */
   timestamp?: number;
 }
+
+/**
+ * Formality levels from very informal to very formal
+ */
+export type FormalityLevel =
+  | 'very-informal'
+  | 'informal'
+  | 'neutral'
+  | 'formal'
+  | 'very-formal';
+
+/**
+ * Formality detection result
+ */
+export interface FormalityDetectionResult {
+  /** Detected formality level */
+  level: FormalityLevel;
+  /** Confidence score (0-1) */
+  confidence: number;
+  /** Brief explanation of the rating */
+  explanation: string;
+}
+
+/**
+ * Formality adjustment result
+ */
+export interface FormalityAdjustmentResult {
+  /** Original text */
+  originalText: string;
+  /** Adjusted text */
+  adjustedText: string;
+  /** Changes made during adjustment */
+  changes: string[];
+  /** Source formality level */
+  fromLevel: FormalityLevel;
+  /** Target formality level */
+  toLevel: FormalityLevel;
+}
