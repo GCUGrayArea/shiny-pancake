@@ -1530,6 +1530,14 @@
      - Match WhatsApp/Telegram pattern
      - Test with group chats and 1:1 chats
 
+   - **Fix User Avatar Display Inconsistency**:
+     - User avatar displaying inconsistently
+     - Profile picture displays in chat list but generic icon with initials displays in actual chat
+     - Ensure consistent avatar display across all components
+     - Check avatar source/URL handling in chat screen vs chat list
+     - Verify image caching and loading logic
+     - Test with users who have profile pictures set
+
 2. **LanguageHelpModal Scroll Gesture Refinement** (30 min):
    - Current state: Scrollbar works, but content requires precise touch targeting
    - Issue: ScrollView gesture detection inconsistent on content cards
