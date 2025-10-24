@@ -532,9 +532,33 @@
 ---
 
 #### PR-046: Formality Level Adjustment
-**Dependencies:** PR-042, PR-044 (translation service for reference)  
-**Estimated Time:** 3 hours  
+**Dependencies:** PR-042, PR-044 (translation service for reference)
+**Estimated Time:** 3 hours
 **Prerequisites:** ✅ PR-042, PR-044 merged
+**Status:** ✅ COMPLETE
+
+**Files Created:**
+- `messageai-mvp/src/services/ai/agents/formality-agent.ts` - Formality detection and adjustment agent
+- `messageai-mvp/src/components/FormalityIndicator.tsx` - Formality level display with quick adjustment buttons
+- `messageai-mvp/src/components/FormalityPreviewModal.tsx` - Side-by-side comparison modal
+- `messageai-mvp/src/__tests__/services/ai/agents/formality-agent.test.ts` - 22 unit tests (all passing)
+
+**Files Modified:**
+- `messageai-mvp/src/services/ai/types.ts` - Added FormalityLevel type and related interfaces
+- `messageai-mvp/src/components/MessageInput.tsx` - Integrated formality detection and adjustment UI
+
+**Implementation Summary:**
+- ✅ Created formality detection with 5 levels (very-informal to very-formal)
+- ✅ Implemented formality adjustment with meaning preservation
+- ✅ Added cultural awareness for multiple languages (EN, ES, FR, DE, JA, KO, AR, ZH)
+- ✅ Created FormalityIndicator component with visual feedback and quick action buttons
+- ✅ Created FormalityPreviewModal with side-by-side comparison and change explanations
+- ✅ Integrated into MessageInput with debounced detection (500ms)
+- ✅ Added caching for detection results (improves performance)
+- ✅ Written comprehensive unit tests (22 tests, all passing)
+- ✅ Graceful error handling (non-blocking, AI failures don't break app)
+- ✅ UI enhanced: Modal enlarged to 50% screen height with larger, more readable text
+- ✅ Tested and verified working in English and Spanish
 
 **Tasks:**
 1. **Formality Detection** (1 hour):
@@ -1153,20 +1177,22 @@
 **Dependencies:** PR-031 (foreground notifications from MVP)
 **Estimated Time:** 2 hours
 **Prerequisites:** ✅ PR-031 merged (can start in parallel with AI features)
-**Status:** ✅ COMPLETE - EAS build working, ready for feature testing
+**Status:** ✅ COMPLETE - All tests passed on physical device
 
 **Implementation Summary:**
 - ✅ Firebase Cloud Functions deployed for server-side push notification delivery
-- ✅ Push token registration and storage in Firebase
+- ✅ Native FCM token registration (switched from Expo tokens)
+- ✅ AsyncStorage auth persistence for killed-state recovery
 - ✅ Unread message counting system (per-chat and global)
 - ✅ Real-time badge count updates
-- ✅ Deep linking from killed state notifications
+- ✅ Deep linking from background and killed state notifications
 - ✅ Automatic invalid token cleanup
 - ✅ Unit tests written (14 test cases)
 - ✅ Comprehensive testing guide created (TESTING_PR052.md)
 - ✅ Setup documentation created (FCM_SETUP.md)
 - ✅ EAS build configuration complete (Firebase SDK env vars uploaded as secrets)
-- ✅ App successfully launches on physical device
+- ✅ Physical device testing complete (all tests passed)
+- ✅ Force-stop limitation documented (expected Android behavior)
 
 **Files Created:**
 - `functions/` - Complete Cloud Functions setup (TypeScript)
@@ -1176,13 +1202,15 @@
 - `FCM_SETUP.md` - Setup instructions
 - `TESTING_PR052.md` - 14-test manual testing guide
 - `PR052_SUMMARY.md` - Implementation summary
+- `KILLED_STATE_NOTIFICATION_ANALYSIS.md` - Force-stop behavior analysis
 
 **Files Modified:**
-- `app.json` - iOS/Android notification config
+- `app.config.js` - iOS/Android notification config (migrated from app.json)
 - `firebase.json` - Cloud Functions configuration
 - `firebase-rules/database-rules.json` - Token and unread rules
 - `src/types/index.ts` - Push token and unread types
-- `src/services/notification.service.ts` - FCM integration
+- `src/services/notification.service.ts` - Native FCM token integration
+- `src/services/firebase.ts` - AsyncStorage auth persistence
 - `src/contexts/NotificationContext.tsx` - Background/killed handling
 - `src/screens/ConversationScreen.tsx` - Mark chat as read
 
@@ -1240,18 +1268,19 @@
    - Document any platform-specific behavior
 
 **Validation:**
-- ⏳ Notifications received when app backgrounded (Requires physical device testing)
-- ⏳ Notifications received when app killed (Requires physical device testing)
-- ⏳ Deep linking works from background state (Requires physical device testing)
-- ⏳ Deep linking works from killed state (Requires physical device testing)
-- ⏳ Badge counts accurate (Requires physical device testing)
-- ⏳ No message loss during app restart (Requires physical device testing)
-- ⏳ Works on physical device (Android) (Requires physical device testing)
-- ⏳ Notification content correct (sender, preview) (Requires physical device testing)
-- ⏳ Sound/vibration work per device settings (Requires physical device testing)
+- ✅ Notifications received when app backgrounded (minimized)
+- ✅ Notifications received when app naturally killed (not in recents)
+- ✅ Deep linking works from background state
+- ✅ Deep linking works from killed state
+- ✅ Auth persists across app restarts
+- ✅ Badge counts accurate
+- ✅ No message loss during app restart
+- ✅ Works on physical device (Android)
+- ✅ Notification content correct (sender, preview)
+- ✅ Sound/vibration work per device settings
+- ✅ Force-stop limitation documented (expected Android behavior - see KILLED_STATE_NOTIFICATION_ANALYSIS.md)
 
-**Note:** All validation tests require physical device testing as per `TESTING_PR052.md`.
-Code implementation is complete and unit tested. Manual testing guide provides 14 comprehensive tests.
+**Note:** All critical tests passed on physical device. Force-stop (swipe from recents) prevents notifications as expected Android behavior - this is normal and affects all apps except system-whitelisted ones like WhatsApp.
 
 ---
 

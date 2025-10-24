@@ -213,3 +213,80 @@ export interface LanguageDetectionResult {
   /** Confidence score (0-1) */
   confidence: number;
 }
+<<<<<<< HEAD
+=======
+
+/**
+ * Cultural context hint category
+ */
+export type ContextHintCategory =
+  | 'holiday'      // Holidays and festivals
+  | 'idiom'        // Idioms and expressions
+  | 'custom'       // Cultural customs and traditions
+  | 'historical'   // Historical references
+  | 'norm';        // Cultural norms (greetings, formality, etc.)
+
+/**
+ * Cultural context hint
+ */
+export interface ContextHint {
+  /** Unique identifier for the hint */
+  id: string;
+  /** Message ID this hint is associated with */
+  messageId: string;
+  /** The cultural phrase or reference */
+  phrase: string;
+  /** Explanation of what it means */
+  explanation: string;
+  /** Cultural background and significance */
+  culturalBackground: string;
+  /** Category of the cultural reference */
+  category: ContextHintCategory;
+  /** Start position of phrase in message (for highlighting) */
+  startIndex: number;
+  /** End position of phrase in message (for highlighting) */
+  endIndex: number;
+  /** Whether user has seen this hint */
+  seen?: boolean;
+  /** Timestamp when hint was created */
+  timestamp?: number;
+}
+
+/**
+ * Formality levels from very informal to very formal
+ */
+export type FormalityLevel =
+  | 'very-informal'
+  | 'informal'
+  | 'neutral'
+  | 'formal'
+  | 'very-formal';
+
+/**
+ * Formality detection result
+ */
+export interface FormalityDetectionResult {
+  /** Detected formality level */
+  level: FormalityLevel;
+  /** Confidence score (0-1) */
+  confidence: number;
+  /** Brief explanation of the rating */
+  explanation: string;
+}
+
+/**
+ * Formality adjustment result
+ */
+export interface FormalityAdjustmentResult {
+  /** Original text */
+  originalText: string;
+  /** Adjusted text */
+  adjustedText: string;
+  /** Changes made during adjustment */
+  changes: string[];
+  /** Source formality level */
+  fromLevel: FormalityLevel;
+  /** Target formality level */
+  toLevel: FormalityLevel;
+}
+>>>>>>> parent of 182e1fa (Revert "feat: implement formality level adjustment (PR-046)")

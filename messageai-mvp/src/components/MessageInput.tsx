@@ -2,7 +2,7 @@
  * Message Input Component
  * Handles text input and image selection for sending messages
  * Supports both text and image messages with upload progress
- * Includes typing indicator integration
+ * Includes typing indicator integration and formality adjustment
  */
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -13,6 +13,16 @@ import { Message, MessageType } from '@/types';
 import { IMAGE_CONSTANTS, MESSAGE_CONSTANTS, ERROR_CODES } from '@/constants';
 import { compressImage, uploadImage, validateImage } from '@/services/image.service';
 import { setTyping, clearTyping } from '@/services/typing.service';
+import {
+  detectFormality,
+  adjustFormality,
+  type FormalityLevel,
+  type FormalityDetectionResult,
+  type FormalityAdjustmentResult,
+} from '@/services/ai/agents/formality-agent';
+import type { LanguageCode } from '@/services/ai/types';
+import FormalityIndicator from './FormalityIndicator';
+import FormalityPreviewModal from './FormalityPreviewModal';
 
 interface MessageInputProps {
   onSendMessage: (content: string, type: MessageType, imageUri?: string, caption?: string) => Promise<void>;
@@ -20,28 +30,45 @@ interface MessageInputProps {
   currentUserId?: string; // For typing indicators
   disabled?: boolean;
   placeholder?: string;
+  /** Enable formality detection and adjustment (default: true) */
+  enableFormality?: boolean;
+  /** Language for formality detection (default: 'en') */
+  language?: LanguageCode;
 }
 
 const CAPTION_MAX_LENGTH = 500;
 const TYPING_DEBOUNCE_MS = 300;
 const AUTO_CLEAR_TYPING_MS = 5000;
+const FORMALITY_DEBOUNCE_MS = 500; // Debounce formality detection
 
 export default function MessageInput({
   onSendMessage,
   chatId,
   currentUserId,
   disabled = false,
-  placeholder = "Type a message..."
+  placeholder = "Type a message...",
+  enableFormality = true,
+  language = 'en',
 }: MessageInputProps) {
   const [messageText, setMessageText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
+  // Formality state
+  const [formalityDetection, setFormalityDetection] = useState<FormalityDetectionResult | null>(null);
+  const [isDetectingFormality, setIsDetectingFormality] = useState(false);
+  const [isAdjustingFormality, setIsAdjustingFormality] = useState(false);
+  const [adjustmentResult, setAdjustmentResult] = useState<FormalityAdjustmentResult | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+
   // Refs for typing indicator management
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef<boolean>(false);
+
+  // Refs for formality detection management
+  const formalityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Clear typing indicator
   const clearTypingIndicator = useCallback(async () => {
@@ -67,7 +94,90 @@ export default function MessageInput({
     }
   }, [chatId, currentUserId]);
 
-  // Handle text change with debounced typing indicator
+  // Detect formality of text
+  const detectFormalityLevel = useCallback(async (text: string) => {
+    if (!enableFormality || !text || text.trim().length < 10) {
+      setFormalityDetection(null);
+      return;
+    }
+
+    setIsDetectingFormality(true);
+    try {
+      const result = await detectFormality(text, language);
+      setFormalityDetection(result);
+    } catch (error) {
+      // Silently fail - formality detection is non-critical
+      setFormalityDetection(null);
+    } finally {
+      setIsDetectingFormality(false);
+    }
+  }, [enableFormality, language]);
+
+  // Handle formality adjustment
+  const handleFormalityAdjustment = useCallback(async (targetLevel: FormalityLevel) => {
+    if (!messageText || messageText.trim().length < 10) {
+      return;
+    }
+
+    setIsAdjustingFormality(true);
+    try {
+      const result = await adjustFormality(
+        messageText,
+        targetLevel,
+        language,
+        formalityDetection?.level
+      );
+      setAdjustmentResult(result);
+      setShowPreviewModal(true);
+    } catch (error) {
+      Alert.alert(
+        'Adjustment Failed',
+        'Failed to adjust formality. Please try again.',
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsAdjustingFormality(false);
+    }
+  }, [messageText, language, formalityDetection]);
+
+  // Make text more formal
+  const handleMakeFormal = useCallback(async () => {
+    const targetLevel: FormalityLevel =
+      formalityDetection?.level === 'very-informal' ? 'informal' :
+      formalityDetection?.level === 'informal' ? 'neutral' :
+      formalityDetection?.level === 'neutral' ? 'formal' :
+      'very-formal';
+
+    await handleFormalityAdjustment(targetLevel);
+  }, [formalityDetection, handleFormalityAdjustment]);
+
+  // Make text more casual
+  const handleMakeCasual = useCallback(async () => {
+    const targetLevel: FormalityLevel =
+      formalityDetection?.level === 'very-formal' ? 'formal' :
+      formalityDetection?.level === 'formal' ? 'neutral' :
+      formalityDetection?.level === 'neutral' ? 'informal' :
+      'very-informal';
+
+    await handleFormalityAdjustment(targetLevel);
+  }, [formalityDetection, handleFormalityAdjustment]);
+
+  // Accept adjusted text
+  const handleAcceptAdjustment = useCallback((adjustedText: string) => {
+    setMessageText(adjustedText);
+    setShowPreviewModal(false);
+    setAdjustmentResult(null);
+    // Re-detect formality of adjusted text
+    detectFormalityLevel(adjustedText);
+  }, [detectFormalityLevel]);
+
+  // Reject adjusted text
+  const handleRejectAdjustment = useCallback(() => {
+    setShowPreviewModal(false);
+    setAdjustmentResult(null);
+  }, []);
+
+  // Handle text change with debounced typing indicator and formality detection
   const handleTextChange = useCallback((text: string) => {
     setMessageText(text);
 
@@ -77,6 +187,9 @@ export default function MessageInput({
     }
     if (autoClearTimeoutRef.current) {
       clearTimeout(autoClearTimeoutRef.current);
+    }
+    if (formalityTimeoutRef.current) {
+      clearTimeout(formalityTimeoutRef.current);
     }
 
     if (text.trim().length > 0) {
@@ -89,11 +202,19 @@ export default function MessageInput({
           clearTypingIndicator();
         }, AUTO_CLEAR_TYPING_MS);
       }, TYPING_DEBOUNCE_MS);
+
+      // Debounce formality detection (longer delay)
+      if (enableFormality && !selectedImage) {
+        formalityTimeoutRef.current = setTimeout(() => {
+          detectFormalityLevel(text);
+        }, FORMALITY_DEBOUNCE_MS);
+      }
     } else {
-      // Empty input - clear typing immediately
+      // Empty input - clear typing and formality immediately
       clearTypingIndicator();
+      setFormalityDetection(null);
     }
-  }, [setTypingIndicator, clearTypingIndicator]);
+  }, [setTypingIndicator, clearTypingIndicator, detectFormalityLevel, enableFormality, selectedImage]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -104,6 +225,9 @@ export default function MessageInput({
       }
       if (autoClearTimeoutRef.current) {
         clearTimeout(autoClearTimeoutRef.current);
+      }
+      if (formalityTimeoutRef.current) {
+        clearTimeout(formalityTimeoutRef.current);
       }
 
       // Clear typing indicator
@@ -236,8 +360,34 @@ export default function MessageInput({
   // Check if send button should be enabled
   const canSend = (messageText.trim() || selectedImage) && !sending && !disabled;
 
+  // Show formality indicator when typing text (not for captions)
+  const showFormalityIndicator = enableFormality &&
+    !selectedImage &&
+    messageText.trim().length >= 10 &&
+    (formalityDetection || isDetectingFormality);
+
   return (
     <View style={styles.container}>
+      {/* Formality Indicator */}
+      <FormalityIndicator
+        currentLevel={formalityDetection?.level}
+        isDetecting={isDetectingFormality}
+        confidence={formalityDetection?.confidence}
+        onMakeFormal={handleMakeFormal}
+        onMakeCasual={handleMakeCasual}
+        isAdjusting={isAdjustingFormality}
+        visible={showFormalityIndicator}
+      />
+
+      {/* Formality Preview Modal */}
+      <FormalityPreviewModal
+        visible={showPreviewModal}
+        adjustmentResult={adjustmentResult || undefined}
+        onAccept={handleAcceptAdjustment}
+        onReject={handleRejectAdjustment}
+        onClose={() => setShowPreviewModal(false)}
+      />
+
       {/* Image preview */}
       {imagePreview && (
         <View style={styles.imagePreviewContainer}>
