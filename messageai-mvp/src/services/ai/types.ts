@@ -213,8 +213,6 @@ export interface LanguageDetectionResult {
   /** Confidence score (0-1) */
   confidence: number;
 }
-<<<<<<< HEAD
-=======
 
 /**
  * Cultural context hint category
@@ -289,4 +287,3 @@ export interface FormalityAdjustmentResult {
   /** Target formality level */
   toLevel: FormalityLevel;
 }
->>>>>>> parent of 182e1fa (Revert "feat: implement formality level adjustment (PR-046)")
