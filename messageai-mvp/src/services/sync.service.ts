@@ -87,20 +87,83 @@ async function syncChatWithParticipants(chat: Chat): Promise<void> {
 }
 
 /**
+ * Process incoming message for translation if auto-translate is enabled
+ */
+async function processIncomingMessage(
+  message: Message,
+  currentUserId: string
+): Promise<Message> {
+  // Skip translation for our own messages
+  if (message.senderId === currentUserId) {
+    return message;
+  }
+
+  // Skip translation for image messages (only translate caption if needed)
+  if (message.type !== 'text') {
+    return message;
+  }
+
+  try {
+    // Get current user's preferences
+    const userResult = await LocalUserService.getUser(currentUserId);
+    if (!userResult.success || !userResult.data) {
+      return message;
+    }
+
+    const user = userResult.data;
+
+    // Check if auto-translate is enabled
+    if (!user.autoTranslateEnabled || !user.preferredLanguage) {
+      return message;
+    }
+
+    // Dynamically import translation services (avoid circular deps)
+    const { detectLanguage } = await import('./ai/language-detection.service');
+    const { translateText } = await import('./ai/translation.service');
+
+    // Detect message language
+    const detectedLang = await detectLanguage(message.content);
+    message.detectedLanguage = detectedLang;
+
+    // Translate if language is different from preferred
+    if (detectedLang !== 'unknown' && detectedLang !== user.preferredLanguage) {
+      const translatedText = await translateText(
+        message.content,
+        detectedLang as any,
+        user.preferredLanguage as any,
+        message.id
+      );
+
+      message.translatedText = translatedText;
+      message.translationTargetLang = user.preferredLanguage;
+    }
+
+    return message;
+  } catch (error) {
+    console.error('Translation processing error:', error);
+    // Return original message on error
+    return message;
+  }
+}
+
+/**
  * Sync a message from Firebase to local database
  * Firebase is source of truth - overwrites local data
  * CRITICAL: Ensures chat exists before saving message to avoid FK constraint errors
  */
-export async function syncMessageToLocal(firebaseMessage: Message): Promise<void> {
+export async function syncMessageToLocal(
+  firebaseMessage: Message,
+  currentUserId?: string
+): Promise<void> {
   try {
     // CRITICAL FIX: Ensure chat exists before saving message (FK constraint)
     // Check if chat exists in local DB
     const chatResult = await LocalChatService.getChat(firebaseMessage.chatId);
-    
+
     if (!chatResult.success || !chatResult.data) {
       // Chat doesn't exist locally - fetch from Firebase and save with participants
       const fbChatResult = await FirebaseChatService.getChatFromFirebase(firebaseMessage.chatId);
-      
+
       if (fbChatResult.success && fbChatResult.data) {
         // CRITICAL: Use helper that syncs participants FIRST
         await syncChatWithParticipants(fbChatResult.data);
@@ -119,9 +182,16 @@ export async function syncMessageToLocal(firebaseMessage: Message): Promise<void
       }
     }
 
-    const result = await LocalMessageService.saveMessage(firebaseMessage);
+    // Process message for auto-translation if currentUserId provided
+    let processedMessage = firebaseMessage;
+    if (currentUserId) {
+      processedMessage = await processIncomingMessage(firebaseMessage, currentUserId);
+    }
+
+    const result = await LocalMessageService.saveMessage(processedMessage);
 
     if (!result.success) {
+      console.error('Failed to save message:', result.error);
     }
   } catch (error) {
   }
@@ -209,7 +279,7 @@ export async function initialSync(userId: string): Promise<void> {
         if (messagesResult.success && messagesResult.data) {
           for (const message of messagesResult.data) {
             try {
-              await syncMessageToLocal(message);
+              await syncMessageToLocal(message, userId);
             } catch (error) {
             }
           }
@@ -259,7 +329,7 @@ export async function startRealtimeSync(userId: string): Promise<void> {
               chat.id,
               async (message) => {
                 try {
-                  await syncMessageToLocal(message);
+                  await syncMessageToLocal(message, userId);
 
                   // Also sync the sender if we don't have them locally
                   const localSender = await LocalUserService.getUser(message.senderId);

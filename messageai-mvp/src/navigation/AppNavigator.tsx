@@ -10,6 +10,7 @@ import NewChatScreen from '@/screens/NewChatScreen';
 import ConversationScreen from '@/screens/ConversationScreen';
 import CreateGroupScreen from '@/screens/CreateGroupScreen';
 import GroupInfoScreen from '@/screens/GroupInfoScreen';
+import AISettingsScreen from '@/screens/AISettingsScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export type AuthStackParamList = {
@@ -41,6 +42,7 @@ export type MainStackParamList = {
     chatId: string;
     chatName: string;
   };
+  AISettings: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -82,6 +84,11 @@ function MainStackNavigator() {
         name="GroupInfo"
         component={GroupInfoScreen}
         options={{ title: 'Group Info' }}
+      />
+      <MainStack.Screen
+        name="AISettings"
+        component={AISettingsScreen}
+        options={{ title: 'AI Settings' }}
       />
     </MainStack.Navigator>
   );

@@ -51,6 +51,9 @@ export async function createUserInFirebase(user: User): Promise<FirebaseResult<v
       lastSeen: user.lastSeen,
       isOnline: user.isOnline,
       fcmToken: user.fcmToken || null,
+      pushToken: user.pushToken || null,
+      autoTranslateEnabled: user.autoTranslateEnabled || false,
+      preferredLanguage: user.preferredLanguage || 'en',
     });
 
     return { success: true };

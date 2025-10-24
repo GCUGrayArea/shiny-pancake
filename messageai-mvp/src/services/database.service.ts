@@ -217,6 +217,28 @@ async function runMigrations(): Promise<void> {
     `).catch(() => {
       // Column already exists, ignore error
     });
+
+    // Add translation fields to messages table
+    await db.execAsync(`
+      ALTER TABLE messages ADD COLUMN detectedLanguage TEXT;
+    `).catch(() => {});
+
+    await db.execAsync(`
+      ALTER TABLE messages ADD COLUMN translatedText TEXT;
+    `).catch(() => {});
+
+    await db.execAsync(`
+      ALTER TABLE messages ADD COLUMN translationTargetLang TEXT;
+    `).catch(() => {});
+
+    // Add translation preferences to users table
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN autoTranslateEnabled INTEGER DEFAULT 0;
+    `).catch(() => {});
+
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'en';
+    `).catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now
     console.warn('Migration warning:', error);

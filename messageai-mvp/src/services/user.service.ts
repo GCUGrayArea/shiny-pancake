@@ -13,7 +13,7 @@ export async function createUserProfile(uid: string, email: string, displayName:
     return; // Profile already exists, don't overwrite
   }
 
-  // Create new profile
+  // Create new profile with defaults
   const now = Date.now();
   await set(userRef, {
     uid,
@@ -22,6 +22,10 @@ export async function createUserProfile(uid: string, email: string, displayName:
     createdAt: now,
     lastSeen: now,
     isOnline: false,
+    fcmToken: null,
+    pushToken: null,
+    autoTranslateEnabled: false,
+    preferredLanguage: 'en',
   });
 }
 

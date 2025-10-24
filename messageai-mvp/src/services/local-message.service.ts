@@ -32,8 +32,9 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
     const messageSql = `
       INSERT OR REPLACE INTO messages (
         id, localId, chatId, senderId, type, content,
-        timestamp, status, caption, imageWidth, imageHeight, imageSize
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        timestamp, status, caption, imageWidth, imageHeight, imageSize,
+        detectedLanguage, translatedText, translationTargetLang
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     queries.push({
@@ -51,6 +52,9 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
         message.metadata?.imageWidth ?? null,
         message.metadata?.imageHeight ?? null,
         message.metadata?.imageSize ?? null,
+        message.detectedLanguage ?? null,
+        message.translatedText ?? null,
+        message.translationTargetLang ?? null,
       ],
     });
 
@@ -380,6 +384,19 @@ function mapRowToMessage(row: any, deliveries: MessageDelivery[]): Message {
       imageHeight: row.imageHeight ?? undefined,
       imageSize: row.imageSize ?? undefined,
     };
+  }
+
+  // Add translation fields if present
+  if (row.detectedLanguage) {
+    message.detectedLanguage = row.detectedLanguage;
+  }
+
+  if (row.translatedText) {
+    message.translatedText = row.translatedText;
+  }
+
+  if (row.translationTargetLang) {
+    message.translationTargetLang = row.translationTargetLang;
   }
 
   return message;

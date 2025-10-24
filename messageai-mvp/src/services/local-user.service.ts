@@ -13,8 +13,9 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
   try {
     const sql = `
       INSERT OR REPLACE INTO users (
-        uid, email, displayName, createdAt, lastSeen, isOnline, fcmToken
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        uid, email, displayName, createdAt, lastSeen, isOnline, fcmToken, pushToken,
+        autoTranslateEnabled, preferredLanguage
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -25,6 +26,9 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
       user.lastSeen ?? null,
       user.isOnline ? 1 : 0,
       user.fcmToken ?? null,
+      user.pushToken ?? null,
+      user.autoTranslateEnabled ? 1 : 0,
+      user.preferredLanguage ?? 'en',
     ];
 
     const result = await executeUpdate(sql, params);
@@ -194,6 +198,55 @@ export async function deleteUser(uid: string): Promise<DbResult<void>> {
 }
 
 /**
+ * Update specific user fields (partial update)
+ */
+export async function updateUser(
+  uid: string,
+  updates: Partial<Omit<User, 'uid' | 'email' | 'createdAt'>>
+): Promise<DbResult<void>> {
+  try {
+    // Build dynamic UPDATE query
+    const fields = Object.keys(updates);
+    if (fields.length === 0) {
+      return { success: true }; // Nothing to update
+    }
+
+    const setClauses = fields.map(field => {
+      // Handle boolean fields
+      if (field === 'isOnline' || field === 'autoTranslateEnabled') {
+        return `${field} = ?`;
+      }
+      return `${field} = ?`;
+    });
+
+    const sql = `UPDATE users SET ${setClauses.join(', ')} WHERE uid = ?`;
+
+    const params = fields.map(field => {
+      const value = updates[field as keyof typeof updates];
+      // Convert booleans to 0/1 for SQLite
+      if (typeof value === 'boolean') {
+        return value ? 1 : 0;
+      }
+      return value ?? null;
+    });
+    params.push(uid);
+
+    const result = await executeUpdate(sql, params);
+
+    if (!result.success) {
+      return { success: false, error: result.error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to update user: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
  * Map database row to User object
  */
 function mapRowToUser(row: any): User {
@@ -205,5 +258,8 @@ function mapRowToUser(row: any): User {
     lastSeen: row.lastSeen ?? undefined,
     isOnline: row.isOnline === 1,
     fcmToken: row.fcmToken ?? undefined,
+    pushToken: row.pushToken ?? undefined,
+    autoTranslateEnabled: row.autoTranslateEnabled === 1,
+    preferredLanguage: row.preferredLanguage ?? 'en',
   };
 }

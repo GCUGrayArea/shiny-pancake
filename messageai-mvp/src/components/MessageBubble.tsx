@@ -33,6 +33,7 @@ export default function MessageBubble({
   showSenderIndicator = false,
 }: MessageBubbleProps) {
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   // Compute the actual status from message data
   const displayStatus = computeMessageStatus(message, currentUserId);
@@ -169,14 +170,47 @@ export default function MessageBubble({
       >
         {/* Message content */}
         {message.type === 'text' ? (
-          <RNText
-            style={[
-              styles.messageText,
-              isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
-            ]}
-          >
-            {message.content}
-          </RNText>
+          <>
+            <RNText
+              style={[
+                styles.messageText,
+                isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
+              ]}
+            >
+              {showOriginal || !message.translatedText
+                ? message.content
+                : message.translatedText}
+            </RNText>
+            {message.translatedText && (
+              <View style={styles.translationInfo}>
+                <Text
+                  variant="bodySmall"
+                  style={[
+                    styles.translationLabel,
+                    isOwnMessage ? styles.ownTranslationLabel : styles.otherTranslationLabel,
+                  ]}
+                >
+                  {showOriginal
+                    ? `Original (${message.detectedLanguage?.toUpperCase() || 'unknown'})`
+                    : `Translated from ${message.detectedLanguage?.toUpperCase() || 'unknown'}`}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowOriginal(!showOriginal)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Text
+                    variant="bodySmall"
+                    style={[
+                      styles.translationToggle,
+                      isOwnMessage ? styles.ownTranslationToggle : styles.otherTranslationToggle,
+                    ]}
+                  >
+                    {showOriginal ? 'Show Translation' : 'Show Original'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         ) : message.type === 'image' ? (
           <>
             <TouchableOpacity
@@ -483,6 +517,38 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     lineHeight: 18,
+  },
+  // Translation styles
+  translationInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  translationLabel: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    opacity: 0.8,
+  },
+  ownTranslationLabel: {
+    color: '#FFFFFF',
+  },
+  otherTranslationLabel: {
+    color: '#666',
+  },
+  translationToggle: {
+    fontSize: 11,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+  },
+  ownTranslationToggle: {
+    color: '#FFFFFF',
+  },
+  otherTranslationToggle: {
+    color: '#2196F3',
   },
 });
 

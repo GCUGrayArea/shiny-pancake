@@ -244,11 +244,11 @@
 
 ### Block 2A: Core Translation Features (Sequential within block, but block runs in parallel with 2B)
 
-#### PR-043: Language Detection & Auto-Translate
+#### PR-043: Language Detection & Auto-Translate ✅ COMPLETED
 **Dependencies:** PR-042
 **Estimated Time:** 4 hours
 **Prerequisites:** ✅ PR-042 merged
-**Status:** 🔄 IN PROGRESS (Agent working on this)
+**Status:** ✅ COMPLETED
 
 **Files to Create:**
 - `messageai-mvp/src/services/ai/language-detection.service.ts` - Language detection with caching
@@ -332,15 +332,15 @@
      - Toggle between original and translated
 
 **Validation:**
-- [ ] Language detection accurate (>90% for common languages)
-- [ ] Auto-translate toggle works
-- [ ] Preferred language saves correctly
-- [ ] Messages auto-translate on receive when enabled
-- [ ] Can view original message
-- [ ] Translations cached (no duplicate API calls)
-- [ ] Settings sync across app restarts
-- [ ] Response time <3s per message
-- [ ] Unit tests pass (>80% coverage)
+- [x] Language detection accurate (>90% for common languages)
+- [x] Auto-translate toggle works
+- [x] Preferred language saves correctly
+- [x] Messages auto-translate on receive when enabled
+- [x] Can view original message
+- [x] Translations cached (no duplicate API calls)
+- [x] Settings sync across app restarts
+- [x] Response time <3s per message
+- [x] Unit tests pass (>80% coverage)
 
 ---
 

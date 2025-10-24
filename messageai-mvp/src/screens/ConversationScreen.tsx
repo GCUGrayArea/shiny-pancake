@@ -196,28 +196,19 @@ export default function ConversationScreen() {
 
     
     const unsubscribe = subscribeToMessages(chatId, async (newMessage) => {
-      
-      // Save to local database
-      await saveMessage(newMessage);
-      
-      // Update state
-      setMessages(prev => {
-        const existingIndex = prev.findIndex(m => m.id === newMessage.id);
-        
-        if (existingIndex >= 0) {
-          // Message already exists (shouldn't happen with onChildAdded, but handle it)
-          return prev;
-        } else {
-          // Check if this replaces an optimistic message by localId
-          const localIdMatch = prev.find(m => m.localId === newMessage.localId);
-          if (localIdMatch) {
-            // Replace the optimistic message with the real one
-            return prev.map(m => m.localId === newMessage.localId ? newMessage : m);
+      // The sync service handles saving messages with translations
+      // Wait briefly for sync to complete, then reload from local DB
+      setTimeout(async () => {
+        try {
+          const localResult = await getMessagesByChat(chatId);
+          if (localResult.success && localResult.data) {
+            const sortedMessages = localResult.data.sort((a, b) => a.timestamp - b.timestamp);
+            setMessages(sortedMessages);
           }
-          // Completely new message from other user
-          return [...prev, newMessage].sort((a, b) => a.timestamp - b.timestamp);
+        } catch (error) {
+          console.error('Failed to reload messages:', error);
         }
-      });
+      }, 300); // Small delay to let sync service process translations
     });
 
     return () => {
@@ -231,22 +222,18 @@ export default function ConversationScreen() {
 
     
     const unsubscribe = subscribeToMessageUpdates(chatId, async (updatedMessage) => {
-      
-      // Save to local database
-      await saveMessage(updatedMessage);
-      
-      // Update state - replace the message with the updated version
-      setMessages(prev => {
-        const existingIndex = prev.findIndex(m => m.id === updatedMessage.id);
-        
-        if (existingIndex >= 0) {
-          const updated = [...prev];
-          updated[existingIndex] = updatedMessage;
-          return updated;
-        } else {
-          return prev;
+      // Reload from local DB to get the latest version (including translations if added)
+      setTimeout(async () => {
+        try {
+          const localResult = await getMessagesByChat(chatId);
+          if (localResult.success && localResult.data) {
+            const sortedMessages = localResult.data.sort((a, b) => a.timestamp - b.timestamp);
+            setMessages(sortedMessages);
+          }
+        } catch (error) {
+          console.error('Failed to reload messages after update:', error);
         }
-      });
+      }, 300); // Small delay to let sync service process
     });
 
     return () => {
@@ -304,20 +291,14 @@ export default function ConversationScreen() {
       // Combine messages from different sources
       let allMessages: Message[] = [];
 
-      if (firebaseResult.success && firebaseResult.data && firebaseResult.data.length > 0) {
+      // Always try to load from local DB first (has translations from sync service)
+      const localResult = await getMessagesByChat(chatId);
+
+      if (localResult.success && localResult.data && localResult.data.length > 0) {
+        allMessages = [...localResult.data];
+      } else if (firebaseResult.success && firebaseResult.data && firebaseResult.data.length > 0) {
+        // Fallback to Firebase if local DB is empty (shouldn't happen if sync ran)
         allMessages = [...firebaseResult.data];
-        
-        // Save to local DB for offline access
-        for (const message of firebaseResult.data) {
-          await saveMessage(message);
-        }
-      } else {
-        // Fallback to local database if Firebase fails or returns no messages
-        const localResult = await getMessagesByChat(chatId);
-        
-        if (localResult.success && localResult.data && localResult.data.length > 0) {
-          allMessages = [...localResult.data];
-        }
       }
 
       // Add any pending messages from the queue (messages truly stuck in 'sending' state)

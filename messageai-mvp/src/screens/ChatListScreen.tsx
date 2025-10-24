@@ -3,12 +3,13 @@
  * Displays all user conversations with presence indicators
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, Pressable } from 'react-native';
+import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react';
+import { View, StyleSheet, FlatList, RefreshControl, Pressable, TouchableOpacity } from 'react-native';
 import { Text, FAB, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { Chat } from '@/types';
 import { getRelativeTime } from '@/utils/time.utils';
@@ -29,6 +30,20 @@ export default function ChatListScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const navigation = useNavigation<ChatListNavigationProp>();
+
+  // Add AI Settings button to header
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AISettings')}
+          style={{ marginRight: 8 }}
+        >
+          <MaterialCommunityIcons name="robot" size={24} color="#6200ee" />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
 
   // Load chats from local database
   const loadChats = useCallback(async () => {
@@ -78,7 +93,10 @@ export default function ChatListScreen() {
       const userIdsToLoad = new Set<string>();
       for (const chat of sortedChats) {
         if (chat.type === '1:1') {
-          const otherUserId = chat.participantIds.find(id => id !== user.uid);
+          const participantIds = Array.isArray(chat.participantIds)
+            ? chat.participantIds
+            : Object.keys(chat.participantIds || {});
+          const otherUserId = participantIds.find(id => id !== user.uid);
           if (otherUserId) {
             userIdsToLoad.add(otherUserId);
           }
@@ -145,20 +163,29 @@ export default function ChatListScreen() {
     const firebaseChat = await getChatFromFirebase(chat.id);
 
     if (firebaseChat.success && firebaseChat.data) {
+      const firebaseParticipantIds = Array.isArray(firebaseChat.data.participantIds)
+        ? firebaseChat.data.participantIds
+        : Object.keys(firebaseChat.data.participantIds || {});
+      const chatParticipantIds = Array.isArray(chat.participantIds)
+        ? chat.participantIds
+        : Object.keys(chat.participantIds || {});
       // If Firebase has more participants than local, use Firebase data
-      if (firebaseChat.data.participantIds.length > chat.participantIds.length) {
+      if (firebaseParticipantIds.length > chatParticipantIds.length) {
         chat = firebaseChat.data;
       }
     }
 
     // For 1:1 chats, get the other user's info
     if (chat.type === '1:1') {
-      const otherUserId = chat.participantIds.find(id => id !== user.uid);
+      const participantIds = Array.isArray(chat.participantIds)
+        ? chat.participantIds
+        : Object.keys(chat.participantIds || {});
+      const otherUserId = participantIds.find(id => id !== user.uid);
 
       if (!otherUserId) {
         // If we have exactly one participant and it's not us, that's the other user
-        if (chat.participantIds.length === 1 && chat.participantIds[0] !== user.uid) {
-          const fallbackOtherUserId = chat.participantIds[0];
+        if (participantIds.length === 1 && participantIds[0] !== user.uid) {
+          const fallbackOtherUserId = participantIds[0];
 
           navigation.navigate('Conversation', {
             chatId: chat.id,
@@ -245,8 +272,11 @@ export default function ChatListScreen() {
 
     // For 1:1 chats, show online status of the other participant
     const isOneOnOne = chat.type === '1:1';
+    const participantIds = Array.isArray(chat.participantIds)
+      ? chat.participantIds
+      : Object.keys(chat.participantIds || {});
     const otherParticipantId = isOneOnOne
-      ? chat.participantIds.find(id => id !== user?.uid)
+      ? participantIds.find(id => id !== user?.uid)
       : null;
 
     return (
@@ -292,7 +322,9 @@ export default function ChatListScreen() {
 
             {chat.type === 'group' && (
               <Text variant="bodySmall" style={styles.participantCount}>
-                {chat.participantIds?.length || 0} members
+                {(Array.isArray(chat.participantIds)
+                  ? chat.participantIds.length
+                  : Object.keys(chat.participantIds || {}).length) || 0} members
               </Text>
             )}
           </View>

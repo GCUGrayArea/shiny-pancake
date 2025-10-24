@@ -13,6 +13,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -100,6 +101,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const refreshUser = async () => {
+    if (!user?.uid) return;
+
+    try {
+      const { getUser } = await import('@/services/local-user.service');
+      const result = await getUser(user.uid);
+      if (result.success && result.data) {
+        setUser(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  };
+
   const value = useMemo<AuthContextValue>(() => ({
     user,
     loading,
@@ -132,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await svcSignOut();
       }
     },
+    refreshUser,
   }), [user, loading, error]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
