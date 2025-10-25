@@ -803,9 +803,38 @@
 ### Block 2C: Advanced AI - Smart Replies (Dependent on all basic AI features)
 
 #### PR-048: Context-Aware Smart Replies (Advanced AI)
-**Dependencies:** PR-043, PR-044, PR-045, PR-046, PR-047  
-**Estimated Time:** 6 hours  
+**Dependencies:** PR-043, PR-044, PR-045, PR-046, PR-047
+**Estimated Time:** 6 hours
 **Prerequisites:** ✅ PR-043, PR-044, PR-045, PR-046, PR-047 merged
+**Status:** 🔄 IN PROGRESS - Implementation complete, render loop fix in testing (Commit: ec21bed)
+**Agent:** Claude Code Assistant
+
+**Notes:**
+- Previous implementation was rolled back (git restore). Restarted fresh.
+- Core implementation complete and committed (ec21bed)
+- Known issue: Chat shaking (render loop) - fix applied, awaiting testing
+- Debug logs still present - will remove before final commit
+
+**Implementation Approach:**
+- Simplified single-agent with well-engineered prompts (Option B)
+- Per-conversation style profiles (adapts to each chat context)
+- SQLite + in-memory caching for style profiles
+- Debounced trigger (2s after last message received)
+- Using existing configured OpenAI model
+
+**Files to Create:**
+- `messageai-mvp/src/services/ai/agents/smart-reply-agent.ts` - Single-agent smart reply generation with style analysis
+- `messageai-mvp/src/services/user-style.service.ts` - Per-conversation style profile management with SQLite + cache
+- `messageai-mvp/src/components/SmartReplyBar.tsx` - Horizontal scrollable reply chips UI component
+
+**Files to Modify:**
+- `messageai-mvp/src/services/ai/types.ts` - Add UserStyleProfile, Reply, ReplyType, SmartReplyOptions interfaces
+- `messageai-mvp/src/types/index.ts` - Add smartRepliesEnabled to User interface
+- `messageai-mvp/src/services/database.service.ts` - Add user_style_profiles table and smartRepliesEnabled migration
+- `messageai-mvp/src/services/local-user.service.ts` - Update saveUser and mapRowToUser for smartRepliesEnabled
+- `messageai-mvp/src/screens/ConversationScreen.tsx` - Integrate SmartReplyBar with debounced generation logic
+- `messageai-mvp/src/components/MessageInput.tsx` - Add insertText/onTextInserted props for reply insertion
+- `messageai-mvp/src/screens/AISettingsScreen.tsx` - Add Smart Replies toggle setting
 
 **Tasks:**
 1. **User Style Learning** (2 hours):
@@ -931,6 +960,8 @@
 - [ ] Users actually use suggested replies (>50% acceptance in testing)
 - [ ] Seamless integration with message input
 - [ ] Unit tests pass (>80% coverage)
+
+**Current Progress:** Starting implementation from scratch
 
 **Desiderata:**
 - Response time <8s
@@ -1537,6 +1568,16 @@
      - Check avatar source/URL handling in chat screen vs chat list
      - Verify image caching and loading logic
      - Test with users who have profile pictures set
+
+   - **Fix Typing Indicator Timing**:
+     - Typing indicators do not appear while user is typing continuously
+     - Indicators only become available for a few seconds after user stops typing
+     - Expected behavior: Show typing indicator immediately when user starts typing
+     - Indicator should remain visible while actively typing
+     - Only hide after user stops typing for ~3 seconds
+     - Check debouncing/throttling logic in typing event handlers
+     - Verify Firebase real-time updates for typing status
+     - Test: Alice types continuously for 10+ seconds, verify Bob sees indicator throughout
 
 2. **LanguageHelpModal Scroll Gesture Refinement** (30 min):
    - Current state: Scrollbar works, but content requires precise touch targeting
@@ -2956,10 +2997,23 @@
    - Copy text to clipboard
    - Show toast confirmation
 
+4. **Smart Replies in Push Notifications** (STRETCH GOAL - 2 hours):
+   - Generate smart reply suggestions when push notification is sent
+   - Include 3 reply suggestions in notification payload
+   - Use platform notification actions (iOS/Android) to display as quick reply buttons
+   - Tapping a notification action sends the reply without opening the app
+   - Integrate with existing smart reply agent (reuse PR-048 code)
+   - Handle notification action responses in Firebase Cloud Functions
+   - Note: Replies generated at notification time (not refreshable)
+   - Performance: Keep notification delivery time <2s
+   - Fallback to generic replies if AI generation fails
+
 **Validation:**
 - [ ] Reactions work smoothly
 - [ ] Forwarding functional
 - [ ] Copy works
+- [ ] Smart reply actions appear in notifications (stretch)
+- [ ] Tapping reply action sends message (stretch)
 - [ ] No performance impact
 
 ---
