@@ -35,6 +35,7 @@ export default function AISettingsScreen() {
   const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [languageHelpEnabled, setLanguageHelpEnabled] = useState(false);
+  const [smartRepliesEnabled, setSmartRepliesEnabled] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,7 @@ export default function AISettingsScreen() {
       setAutoTranslateEnabled(user.autoTranslateEnabled || false);
       setPreferredLanguage(user.preferredLanguage || 'en');
       setLanguageHelpEnabled(languageHelp);
+      setSmartRepliesEnabled(user.smartRepliesEnabled !== false); // Default to true
       setLoading(false);
     }
   }, [user]);
@@ -59,19 +61,25 @@ export default function AISettingsScreen() {
   const saveSettings = async (
     newAutoTranslate: boolean,
     newLanguage: string,
-    newLanguageHelp: boolean
+    newLanguageHelp: boolean,
+    newSmartReplies?: boolean
   ) => {
     if (!user) return;
 
     try {
       setSaving(true);
 
-      const updates = {
+      const updates: any = {
         autoTranslateEnabled: newAutoTranslate,
         preferredLanguage: newLanguage,
         culturalHintsEnabled: newLanguageHelp, // Master toggle
         slangExplanationsEnabled: newLanguageHelp, // Keep in sync for backwards compat
       };
+
+      // Only include smartRepliesEnabled if explicitly provided
+      if (newSmartReplies !== undefined) {
+        updates.smartRepliesEnabled = newSmartReplies;
+      }
 
       // Update Firebase
       await updateUserInFirebase(user.uid, updates);
@@ -113,6 +121,15 @@ export default function AISettingsScreen() {
     const newValue = !languageHelpEnabled;
     setLanguageHelpEnabled(newValue);
     await saveSettings(autoTranslateEnabled, preferredLanguage, newValue);
+  };
+
+  /**
+   * Handle smart replies toggle
+   */
+  const handleSmartRepliesToggle = async () => {
+    const newValue = !smartRepliesEnabled;
+    setSmartRepliesEnabled(newValue);
+    await saveSettings(autoTranslateEnabled, preferredLanguage, languageHelpEnabled, newValue);
   };
 
   /**
@@ -224,6 +241,33 @@ export default function AISettingsScreen() {
         <Switch
           value={languageHelpEnabled}
           onValueChange={handleLanguageHelpToggle}
+          disabled={saving}
+        />
+      </View>
+
+      <Divider />
+
+      <View style={styles.section}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>
+          Smart Replies
+        </Text>
+        <Text variant="bodySmall" style={styles.sectionDescription}>
+          Get AI-powered reply suggestions that match your texting style
+        </Text>
+      </View>
+
+      <Divider />
+
+      <View style={styles.settingRow}>
+        <View style={styles.settingInfo}>
+          <Text variant="bodyLarge">Smart Reply Suggestions</Text>
+          <Text variant="bodySmall" style={styles.settingDescription}>
+            Show contextual reply suggestions above your keyboard
+          </Text>
+        </View>
+        <Switch
+          value={smartRepliesEnabled}
+          onValueChange={handleSmartRepliesToggle}
           disabled={saving}
         />
       </View>

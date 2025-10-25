@@ -206,6 +206,35 @@ async function createSchema(): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_slang_items_phrase
       ON slang_items(phrase COLLATE NOCASE);
+
+    -- User style profiles table for smart replies
+    CREATE TABLE IF NOT EXISTS user_style_profiles (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      chatId TEXT NOT NULL,
+      commonPhrases TEXT,
+      averageMessageLength REAL DEFAULT 0,
+      formalityPreference TEXT DEFAULT 'neutral',
+      emojiFrequency REAL DEFAULT 0,
+      emojiFavorites TEXT,
+      primaryLanguage TEXT DEFAULT 'en',
+      secondaryLanguages TEXT,
+      switchingPatterns TEXT,
+      conversationStyle TEXT DEFAULT 'balanced',
+      usesPeriods INTEGER DEFAULT 0,
+      usesExclamation INTEGER DEFAULT 0,
+      usesQuestions INTEGER DEFAULT 0,
+      greetingStyle TEXT,
+      closingStyle TEXT,
+      lastUpdated INTEGER NOT NULL,
+      messageCount INTEGER DEFAULT 0,
+      UNIQUE(userId, chatId),
+      FOREIGN KEY (userId) REFERENCES users(uid) ON DELETE CASCADE,
+      FOREIGN KEY (chatId) REFERENCES chats(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_style_profiles_userId_chatId
+      ON user_style_profiles(userId, chatId);
   `);
 }
 
@@ -296,6 +325,11 @@ async function runMigrations(): Promise<void> {
     // Add slang explanations preference to users table
     await db.execAsync(`
       ALTER TABLE users ADD COLUMN slangExplanationsEnabled INTEGER DEFAULT 0;
+    `).catch(() => {});
+
+    // Add smart replies preference to users table
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN smartRepliesEnabled INTEGER DEFAULT 1;
     `).catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now

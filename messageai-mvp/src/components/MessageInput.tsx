@@ -34,6 +34,8 @@ interface MessageInputProps {
   enableFormality?: boolean;
   /** Language for formality detection (default: 'en') */
   language?: LanguageCode;
+  /** Callback that receives function to insert text into input */
+  onTextInserted?: (insertText: (text: string) => void) => void;
 }
 
 const CAPTION_MAX_LENGTH = 500;
@@ -49,11 +51,21 @@ export default function MessageInput({
   placeholder = "Type a message...",
   enableFormality = true,
   language = 'en',
+  onTextInserted,
 }: MessageInputProps) {
   const [messageText, setMessageText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+
+  // Expose insertText function to parent via callback
+  useEffect(() => {
+    if (onTextInserted) {
+      onTextInserted((text: string) => {
+        setMessageText(text);
+      });
+    }
+  }, [onTextInserted]);
 
   // Formality state
   const [formalityDetection, setFormalityDetection] = useState<FormalityDetectionResult | null>(null);

@@ -27,11 +27,14 @@ import { Message, User } from '@/types';
 import MessageBubble from '@/components/MessageBubble';
 import MessageInput from '@/components/MessageInput';
 import TypingIndicator from '@/components/TypingIndicator';
+import SmartReplyBar from '@/components/SmartReplyBar';
 // import Avatar from '@/components/Avatar'; // Temporarily disabled due to import issues
 import { computeMessageStatus } from '@/utils/message-status.utils';
 import { getInitials } from '@/utils/chat.utils';
 import { subscribeToTyping, type TypingUser } from '@/services/typing.service';
-import type { LanguageCode } from '@/services/ai/types';
+import type { LanguageCode, Reply } from '@/services/ai/types';
+import { buildUserProfile } from '@/services/user-style.service';
+import { generateSmartReplies, invalidateReplyCache, getCachedReplies, cacheReplies } from '@/services/ai/agents/smart-reply-agent';
 
 type ConversationScreenRouteProp = RouteProp<MainStackParamList, 'Conversation'>;
 type ConversationScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'Conversation'>;
@@ -59,6 +62,13 @@ export default function ConversationScreen() {
   const [loadedOtherUserName, setLoadedOtherUserName] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<User[]>([]);
   const flatListRef = useRef<FlatList>(null);
+
+  // Smart reply state
+  const [smartReplies, setSmartReplies] = useState<Reply[]>([]);
+  const [loadingSmartReplies, setLoadingSmartReplies] = useState(false);
+  const [showSmartReplies, setShowSmartReplies] = useState(false);
+  const insertTextFnRef = useRef<((text: string) => void) | null>(null);
+  const smartReplyDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Set current viewing chat for notification suppression and mark as read
   useEffect(() => {
@@ -592,6 +602,107 @@ export default function ConversationScreen() {
     }
   };
 
+  // Smart reply generation function
+  const generateReplies = useCallback(async (currentMessages: Message[]) => {
+    if (!chatId || !user?.uid || user.smartRepliesEnabled === false || currentMessages.length === 0) {
+      return;
+    }
+
+    // Check cache first
+    const lastMessage = currentMessages[currentMessages.length - 1];
+    if (lastMessage.senderId === user.uid) {
+      // Don't generate replies for own messages
+      setShowSmartReplies(false);
+      return;
+    }
+
+    // Use user's preferred language for replies
+    const targetLanguage = (user.preferredLanguage as LanguageCode) || 'en';
+
+    const cached = getCachedReplies(chatId, lastMessage.id, targetLanguage);
+    if (cached) {
+      setSmartReplies(cached);
+      setShowSmartReplies(true);
+      return;
+    }
+
+    setLoadingSmartReplies(true);
+    try {
+      // Build user style profile
+      const profile = await buildUserProfile(user.uid, chatId);
+
+      // Generate smart replies
+      const replies = await generateSmartReplies(currentMessages, profile, {
+        count: 3,
+        targetLanguage
+      });
+
+      // Cache and display
+      cacheReplies(chatId, lastMessage.id, replies, targetLanguage);
+      setSmartReplies(replies);
+      setShowSmartReplies(true);
+    } catch (error) {
+      console.error('Failed to generate smart replies:', error);
+      setSmartReplies([]);
+    } finally {
+      setLoadingSmartReplies(false);
+    }
+  }, [chatId, user]);
+
+  // Trigger smart reply generation when new messages arrive (debounced)
+  // Use lastMessageId as dependency to avoid re-triggering on every messages array change
+  const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
+  const lastMessageSenderId = messages.length > 0 ? messages[messages.length - 1].senderId : null;
+
+  useEffect(() => {
+    if (!chatId || !user || !lastMessageId) {
+      return;
+    }
+
+    if (lastMessageSenderId === user.uid) {
+      // Hide smart replies when user sends a message
+      setShowSmartReplies(false);
+      invalidateReplyCache(chatId);
+      return;
+    }
+
+    // Clear previous debounce timer
+    if (smartReplyDebounceRef.current) {
+      clearTimeout(smartReplyDebounceRef.current);
+    }
+
+    // Debounce: wait 2 seconds after last message
+    smartReplyDebounceRef.current = setTimeout(() => {
+      generateReplies(messages);
+    }, 2000);
+
+    return () => {
+      if (smartReplyDebounceRef.current) {
+        clearTimeout(smartReplyDebounceRef.current);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lastMessageId, lastMessageSenderId, chatId, user]);
+
+  // Handle smart reply selection
+  const handleReplySelect = (reply: Reply) => {
+    if (insertTextFnRef.current) {
+      insertTextFnRef.current(reply.text);
+      setShowSmartReplies(false);
+    }
+  };
+
+  // Handle smart reply refresh
+  const handleRefreshReplies = () => {
+    if (chatId) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage) {
+        invalidateReplyCache(chatId);
+      }
+    }
+    generateReplies();
+  };
+
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingBottom: insets.bottom }]}
@@ -679,12 +790,22 @@ export default function ConversationScreen() {
       {/* Typing indicator above message input */}
       <TypingIndicator typingUsers={typingUsers} />
 
+      {/* Smart reply suggestions */}
+      <SmartReplyBar
+        replies={smartReplies}
+        loading={loadingSmartReplies}
+        visible={showSmartReplies}
+        onReplySelect={handleReplySelect}
+        onRefresh={handleRefreshReplies}
+      />
+
       <MessageInput
         onSendMessage={handleSendMessage}
         chatId={chatId}
         currentUserId={user?.uid}
         disabled={sending || creatingChat}
         placeholder={`Message ${otherUserName || otherUserEmail}...`}
+        onTextInserted={(fn) => { insertTextFnRef.current = fn; }}
       />
     </KeyboardAvoidingView>
   );

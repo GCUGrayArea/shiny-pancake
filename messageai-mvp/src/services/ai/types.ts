@@ -330,3 +330,92 @@ export interface SlangItem {
   /** Timestamp when item was created */
   timestamp?: number;
 }
+
+/**
+ * Reply type for smart suggestions
+ */
+export type ReplyType =
+  | 'agree'         // Agreement/affirmation
+  | 'question'      // Follow-up question
+  | 'continue'      // Continue conversation
+  | 'polite-close'  // Polite conversation closer
+  | 'enthusiasm';   // Enthusiastic response
+
+/**
+ * Smart reply suggestion
+ */
+export interface Reply {
+  /** Suggested reply text */
+  text: string;
+  /** Type of reply */
+  type: ReplyType;
+  /** Language of the reply */
+  language: LanguageCode;
+  /** Confidence score (0-1) */
+  confidence: number;
+}
+
+/**
+ * User style profile for personalizing smart replies
+ */
+export interface UserStyleProfile {
+  /** User ID this profile belongs to */
+  userId: string;
+  /** Chat ID this profile is for (per-conversation) */
+  chatId: string;
+  /** Common phrases the user frequently uses */
+  commonPhrases: string[];
+  /** Average message length in words */
+  averageMessageLength: number;
+  /** User's typical formality level */
+  formalityPreference: FormalityLevel;
+  /** Emoji usage patterns */
+  emojiUsage: {
+    /** Average emojis per message */
+    frequency: number;
+    /** Most frequently used emojis */
+    favorites: string[];
+  };
+  /** Language mixing patterns */
+  languageMixing: {
+    /** Primary language */
+    primary: LanguageCode;
+    /** Secondary languages (if user code-switches) */
+    secondary?: LanguageCode[];
+    /** Code-switching patterns (e.g., "starts EN, ends ES") */
+    switchingPatterns: string[];
+  };
+  /** Conversation style */
+  conversationStyle: 'terse' | 'detailed' | 'balanced';
+  /** Punctuation style patterns */
+  punctuationStyle: {
+    /** Uses periods at end of messages */
+    usesPeriods: boolean;
+    /** Uses exclamation marks frequently */
+    usesExclamation: boolean;
+    /** Uses question marks frequently */
+    usesQuestions: boolean;
+  };
+  /** Common greeting phrases */
+  greetingStyle: string[];
+  /** Common closing phrases */
+  closingStyle: string[];
+  /** When this profile was last updated */
+  lastUpdated: number;
+  /** Number of messages analyzed for this profile */
+  messageCount: number;
+}
+
+/**
+ * Options for smart reply generation
+ */
+export interface SmartReplyOptions {
+  /** Number of replies to generate (default: 3) */
+  count?: number;
+  /** Context window (number of recent messages to consider) */
+  contextWindow?: number;
+  /** Whether to force regeneration (bypass cache) */
+  forceRegenerate?: boolean;
+  /** Target language for replies (overrides user's primary) */
+  targetLanguage?: LanguageCode;
+}

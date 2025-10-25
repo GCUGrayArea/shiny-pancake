@@ -33,6 +33,8 @@ export interface User {
   culturalHintsEnabled?: boolean;
   /** Show slang and idiom explanations for messages */
   slangExplanationsEnabled?: boolean;
+  /** Enable smart reply suggestions (defaults to true) */
+  smartRepliesEnabled?: boolean;
 }
 
 /**

@@ -14,8 +14,8 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
     const sql = `
       INSERT OR REPLACE INTO users (
         uid, email, displayName, createdAt, lastSeen, isOnline, fcmToken,
-        autoTranslateEnabled, preferredLanguage, profilePictureUrl, culturalHintsEnabled, slangExplanationsEnabled
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        autoTranslateEnabled, preferredLanguage, profilePictureUrl, culturalHintsEnabled, slangExplanationsEnabled, smartRepliesEnabled
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -31,6 +31,7 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
       user.profilePictureUrl ?? null,
       user.culturalHintsEnabled ? 1 : 0,
       user.slangExplanationsEnabled ? 1 : 0,
+      user.smartRepliesEnabled !== false ? 1 : 0, // Default to enabled
     ];
 
     const result = await executeUpdate(sql, params);
@@ -265,5 +266,6 @@ function mapRowToUser(row: any): User {
     profilePictureUrl: row.profilePictureUrl ?? undefined,
     culturalHintsEnabled: row.culturalHintsEnabled === 1,
     slangExplanationsEnabled: row.slangExplanationsEnabled === 1,
+    smartRepliesEnabled: row.smartRepliesEnabled !== 0, // Default to true
   };
 }

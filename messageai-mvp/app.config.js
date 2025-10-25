@@ -59,7 +59,12 @@ module.exports = {
     extra: {
       eas: {
         projectId: "aeb9270e-960f-4673-b06d-d96d57d2c081"
-      }
+      },
+      openaiApiKey: process.env.OPENAI_API_KEY || process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+      openaiModel: process.env.OPENAI_MODEL || process.env.EXPO_PUBLIC_OPENAI_MODEL,
+      openaiMaxTokens: process.env.OPENAI_MAX_TOKENS || process.env.EXPO_PUBLIC_OPENAI_MAX_TOKENS,
+      openaiTemperature: process.env.OPENAI_TEMPERATURE || process.env.EXPO_PUBLIC_OPENAI_TEMPERATURE,
+      openaiTimeout: process.env.OPENAI_TIMEOUT || process.env.EXPO_PUBLIC_OPENAI_TIMEOUT
     }
   }
 };
