@@ -4,8 +4,9 @@
  */
 
 import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { Reply } from '../services/ai/types';
+import AILoadingIndicator from './AILoadingIndicator';
 
 interface SmartReplyBarProps {
   /** Array of reply suggestions to display */
@@ -42,12 +43,14 @@ export default function SmartReplyBar({
         contentContainerStyle={styles.scrollContent}
       >
         {loading ? (
-          // Show skeleton chips while loading
-          <>
-            <SkeletonChip />
-            <SkeletonChip />
-            <SkeletonChip />
-          </>
+          // Show loading indicator while generating replies
+          <AILoadingIndicator
+            style="inline"
+            message="Generating smart replies..."
+            visible={true}
+            size="small"
+            timeout={15000}
+          />
         ) : replies.length > 0 ? (
           // Show reply chips
           <>
@@ -93,16 +96,6 @@ function ReplyChip({ reply, onPress }: ReplyChipProps) {
   );
 }
 
-/**
- * Skeleton loading chip
- */
-function SkeletonChip() {
-  return (
-    <View style={[styles.chip, styles.skeletonChip]}>
-      <ActivityIndicator size="small" color="#999" />
-    </View>
-  );
-}
 
 /**
  * Get emoji icon for reply type
@@ -153,11 +146,6 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 15,
     color: '#333',
-  },
-  skeletonChip: {
-    paddingHorizontal: 30,
-    paddingVertical: 12,
-    backgroundColor: '#f0f0f0',
   },
   refreshButton: {
     backgroundColor: '#007AFF',

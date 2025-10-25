@@ -1,10 +1,12 @@
 /**
  * Language Detection Service
- * Detects the language of text using OpenAI with caching
+ * Detects the language of text using OpenAI with caching and request deduplication
  */
 
 import { callCompletion, isInitialized } from './ai-client';
 import type { LanguageCode, LanguageDetectionResult, CacheEntry } from './types';
+import { logAIError, parseAIError } from './error-handler';
+import { createDeduplicator } from './request-batcher';
 
 /**
  * In-memory cache for language detections
@@ -12,6 +14,11 @@ import type { LanguageCode, LanguageDetectionResult, CacheEntry } from './types'
  * Value: CacheEntry with language and timestamp
  */
 const detectionCache = new Map<string, CacheEntry<LanguageCode>>();
+
+/**
+ * Request deduplicator to prevent duplicate API calls
+ */
+const deduplicator = createDeduplicator<string, LanguageCode>();
 
 /**
  * Cache configuration
@@ -97,40 +104,44 @@ export async function detectLanguage(text: string): Promise<LanguageCode> {
     return 'unknown';
   }
 
-  try {
-    const response = await callCompletion([
-      {
-        role: 'system',
-        content: 'You are a language detection expert. Respond with ONLY the ISO 639-1 language code (e.g., "en", "es", "fr"). If uncertain or the text is too short, respond with "unknown".',
-      },
-      {
-        role: 'user',
-        content: `Detect the language of this text: "${text}"`,
-      },
-    ], {
-      maxTokens: 10,
-      temperature: 0, // Deterministic
-    });
+  // Use deduplicator to prevent duplicate requests for the same text
+  return deduplicator.execute(getCacheKey(text), async () => {
+    try {
+      const response = await callCompletion([
+        {
+          role: 'system',
+          content: 'You are a language detection expert. Respond with ONLY the ISO 639-1 language code (e.g., "en", "es", "fr"). If uncertain or the text is too short, respond with "unknown".',
+        },
+        {
+          role: 'user',
+          content: `Detect the language of this text: "${text}"`,
+        },
+      ], {
+        maxTokens: 10,
+        temperature: 0, // Deterministic
+      });
 
-    // Extract language code from response
-    const langCode = response.trim().toLowerCase() as LanguageCode;
+      // Extract language code from response
+      const langCode = response.trim().toLowerCase() as LanguageCode;
 
-    // Validate it's a known language code
-    const validCodes: LanguageCode[] = [
-      'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko',
-      'ar', 'hi', 'nl', 'pl', 'sv', 'tr', 'unknown'
-    ];
+      // Validate it's a known language code
+      const validCodes: LanguageCode[] = [
+        'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko',
+        'ar', 'hi', 'nl', 'pl', 'sv', 'tr', 'unknown'
+      ];
 
-    const detectedLang = validCodes.includes(langCode) ? langCode : 'unknown';
+      const detectedLang = validCodes.includes(langCode) ? langCode : 'unknown';
 
-    // Cache the result
-    setCached(text, detectedLang);
+      // Cache the result
+      setCached(text, detectedLang);
 
-    return detectedLang;
-  } catch (error) {
-    console.error('Language detection error:', error);
-    return 'unknown';
-  }
+      return detectedLang;
+    } catch (error) {
+      const aiError = parseAIError(error);
+      logAIError(aiError, 'Language Detection');
+      return 'unknown'; // Graceful fallback
+    }
+  });
 }
 
 /**
@@ -188,8 +199,9 @@ export async function detectLanguageWithConfidence(
 
     return { language, confidence };
   } catch (error) {
-    console.error('Language detection error:', error);
-    return { language: 'unknown', confidence: 0 };
+    const aiError = parseAIError(error);
+    logAIError(aiError, 'Language Detection (with confidence)');
+    return { language: 'unknown', confidence: 0 }; // Graceful fallback
   }
 }
 

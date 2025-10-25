@@ -1,16 +1,23 @@
 /**
  * Translation Service
- * Translates text between languages using OpenAI with caching
+ * Translates text between languages using OpenAI with caching and request deduplication
  */
 
 import { callCompletion, isInitialized } from './ai-client';
 import type { LanguageCode, TranslationResult, CacheEntry } from './types';
+import { logAIError, parseAIError } from './error-handler';
+import { createDeduplicator } from './request-batcher';
 
 /**
  * In-memory cache for translations
  * Key: `${messageId}_${targetLang}` or `${textHash}_${fromLang}_${toLang}`
  */
 const translationCache = new Map<string, CacheEntry<string>>();
+
+/**
+ * Request deduplicator to prevent duplicate translation requests
+ */
+const deduplicator = createDeduplicator<string, string>();
 
 /**
  * Cache configuration
@@ -154,41 +161,46 @@ export async function translateText(
     return text;
   }
 
-  try {
-    const fromName = LANGUAGE_NAMES[fromLang] || fromLang;
-    const toName = LANGUAGE_NAMES[toLang] || toLang;
+  // Use deduplicator to prevent duplicate translation requests
+  const dedupKey = getCacheKey(text, fromLang, toLang, messageId);
+  return deduplicator.execute(dedupKey, async () => {
+    try {
+      const fromName = LANGUAGE_NAMES[fromLang] || fromLang;
+      const toName = LANGUAGE_NAMES[toLang] || toLang;
 
-    const response = await callCompletion([
-      {
-        role: 'system',
-        content: `You are a professional translator. Translate text from ${fromName} to ${toName}. Preserve:
+      const response = await callCompletion([
+        {
+          role: 'system',
+          content: `You are a professional translator. Translate text from ${fromName} to ${toName}. Preserve:
 - Line breaks and formatting
 - Emojis (keep unchanged)
 - Tone and style
 - Special characters
 
 Respond with ONLY the translated text, nothing else.`,
-      },
-      {
-        role: 'user',
-        content: text,
-      },
-    ], {
-      maxTokens: Math.max(500, Math.ceil(text.length * 2)), // Allow room for expansion
-      temperature: 0.3, // Low but not zero for natural translations
-    });
+        },
+        {
+          role: 'user',
+          content: text,
+        },
+      ], {
+        maxTokens: Math.max(500, Math.ceil(text.length * 2)), // Allow room for expansion
+        temperature: 0.3, // Low but not zero for natural translations
+      });
 
-    const translation = response.trim();
+      const translation = response.trim();
 
-    // Cache the result
-    setCached(text, fromLang, toLang, translation, messageId);
+      // Cache the result
+      setCached(text, fromLang, toLang, translation, messageId);
 
-    return translation;
-  } catch (error) {
-    console.error('Translation error:', error);
-    // Return original text on error
-    return text;
-  }
+      return translation;
+    } catch (error) {
+      const aiError = parseAIError(error);
+      logAIError(aiError, `Translation ${fromLang} → ${toLang}`);
+      // Return original text on error (graceful fallback)
+      return text;
+    }
+  });
 }
 
 /**
@@ -315,8 +327,9 @@ export async function translateWithSlangDetection(
 
     return { translatedText, slangItems };
   } catch (error) {
-    console.error('Error detecting slang during translation:', error);
-    // Return translation even if slang detection fails
+    const aiError = parseAIError(error);
+    logAIError(aiError, 'Slang Detection during Translation');
+    // Return translation even if slang detection fails (graceful fallback)
     return { translatedText };
   }
 }

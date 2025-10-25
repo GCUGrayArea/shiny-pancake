@@ -8,6 +8,7 @@ import { callCompletion, callStream } from '../ai-client';
 import { getSystemPrompt } from '../prompts/system-prompts';
 import { messageToolHandlers } from '../tools/message-tools';
 import { userToolHandlers } from '../tools/user-tools';
+import { logAIError, parseAIError } from '../error-handler';
 
 /**
  * All available tool handlers combined
@@ -38,61 +39,75 @@ export function createAgent(
 /**
  * Execute an agent with a user message
  * Handles function calling if tools are available
+ * Includes error logging (retry/timeout handled by ai-client)
  */
 export async function executeAgent(
   agent: SwarmAgent,
   userMessage: string,
   options: CompletionOptions = {}
 ): Promise<string> {
-  const messages = [
-    {
-      role: 'system' as const,
-      content: agent.instructions,
-    },
-    {
-      role: 'user' as const,
-      content: userMessage,
-    },
-  ];
+  try {
+    const messages = [
+      {
+        role: 'system' as const,
+        content: agent.instructions,
+      },
+      {
+        role: 'user' as const,
+        content: userMessage,
+      },
+    ];
 
-  // Merge agent tools with additional options
-  const completionOptions: CompletionOptions = {
-    ...options,
-    model: options.model || agent.model,
-    tools: options.tools || agent.tools,
-  };
+    // Merge agent tools with additional options
+    const completionOptions: CompletionOptions = {
+      ...options,
+      model: options.model || agent.model,
+      tools: options.tools || agent.tools,
+    };
 
-  // First call to get response (may include tool calls)
-  const response = await callCompletion(messages, completionOptions);
+    // Execute (retry and timeout handled by ai-client)
+    const response = await callCompletion(messages, completionOptions);
 
-  return response;
+    return response;
+  } catch (error) {
+    const aiError = parseAIError(error);
+    logAIError(aiError, `Agent: ${agent.name}`);
+    throw aiError;
+  }
 }
 
 /**
  * Execute an agent with streaming response
+ * Includes error handling and logging
  */
 export async function* executeAgentStream(
   agent: SwarmAgent,
   userMessage: string,
   options: CompletionOptions = {}
 ): AsyncGenerator<string> {
-  const messages = [
-    {
-      role: 'system' as const,
-      content: agent.instructions,
-    },
-    {
-      role: 'user' as const,
-      content: userMessage,
-    },
-  ];
+  try {
+    const messages = [
+      {
+        role: 'system' as const,
+        content: agent.instructions,
+      },
+      {
+        role: 'user' as const,
+        content: userMessage,
+      },
+    ];
 
-  const completionOptions: CompletionOptions = {
-    ...options,
-    model: options.model || agent.model,
-  };
+    const completionOptions: CompletionOptions = {
+      ...options,
+      model: options.model || agent.model,
+    };
 
-  yield* callStream(messages, completionOptions);
+    yield* callStream(messages, completionOptions);
+  } catch (error) {
+    const aiError = parseAIError(error);
+    logAIError(aiError, `Agent Stream: ${agent.name}`);
+    throw aiError;
+  }
 }
 
 /**
