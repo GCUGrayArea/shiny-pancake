@@ -376,7 +376,7 @@ export default function MessageInput({
   const showFormalityIndicator = enableFormality &&
     !selectedImage &&
     messageText.trim().length >= 10 &&
-    (formalityDetection || isDetectingFormality);
+    (!!formalityDetection || isDetectingFormality);
 
   return (
     <View style={styles.container}>

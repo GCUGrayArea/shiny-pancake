@@ -238,6 +238,7 @@ export async function updateChatLastMessage(
   message: LastMessage
 ): Promise<DbResult<void>> {
   try {
+    // Only update if this message is newer than current lastMessage (or no lastMessage exists)
     const sql = `
       UPDATE chats
       SET lastMessageContent = ?,
@@ -246,6 +247,7 @@ export async function updateChatLastMessage(
           lastMessageType = ?,
           lastMessageCaption = ?
       WHERE id = ?
+        AND (lastMessageTimestamp IS NULL OR lastMessageTimestamp <= ?)
     `;
 
     const params = [
@@ -255,6 +257,7 @@ export async function updateChatLastMessage(
       message.type,
       message.caption ?? null,
       chatId,
+      message.timestamp, // Compare timestamp to prevent overwriting newer messages
     ];
 
     const result = await executeUpdate(sql, params);

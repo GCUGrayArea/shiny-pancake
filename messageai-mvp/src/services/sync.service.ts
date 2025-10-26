@@ -157,7 +157,8 @@ async function processIncomingMessage(
  */
 export async function syncMessageToLocal(
   firebaseMessage: Message,
-  currentUserId?: string
+  currentUserId?: string,
+  skipTranslation?: boolean
 ): Promise<void> {
   try {
     // CRITICAL FIX: Ensure chat exists before saving message (FK constraint)
@@ -187,9 +188,9 @@ export async function syncMessageToLocal(
       }
     }
 
-    // Process message for auto-translation if currentUserId provided
+    // Process message for auto-translation if currentUserId provided and translation not skipped
     let processedMessage = firebaseMessage;
-    if (currentUserId) {
+    if (currentUserId && !skipTranslation) {
       processedMessage = await processIncomingMessage(firebaseMessage, currentUserId);
     }
 
@@ -259,40 +260,57 @@ export async function initialSync(userId: string): Promise<void> {
     });
 
 
-    // 2. Sync each chat and its recent messages (with error handling)
-    for (const chat of chatsResult) {
-      // IMPORTANT: Sync participants FIRST to avoid foreign key constraints
-      // Fetch participants and sync them (INCLUDING current user!)
-      for (const participantId of chat.participantIds) {
-        try {
-          const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
-          if (userResult.success && userResult.data) {
-            await syncUserToLocal(userResult.data);
-          }
-        } catch (error) {
-        }
-      }
-
-      // Now sync chat to local (after participants are in DB)
+    // 2. Sync each chat and its recent messages in parallel (with error handling)
+    await Promise.all(chatsResult.map(async (chat) => {
       try {
-        await syncChatToLocal(chat);
-      } catch (error) {
-      }
-
-      // Fetch recent messages (last 50) for this chat
-      try {
-        const messagesResult = await FirebaseMessageService.getMessagesFromFirebase(chat.id, 50);
-        if (messagesResult.success && messagesResult.data) {
-          for (const message of messagesResult.data) {
-            try {
-              await syncMessageToLocal(message, userId);
-            } catch (error) {
+        // IMPORTANT: Sync participants FIRST to avoid foreign key constraints
+        // Fetch participants and sync them (INCLUDING current user!)
+        await Promise.all(chat.participantIds.map(async (participantId) => {
+          try {
+            const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
+            if (userResult.success && userResult.data) {
+              await syncUserToLocal(userResult.data);
             }
+          } catch (error) {
+            // Ignore individual participant fetch errors
           }
+        }));
+
+        // Now sync chat to local (after participants are in DB)
+        await syncChatToLocal(chat);
+
+        // Fetch recent messages (last 10) for this chat - optimized for faster initial sync
+        const messagesResult = await FirebaseMessageService.getMessagesFromFirebase(chat.id, 10);
+        if (messagesResult.success && messagesResult.data && messagesResult.data.length > 0) {
+          // Sync messages in parallel for this chat
+          await Promise.all(messagesResult.data.map(async (message) => {
+            try {
+              // Skip translation during initial sync for faster login
+              await syncMessageToLocal(message, userId, true);
+            } catch (error) {
+              // Ignore individual message sync errors
+            }
+          }));
+
+          // CRITICAL FIX: After parallel sync, ensure lastMessage is the newest
+          // Find the message with the highest timestamp
+          const newestMessage = messagesResult.data.reduce((newest, current) =>
+            current.timestamp > newest.timestamp ? current : newest
+          );
+
+          // Explicitly update chat's lastMessage to prevent race condition
+          await LocalChatService.updateChatLastMessage(chat.id, {
+            content: newestMessage.content,
+            senderId: newestMessage.senderId,
+            timestamp: newestMessage.timestamp,
+            type: newestMessage.type,
+            caption: newestMessage.caption,
+          });
         }
       } catch (error) {
+        // Ignore individual chat sync errors to allow others to continue
       }
-    }
+    }));
 
   } catch (error) {
     throw error;

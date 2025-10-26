@@ -246,8 +246,7 @@ export default function NewChatScreen() {
 
   // Handle creating group with selected users
   const handleCreateGroup = useCallback(() => {
-    if (selectedUsers.length < 2) return;
-
+    if (!user || selectedUsers.length < 2) return;
 
     // Include current user as the first participant (they're creating the group)
     const allParticipants = [
@@ -255,6 +254,7 @@ export default function NewChatScreen() {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
+        createdAt: user.createdAt,
         isOnline: true,
         lastSeen: Date.now(),
       },
@@ -262,6 +262,7 @@ export default function NewChatScreen() {
         uid: u.uid,
         email: u.email,
         displayName: u.displayName,
+        createdAt: u.createdAt,
         isOnline: u.isOnline,
         lastSeen: u.lastSeen,
       }))

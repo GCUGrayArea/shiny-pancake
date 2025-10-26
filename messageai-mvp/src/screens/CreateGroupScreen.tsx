@@ -14,6 +14,7 @@ import { MainStackParamList } from '@/navigation/AppNavigator';
 import { createChatInFirebase } from '@/services/firebase-chat.service';
 import { generateGroupName, validateGroupCreation } from '@/utils/group.utils';
 import Avatar from '@/components/Avatar';
+import type { User } from '@/types';
 
 type CreateGroupScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'CreateGroup'>;
 type CreateGroupScreenRouteProp = RouteProp<MainStackParamList, 'CreateGroup'>;
@@ -22,13 +23,14 @@ interface Participant {
   uid: string;
   email: string;
   displayName: string;
+  createdAt: number;
   isOnline?: boolean;
-  lastSeen?: number;
+  lastSeen: number;
 }
 
 export default function CreateGroupScreen() {
   const [groupName, setGroupName] = useState('');
-  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participants, setParticipants] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [userHasEdited, setUserHasEdited] = useState(false);
   const insets = useSafeAreaInsets();
@@ -39,10 +41,21 @@ export default function CreateGroupScreen() {
   // Initialize participants from navigation params
   React.useEffect(() => {
     if (route.params?.participants) {
-      setParticipants(route.params.participants);
+      // Map participants to ensure required User fields are present
+      const mappedParticipants: User[] = route.params.participants.map((p: any) => ({
+        uid: p.uid,
+        email: p.email,
+        displayName: p.displayName,
+        createdAt: p.createdAt ?? Date.now(),
+        lastSeen: p.lastSeen ?? Date.now(),
+        isOnline: p.isOnline ?? false,
+        autoTranslateEnabled: p.autoTranslateEnabled ?? false,
+        preferredLanguage: p.preferredLanguage ?? 'en',
+      }));
+      setParticipants(mappedParticipants);
       // Auto-generate group name if not set
       if (!groupName) {
-        setGroupName(generateGroupName(route.params.participants));
+        setGroupName(generateGroupName(mappedParticipants));
       }
     }
   }, [route.params?.participants, groupName]);
@@ -77,17 +90,21 @@ export default function CreateGroupScreen() {
         uid: p.uid,
         email: p.email,
         displayName: p.displayName,
-        createdAt: 0,
-        lastSeen: p.lastSeen || 0,
-        isOnline: p.isOnline || false
+        createdAt: p.createdAt || Date.now(),
+        lastSeen: p.lastSeen || Date.now(),
+        isOnline: p.isOnline || false,
+        autoTranslateEnabled: false,
+        preferredLanguage: 'en',
       })),
       {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
-        createdAt: 0,
-        lastSeen: 0,
-        isOnline: true
+        createdAt: user.createdAt,
+        lastSeen: Date.now(),
+        isOnline: true,
+        autoTranslateEnabled: user.autoTranslateEnabled,
+        preferredLanguage: user.preferredLanguage,
       }
     );
 
@@ -104,6 +121,7 @@ export default function CreateGroupScreen() {
       const finalGroupName = groupName.trim() || generateGroupName(participants);
 
       const chatData = {
+        id: '', // Will be assigned by Firebase
         type: 'group' as const,
         participantIds,
         name: finalGroupName,

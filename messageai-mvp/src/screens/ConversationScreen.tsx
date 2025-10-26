@@ -87,6 +87,10 @@ export default function ConversationScreen() {
   const lastLoadOlderTimeRef = useRef<number>(0);
   const LOAD_OLDER_DEBOUNCE_MS = 2000; // Prevent rapid-fire calls
 
+  // Extract stable user properties for dependencies
+  const userId = user?.uid;
+  const smartRepliesEnabled = user?.smartRepliesEnabled;
+  const preferredLanguage = user?.preferredLanguage;
 
   // Set current viewing chat for notification suppression and mark as read
   useEffect(() => {
@@ -237,19 +241,31 @@ export default function ConversationScreen() {
             if (!updatedMessage) return;
 
             setMessages(prevMessages => {
-              // Check if message already exists (by ID or localId)
-              const existingIndex = prevMessages.findIndex(m =>
-                (m.id && updatedMessage.id && m.id === updatedMessage.id) ||
-                (m.localId && updatedMessage.localId && m.localId === updatedMessage.localId)
-              );
+              // Check if message already exists (by ID, localId, or content+timestamp match)
+              const existingIndex = prevMessages.findIndex(m => {
+                // Match by Firebase ID
+                if (updatedMessage.id && m.id === updatedMessage.id) return true;
+                // Match by localId (for optimistic updates)
+                if (updatedMessage.localId && m.localId === updatedMessage.localId) return true;
+                // Match by sender, content, and similar timestamp (within 2 seconds)
+                // This catches the optimistic message when Firebase message comes back
+                if (m.senderId === updatedMessage.senderId &&
+                    m.content === updatedMessage.content &&
+                    Math.abs(m.timestamp - updatedMessage.timestamp) < 2000) {
+                  return true;
+                }
+                return false;
+              });
 
               if (existingIndex >= 0) {
-                return prevMessages; // Already exists
+                // Replace optimistic message with synced message (has Firebase ID and delivery status)
+                const newMessages = [...prevMessages];
+                newMessages[existingIndex] = updatedMessage;
+                return newMessages;
               }
 
-              // New message - append it and sort
-              const newMessages = [...prevMessages, updatedMessage].sort((a, b) => a.timestamp - b.timestamp);
-              return newMessages;
+              // New message - prepend it (messages are sorted DESC)
+              return [updatedMessage, ...prevMessages];
             });
           }
         } catch (error) {
@@ -364,7 +380,7 @@ export default function ConversationScreen() {
       // Add any pending messages from the queue (messages truly stuck in 'sending' state)
       const pendingResult = await getPendingMessages();
       if (pendingResult.success && pendingResult.data) {
-        const pendingForThisChat = pendingResult.data.filter(m => 
+        const pendingForThisChat = pendingResult.data.filter(m =>
           m.chatId === chatId && m.status === 'sending'  // Only truly pending messages
         );
         if (pendingForThisChat.length > 0) {
@@ -391,23 +407,23 @@ export default function ConversationScreen() {
       }
 
       if (allMessages.length > 0) {
-        // Sort by timestamp
-        const sortedMessages = allMessages.sort((a, b) => a.timestamp - b.timestamp);
+        // Sort by timestamp DESC (newest first) - FlatList inverted will show newest at bottom
+        const sortedMessages = allMessages.sort((a, b) => b.timestamp - a.timestamp);
 
         if (loadOlder) {
-          // Prepend older messages to existing messages
+          // Append older messages to end of existing messages
           setMessages(prev => {
-            const combined = [...sortedMessages, ...prev];
+            const combined = [...prev, ...sortedMessages];
             // Remove duplicates based on message ID
             const unique = combined.filter((message, index, self) =>
               index === self.findIndex(m => m.id === message.id)
             );
-            return unique.sort((a, b) => a.timestamp - b.timestamp);
+            return unique.sort((a, b) => b.timestamp - a.timestamp);
           });
 
-          // Update oldest timestamp for next pagination
+          // Update oldest timestamp for next pagination (last in DESC array)
           if (sortedMessages.length > 0) {
-            setOldestTimestamp(sortedMessages[0].timestamp);
+            setOldestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
           }
 
           // If we got fewer than requested, no more messages available
@@ -416,11 +432,31 @@ export default function ConversationScreen() {
           }
         } else {
           // Replace all messages (initial load or refresh)
-          setMessages(sortedMessages);
+          // BUT preserve any optimistic messages (status='sending' with localId but no Firebase ID)
+          setMessages(prev => {
+            const optimisticMessages = prev.filter(m => m.status === 'sending' && !m.id && m.localId);
+            if (optimisticMessages.length > 0) {
+              // Merge optimistic messages with loaded messages, remove duplicates
+              const combined = [...optimisticMessages, ...sortedMessages];
+              const unique = combined.filter((message, index, self) => {
+                // For messages with Firebase ID, dedupe by ID
+                if (message.id) {
+                  return index === self.findIndex(m => m.id === message.id);
+                }
+                // For optimistic messages, dedupe by localId
+                if (message.localId) {
+                  return index === self.findIndex(m => m.localId === message.localId);
+                }
+                return true;
+              });
+              return unique.sort((a, b) => b.timestamp - a.timestamp);
+            }
+            return sortedMessages;
+          });
 
-          // Update oldest timestamp for pagination
+          // Update oldest timestamp for pagination (last in DESC array)
           if (sortedMessages.length > 0) {
-            setOldestTimestamp(sortedMessages[0].timestamp);
+            setOldestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
             setHasMoreMessages(sortedMessages.length >= 50); // If we got 50 messages, there might be more
           }
         }
@@ -433,8 +469,16 @@ export default function ConversationScreen() {
       try {
         const localResult = await getMessagesByChat(chatId);
         if (localResult.success && localResult.data) {
-          const sortedMessages = localResult.data.sort((a, b) => a.timestamp - b.timestamp);
-          setMessages(sortedMessages);
+          const sortedMessages = localResult.data.sort((a, b) => b.timestamp - a.timestamp); // DESC for consistency
+          // Preserve optimistic messages here too
+          setMessages(prev => {
+            const optimisticMessages = prev.filter(m => m.status === 'sending' && !m.id && m.localId);
+            if (optimisticMessages.length > 0) {
+              const combined = [...optimisticMessages, ...sortedMessages];
+              return combined.sort((a, b) => b.timestamp - a.timestamp);
+            }
+            return sortedMessages;
+          });
         }
       } catch (localError) {
       }
@@ -571,6 +615,12 @@ export default function ConversationScreen() {
     minimumViewTime: 500, // Must be visible for 500ms
   });
 
+  // Memoize keyExtractor to prevent unnecessary re-renders
+  // CRITICAL: Use localId first to maintain stable keys during optimistic → synced transition
+  const keyExtractor = useCallback((item: Message) => {
+    return item.localId || item.id || String(item.timestamp);
+  }, []);
+
   // Memoize renderItem to prevent unnecessary FlatList re-renders
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     // For group chats, show sender indicator only when sender changes
@@ -621,7 +671,7 @@ export default function ConversationScreen() {
 
         setCreatingChat(true);
 
-        const chatResult = await findOrCreateOneOnOneChat(user.uid, otherUserId);
+        const chatResult = await findOrCreateOneOnOneChat(user.uid!, otherUserId!);
 
         if (!chatResult.success) {
           // TODO: Show error to user (Snackbar or Alert)
@@ -667,14 +717,15 @@ export default function ConversationScreen() {
       }
 
       // Add message to UI immediately (optimistic UI)
-      setMessages(prev => [...prev, message]);
+      // Prepend to array since messages are sorted DESC (newest first)
+      setMessages(prev => [message, ...prev]);
 
       // ALL messages go through the queue (whether online or offline)
       const enqueueResult = await enqueueMessage(message);
-      
+
       if (!enqueueResult.success) {
-        // Remove the failed message from UI
-        setMessages(prev => prev.filter(m => m.localId !== localId));
+        // Remove the failed message from UI (check both localId and id)
+        setMessages(prev => prev.filter(m => m.localId !== localId && m.id !== message.id));
         // TODO: Show error to user (Snackbar or Alert)
         return;
       }
@@ -730,11 +781,6 @@ export default function ConversationScreen() {
     } catch (error) {
     }
   };
-
-  // Extract stable user properties for dependencies
-  const userId = user?.uid;
-  const smartRepliesEnabled = user?.smartRepliesEnabled;
-  const preferredLanguage = user?.preferredLanguage;
 
   // Smart reply generation function
   const generateReplies = useCallback(async (currentMessages: Message[]) => {
@@ -868,16 +914,22 @@ export default function ConversationScreen() {
             ref={flatListRef}
             data={messages}
             renderItem={renderItem}
-            keyExtractor={(item) => item.id || item.localId || String(item.timestamp)}
+            keyExtractor={keyExtractor}
             contentContainerStyle={styles.messagesList}
-            inverted={false}
+            inverted={true} // Show newest messages at bottom
             onViewableItemsChanged={onViewableItemsChanged}
             viewabilityConfig={viewabilityConfig.current}
             onEndReached={loadOlderMessages}
-            onEndReachedThreshold={0.1} // Load when 10% from top
+            onEndReachedThreshold={0.1} // Load when scrolling up (inverted list)
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
+            // Performance optimizations
+            initialNumToRender={20}
+            maxToRenderPerBatch={10}
+            windowSize={10}
+            removeClippedSubviews={true}
+            updateCellsBatchingPeriod={50}
             ListHeaderComponent={
               loadingOlderMessages ? (
                 <View style={styles.loadingOlderContainer}>

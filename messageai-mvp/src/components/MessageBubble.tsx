@@ -39,7 +39,7 @@ interface MessageBubbleProps {
   languageHelpEnabled?: boolean; // Whether language help feature is enabled (cultural + slang)
 }
 
-export default function MessageBubble({
+function MessageBubble({
   message,
   isOwnMessage,
   showSenderName = false,
@@ -575,6 +575,35 @@ export default function MessageBubble({
     </>
   );
 }
+
+// Custom comparison function for React.memo
+// Only re-render if message content, status, or relevant props change
+function arePropsEqual(prevProps: MessageBubbleProps, nextProps: MessageBubbleProps): boolean {
+  // If message ID or content changed, re-render
+  if (prevProps.message.id !== nextProps.message.id) return false;
+  if (prevProps.message.content !== nextProps.message.content) return false;
+  if (prevProps.message.timestamp !== nextProps.message.timestamp) return false;
+
+  // If delivery/read status changed, re-render
+  if (prevProps.message.deliveredTo?.length !== nextProps.message.deliveredTo?.length) return false;
+  if (prevProps.message.readBy?.length !== nextProps.message.readBy?.length) return false;
+
+  // If sender/display props changed, re-render
+  if (prevProps.isOwnMessage !== nextProps.isOwnMessage) return false;
+  if (prevProps.showSenderIndicator !== nextProps.showSenderIndicator) return false;
+  if (prevProps.senderName !== nextProps.senderName) return false;
+  if (prevProps.senderProfilePictureUrl !== nextProps.senderProfilePictureUrl) return false;
+
+  // If settings changed, re-render
+  if (prevProps.preferredLanguage !== nextProps.preferredLanguage) return false;
+  if (prevProps.languageHelpEnabled !== nextProps.languageHelpEnabled) return false;
+
+  // Props are equal, skip re-render
+  return true;
+}
+
+// Export memoized component for performance
+export default React.memo(MessageBubble, arePropsEqual);
 
 const styles = StyleSheet.create({
   container: {
