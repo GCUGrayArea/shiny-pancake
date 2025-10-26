@@ -10,17 +10,20 @@ import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
 import { uploadProfilePicture, removeProfilePicture, updateUserInFirebase } from '@/services/firebase-user.service';
 import { updateUser } from '@/services/local-user.service';
+import { clearAllData } from '@/services/database.service';
 import Avatar from '@/components/Avatar';
 import { useNavigation } from '@react-navigation/native';
+import type { NavigationProp } from '@react-navigation/native';
 
 export default function EditProfileScreen() {
-  const { user, refreshUser } = useAuth();
-  const navigation = useNavigation();
+  const { user, refreshUser, signOut } = useAuth();
+  const navigation = useNavigation<NavigationProp<any>>();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   /**
    * Request permission and pick image from library
@@ -182,6 +185,40 @@ export default function EditProfileScreen() {
     }
   };
 
+  /**
+   * Handle logout with confirmation
+   */
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out',
+      'Are you sure you want to log out? This will clear all local data from this device.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoggingOut(true);
+
+              // Clear all local data
+              await clearAllData();
+
+              // Sign out from Firebase
+              await signOut();
+
+              // Navigation to login screen is handled by AuthContext
+            } catch (error) {
+              console.error('Error during logout:', error);
+              Alert.alert('Error', 'Failed to log out. Please try again.');
+              setLoggingOut(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (!user) {
     return (
       <View style={styles.container}>
@@ -321,6 +358,19 @@ export default function EditProfileScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Logout Section */}
+      <View style={styles.section}>
+        <Button
+          mode="outlined"
+          onPress={handleLogout}
+          disabled={uploading || saving || loggingOut}
+          textColor="#d32f2f"
+          style={[styles.button, styles.logoutButton]}
+        >
+          {loggingOut ? 'Logging Out...' : 'Log Out'}
+        </Button>
+      </View>
     </ScrollView>
   );
 }
@@ -382,5 +432,9 @@ const styles = StyleSheet.create({
   },
   infoValue: {
     color: '#999999',
+  },
+  logoutButton: {
+    borderColor: '#d32f2f',
+    borderWidth: 1,
   },
 });

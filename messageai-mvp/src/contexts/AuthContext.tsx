@@ -53,9 +53,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (u) {
         // User logged in - set up presence system and sync
         try {
+          // Set user first so UI knows we're authenticated
+          setUser(u);
+
           // Set current user for notification manager
           NotificationManager.setCurrentUser(u.uid);
-          
+
           await setupPresenceSystem(u.uid);
 
           // Initialize sync system sequentially to avoid transaction conflicts
@@ -66,7 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await new Promise(resolve => setTimeout(resolve, 100));
 
           await startRealtimeSync(u.uid);
+
+          // Only stop loading after full initialization completes
+          setLoading(false);
         } catch (error) {
+          // Still stop loading even if sync fails
+          setLoading(false);
         }
       } else {
         // User logged out - tear down systems
@@ -76,10 +84,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           await teardownPresenceSystem();
         } catch (error) {
         }
-      }
 
-      setUser(u);
-      setLoading(false);
+        setUser(u);
+        setLoading(false);
+      }
     });
 
     // Fallback: if listener doesn't fire within 3 seconds, stop loading anyway

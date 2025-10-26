@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback, useLayoutEffect } from 'react'
 import { View, StyleSheet, FlatList, RefreshControl, Pressable, TouchableOpacity } from 'react-native';
 import { Text, FAB, ActivityIndicator } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -170,6 +170,17 @@ export default function ChatListScreen() {
     }
   }, [user?.uid]); // Only depend on user ID, not the whole user object or loadChats
 
+  // Refresh chat list when screen comes into focus
+  // This ensures the list updates after receiving notifications or returning from other screens
+  useFocusEffect(
+    useCallback(() => {
+      if (hasLoadedOnce) {
+        // Only refresh if we've loaded at least once
+        loadChats();
+      }
+    }, [hasLoadedOnce, loadChats])
+  );
+
   // Handle opening a chat
   const handleOpenChat = useCallback(async (chat: Chat) => {
     if (!user) return;
@@ -275,9 +286,13 @@ export default function ChatListScreen() {
           ? lastMessage.content.substring(0, 40) + '...'
           : lastMessage.content;
 
+        // For group chats: always show sender name
+        // For 1:1 chats: show "You: " for own messages, just preview for others
         preview = chat.type === 'group'
           ? `${senderName}: ${contentPreview}`
-          : contentPreview;
+          : isOwnMessage
+            ? `You: ${contentPreview}`
+            : contentPreview;
       }
     } else {
       preview = 'No messages yet';
