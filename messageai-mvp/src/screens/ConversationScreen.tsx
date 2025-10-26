@@ -1,44 +1,92 @@
 /**
  * Conversation Screen
  * Displays messages in a chat and allows sending new messages
- * 
+ *
  * Note: Chat is NOT created until the first message is sent
  */
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, FlatList, RefreshControl, ViewToken } from 'react-native';
-import { Text, TextInput, IconButton, ActivityIndicator, Button } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { MainStackParamList } from '@/navigation/AppNavigator';
-import { findOrCreateOneOnOneChat, getChatFromFirebase } from '@/services/firebase-chat.service';
-import { getMessagesFromFirebase, markMessageDelivered, markMessageRead, subscribeToMessages, subscribeToMessageUpdates } from '@/services/firebase-message.service';
-import { getUserFromFirebase, getAllUsersFromFirebase } from '@/services/firebase-user.service';
-import { saveMessage, getMessagesByChat, updateMessageStatus, getPendingMessages } from '@/services/local-message.service';
-import { enqueueMessage } from '@/services/message-queue.service';
-import { useNetwork } from '@/contexts/NetworkContext';
-import { saveChat } from '@/services/local-chat.service';
-import { saveUser } from '@/services/local-user.service';
-import * as NotificationManager from '@/services/notification-manager.service';
-import * as UnreadService from '@/services/unread.service';
-import { Message, User } from '@/types';
-import MessageBubble from '@/components/MessageBubble';
-import MessageInput from '@/components/MessageInput';
-import TypingIndicator from '@/components/TypingIndicator';
-import SmartReplyBar from '@/components/SmartReplyBar';
-import Avatar from '@/components/Avatar';
-import { computeMessageStatus } from '@/utils/message-status.utils';
-import { getInitials } from '@/utils/chat.utils';
-import { subscribeToTyping, type TypingUser } from '@/services/typing.service';
-import type { LanguageCode, Reply } from '@/services/ai/types';
-import { buildUserProfile } from '@/services/user-style.service';
-import { generateSmartReplies, invalidateReplyCache, getCachedReplies, cacheReplies } from '@/services/ai/agents/smart-reply-agent';
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
+import {
+  View,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  FlatList,
+  RefreshControl,
+  ViewToken,
+} from "react-native";
+import {
+  Text,
+  TextInput,
+  IconButton,
+  ActivityIndicator,
+  Button,
+} from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useRoute, useNavigation, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { MainStackParamList } from "@/navigation/AppNavigator";
+import {
+  findOrCreateOneOnOneChat,
+  getChatFromFirebase,
+} from "@/services/firebase-chat.service";
+import {
+  getMessagesFromFirebase,
+  markMessageDelivered,
+  markMessageRead,
+  subscribeToMessages,
+  subscribeToMessageUpdates,
+} from "@/services/firebase-message.service";
+import {
+  getUserFromFirebase,
+  getAllUsersFromFirebase,
+} from "@/services/firebase-user.service";
+import {
+  saveMessage,
+  getMessagesByChat,
+  updateMessageStatus,
+  getPendingMessages,
+} from "@/services/local-message.service";
+import { enqueueMessage } from "@/services/message-queue.service";
+import { useNetwork } from "@/contexts/NetworkContext";
+import { saveChat } from "@/services/local-chat.service";
+import { saveUser } from "@/services/local-user.service";
+import * as NotificationManager from "@/services/notification-manager.service";
+import * as UnreadService from "@/services/unread.service";
+import { Message, User } from "@/types";
+import MessageBubble from "@/components/MessageBubble";
+import MessageInput from "@/components/MessageInput";
+import TypingIndicator from "@/components/TypingIndicator";
+import SmartReplyBar from "@/components/SmartReplyBar";
+import Avatar from "@/components/Avatar";
+import { computeMessageStatus } from "@/utils/message-status.utils";
+import { getInitials } from "@/utils/chat.utils";
+import { subscribeToTyping, type TypingUser } from "@/services/typing.service";
+import type { LanguageCode, Reply } from "@/services/ai/types";
+import { buildUserProfile } from "@/services/user-style.service";
+import {
+  generateSmartReplies,
+  invalidateReplyCache,
+  getCachedReplies,
+  cacheReplies,
+} from "@/services/ai/agents/smart-reply-agent";
 
-type ConversationScreenRouteProp = RouteProp<MainStackParamList, 'Conversation'>;
-type ConversationScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'Conversation'>;
+type ConversationScreenRouteProp = RouteProp<
+  MainStackParamList,
+  "Conversation"
+>;
+type ConversationScreenNavigationProp = NativeStackNavigationProp<
+  MainStackParamList,
+  "Conversation"
+>;
 
 export default function ConversationScreen() {
   const route = useRoute<ConversationScreenRouteProp>();
@@ -47,9 +95,17 @@ export default function ConversationScreen() {
   const { user } = useAuth();
   const { colors } = useTheme();
   const { isOnline, triggerQueueProcessing } = useNetwork();
-  
-  const { chatId: initialChatId, otherUserId, otherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName } = route.params;
-  
+
+  const {
+    chatId: initialChatId,
+    otherUserId,
+    otherUserName,
+    otherUserEmail,
+    profilePictureUrl,
+    isGroup,
+    groupName,
+  } = route.params;
+
   const [chatId, setChatId] = useState<string | undefined>(initialChatId);
   const [sending, setSending] = useState(false);
   const [creatingChat, setCreatingChat] = useState(false);
@@ -59,9 +115,13 @@ export default function ConversationScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [hasMoreMessages, setHasMoreMessages] = useState(true);
-  const [oldestTimestamp, setOldestTimestamp] = useState<number | undefined>(undefined);
+  const [oldestTimestamp, setOldestTimestamp] = useState<number | undefined>(
+    undefined,
+  );
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
-  const [loadedOtherUserName, setLoadedOtherUserName] = useState<string | null>(null);
+  const [loadedOtherUserName, setLoadedOtherUserName] = useState<string | null>(
+    null,
+  );
   const [typingUsers, setTypingUsers] = useState<User[]>([]);
   const flatListRef = useRef<FlatList>(null);
 
@@ -118,7 +178,9 @@ export default function ConversationScreen() {
 
         const chat = chatResult.data;
         const participantIds = Object.keys(chat.participantIds || {});
-        const otherUserIdFromChat = participantIds.find(id => id !== user.uid);
+        const otherUserIdFromChat = participantIds.find(
+          (id) => id !== user.uid,
+        );
 
         if (otherUserIdFromChat) {
           const userResult = await getUserFromFirebase(otherUserIdFromChat);
@@ -126,8 +188,7 @@ export default function ConversationScreen() {
             setLoadedOtherUserName(userResult.data.displayName);
           }
         }
-      } catch (error) {
-      }
+      } catch (error) {}
     };
 
     loadOtherUser();
@@ -150,8 +211,8 @@ export default function ConversationScreen() {
         const users = usersResult.data || [];
         const nameMap = new Map<string, string>();
 
-        participantIds.forEach(participantId => {
-          const user = users.find(u => u.uid === participantId);
+        participantIds.forEach((participantId) => {
+          const user = users.find((u) => u.uid === participantId);
           if (user) {
             nameMap.set(participantId, user.displayName);
           }
@@ -159,8 +220,7 @@ export default function ConversationScreen() {
 
         setUserNames(nameMap);
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   }, [isGroup, chatId]);
 
   // Load user names when chat is available
@@ -176,42 +236,57 @@ export default function ConversationScreen() {
 
     // For 1:1 chats: show other user's name, for group chats: show group name
     const displayName = isGroup
-      ? (groupName || 'Group Chat')
-      : (effectiveOtherUserName || otherUserEmail || 'Unknown');
+      ? groupName || "Group Chat"
+      : effectiveOtherUserName || otherUserEmail || "Unknown";
 
     navigation.setOptions({
       title: displayName,
-      headerTitle: isGroup ? displayName : () => {
-        return (
-          <View style={styles.headerTitleContainer}>
-            <Avatar
-              displayName={displayName}
-              userId={otherUserId || 'unknown'}
-              profilePictureUrl={profilePictureUrl}
-              size="small"
+      headerTitle: isGroup
+        ? displayName
+        : () => {
+            return (
+              <View style={styles.headerTitleContainer}>
+                <Avatar
+                  displayName={displayName}
+                  userId={otherUserId || "unknown"}
+                  profilePictureUrl={profilePictureUrl}
+                  size="small"
+                />
+                <Text style={[styles.headerTitleText, { color: colors.text }]}>
+                  {displayName}
+                </Text>
+              </View>
+            );
+          },
+      headerRight: isGroup
+        ? () => (
+            <IconButton
+              icon="information-outline"
+              iconColor={colors.primary}
+              onPress={() => {
+                if (chatId) {
+                  navigation.navigate("GroupInfo", {
+                    chatId,
+                    chatName: groupName || "Group Chat",
+                  });
+                }
+              }}
             />
-            <Text style={[styles.headerTitleText, { color: colors.text }]}>
-              {displayName}
-            </Text>
-          </View>
-        );
-      },
-      headerRight: isGroup ? () => (
-        <IconButton
-          icon="information-outline"
-          iconColor={colors.primary}
-          onPress={() => {
-            if (chatId) {
-              navigation.navigate('GroupInfo', {
-                chatId,
-                chatName: groupName || 'Group Chat'
-              });
-            }
-          }}
-        />
-      ) : undefined,
+          )
+        : undefined,
     });
-  }, [navigation, otherUserId, otherUserName, loadedOtherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName, chatId, colors]);
+  }, [
+    navigation,
+    otherUserId,
+    otherUserName,
+    loadedOtherUserName,
+    otherUserEmail,
+    profilePictureUrl,
+    isGroup,
+    groupName,
+    chatId,
+    colors,
+  ]);
 
   // Load messages when chat ID is available
   useEffect(() => {
@@ -232,7 +307,6 @@ export default function ConversationScreen() {
     if (!chatId) return;
 
     const unsubscribe = subscribeToMessages(chatId, async (newMessage) => {
-
       // The sync service handles saving messages with translations
       // Wait briefly for sync to complete, then get the updated message from local DB
       setTimeout(async () => {
@@ -241,21 +315,30 @@ export default function ConversationScreen() {
           const localResult = await getMessagesByChat(chatId);
           if (localResult.success && localResult.data) {
             const messagesFromDb = localResult.data;
-            const updatedMessage = messagesFromDb.find(m => m.id === newMessage.id);
+            const updatedMessage = messagesFromDb.find(
+              (m) => m.id === newMessage.id,
+            );
             if (!updatedMessage) return;
 
-            setMessages(prevMessages => {
+            setMessages((prevMessages) => {
               // Check if message already exists (by ID, localId, or content+timestamp match)
-              const existingIndex = prevMessages.findIndex(m => {
+              const existingIndex = prevMessages.findIndex((m) => {
                 // Match by Firebase ID
-                if (updatedMessage.id && m.id === updatedMessage.id) return true;
+                if (updatedMessage.id && m.id === updatedMessage.id)
+                  return true;
                 // Match by localId (for optimistic updates)
-                if (updatedMessage.localId && m.localId === updatedMessage.localId) return true;
+                if (
+                  updatedMessage.localId &&
+                  m.localId === updatedMessage.localId
+                )
+                  return true;
                 // Match by sender, content, and similar timestamp (within 2 seconds)
                 // This catches the optimistic message when Firebase message comes back
-                if (m.senderId === updatedMessage.senderId &&
-                    m.content === updatedMessage.content &&
-                    Math.abs(m.timestamp - updatedMessage.timestamp) < 2000) {
+                if (
+                  m.senderId === updatedMessage.senderId &&
+                  m.content === updatedMessage.content &&
+                  Math.abs(m.timestamp - updatedMessage.timestamp) < 2000
+                ) {
                   return true;
                 }
                 return false;
@@ -273,7 +356,7 @@ export default function ConversationScreen() {
             });
           }
         } catch (error) {
-          console.error('Failed to add new message:', error);
+          console.error("Failed to add new message:", error);
         }
       }, 300); // Small delay to let sync service process translations
     });
@@ -287,34 +370,41 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!chatId) return;
 
-    const unsubscribe = subscribeToMessageUpdates(chatId, async (updatedMessage) => {
-      // Update only the specific message that changed (avoid reloading all)
-      try {
-        setMessages(prevMessages => {
-          const messageIndex = prevMessages.findIndex(m => m.id === updatedMessage.id);
-          if (messageIndex === -1) return prevMessages;
+    const unsubscribe = subscribeToMessageUpdates(
+      chatId,
+      async (updatedMessage) => {
+        // Update only the specific message that changed (avoid reloading all)
+        try {
+          setMessages((prevMessages) => {
+            const messageIndex = prevMessages.findIndex(
+              (m) => m.id === updatedMessage.id,
+            );
+            if (messageIndex === -1) return prevMessages;
 
-          const existingMessage = prevMessages[messageIndex];
+            const existingMessage = prevMessages[messageIndex];
 
-          // Check if message actually changed (deep equality for key fields)
-          const hasChanged =
-            existingMessage.status !== updatedMessage.status ||
-            existingMessage.content !== updatedMessage.content ||
-            JSON.stringify(existingMessage.readBy) !== JSON.stringify(updatedMessage.readBy) ||
-            JSON.stringify(existingMessage.deliveredTo) !== JSON.stringify(updatedMessage.deliveredTo) ||
-            existingMessage.translatedText !== updatedMessage.translatedText;
+            // Check if message actually changed (deep equality for key fields)
+            const hasChanged =
+              existingMessage.status !== updatedMessage.status ||
+              existingMessage.content !== updatedMessage.content ||
+              JSON.stringify(existingMessage.readBy) !==
+                JSON.stringify(updatedMessage.readBy) ||
+              JSON.stringify(existingMessage.deliveredTo) !==
+                JSON.stringify(updatedMessage.deliveredTo) ||
+              existingMessage.translatedText !== updatedMessage.translatedText;
 
-          if (!hasChanged) return prevMessages;
+            if (!hasChanged) return prevMessages;
 
-          // Create new array with updated message
-          const newMessages = [...prevMessages];
-          newMessages[messageIndex] = updatedMessage;
-          return newMessages;
-        });
-      } catch (error) {
-        console.error('Failed to update message:', error);
-      }
-    });
+            // Create new array with updated message
+            const newMessages = [...prevMessages];
+            newMessages[messageIndex] = updatedMessage;
+            return newMessages;
+          });
+        } catch (error) {
+          console.error("Failed to update message:", error);
+        }
+      },
+    );
 
     return () => {
       unsubscribe();
@@ -325,23 +415,27 @@ export default function ConversationScreen() {
   useEffect(() => {
     if (!chatId || !user) return;
 
-    const unsubscribe = subscribeToTyping(chatId, user.uid, async (typingUsersList: TypingUser[]) => {
-      // Fetch full user objects for typing users
-      const fullUsers: User[] = [];
+    const unsubscribe = subscribeToTyping(
+      chatId,
+      user.uid,
+      async (typingUsersList: TypingUser[]) => {
+        // Fetch full user objects for typing users
+        const fullUsers: User[] = [];
 
-      for (const typingUser of typingUsersList) {
-        try {
-          const userResult = await getUserFromFirebase(typingUser.uid);
-          if (userResult.success && userResult.data) {
-            fullUsers.push(userResult.data);
+        for (const typingUser of typingUsersList) {
+          try {
+            const userResult = await getUserFromFirebase(typingUser.uid);
+            if (userResult.success && userResult.data) {
+              fullUsers.push(userResult.data);
+            }
+          } catch (error) {
+            // Silently ignore errors fetching user data
           }
-        } catch (error) {
-          // Silently ignore errors fetching user data
         }
-      }
 
-      setTypingUsers(fullUsers);
-    });
+        setTypingUsers(fullUsers);
+      },
+    );
 
     return () => {
       unsubscribe();
@@ -362,21 +456,33 @@ export default function ConversationScreen() {
       let firebaseResult;
       if (loadOlder && oldestTimestamp) {
         // Load older messages using pagination
-        firebaseResult = await getMessagesFromFirebase(chatId, 50, oldestTimestamp);
+        firebaseResult = await getMessagesFromFirebase(
+          chatId,
+          50,
+          oldestTimestamp,
+        );
       } else {
         // Always fetch from Firebase to get the latest messages
         firebaseResult = await getMessagesFromFirebase(chatId);
       }
-      
+
       // Combine messages from different sources
       let allMessages: Message[] = [];
 
       // Always try to load from local DB first (has translations from sync service)
       const localResult = await getMessagesByChat(chatId);
 
-      if (localResult.success && localResult.data && localResult.data.length > 0) {
+      if (
+        localResult.success &&
+        localResult.data &&
+        localResult.data.length > 0
+      ) {
         allMessages = [...localResult.data];
-      } else if (firebaseResult.success && firebaseResult.data && firebaseResult.data.length > 0) {
+      } else if (
+        firebaseResult.success &&
+        firebaseResult.data &&
+        firebaseResult.data.length > 0
+      ) {
         // Fallback to Firebase if local DB is empty (shouldn't happen if sync ran)
         allMessages = [...firebaseResult.data];
       }
@@ -384,24 +490,32 @@ export default function ConversationScreen() {
       // Add any pending messages from the queue (messages truly stuck in 'sending' state)
       const pendingResult = await getPendingMessages();
       if (pendingResult.success && pendingResult.data) {
-        const pendingForThisChat = pendingResult.data.filter(m =>
-          m.chatId === chatId && m.status === 'sending'  // Only truly pending messages
+        const pendingForThisChat = pendingResult.data.filter(
+          (m) => m.chatId === chatId && m.status === "sending", // Only truly pending messages
         );
         if (pendingForThisChat.length > 0) {
           // Add pending messages that aren't already in allMessages
           for (const pendingMsg of pendingForThisChat) {
             // More robust deduplication: check ID, localId, AND content+timestamp
-            const alreadyExists = allMessages.some(m => {
+            const alreadyExists = allMessages.some((m) => {
               // Match by Firebase ID (if pending message has one)
               if (pendingMsg.id && m.id && pendingMsg.id === m.id) return true;
               // Match by localId (if Firebase message preserved it)
-              if (pendingMsg.localId && m.localId && pendingMsg.localId === m.localId) return true;
+              if (
+                pendingMsg.localId &&
+                m.localId &&
+                pendingMsg.localId === m.localId
+              )
+                return true;
               // Match by content and similar timestamp (within 5 seconds - allowing for clock skew)
-              if (m.content === pendingMsg.content && 
-                  Math.abs(m.timestamp - pendingMsg.timestamp) < 5000) return true;
+              if (
+                m.content === pendingMsg.content &&
+                Math.abs(m.timestamp - pendingMsg.timestamp) < 5000
+              )
+                return true;
               return false;
             });
-            
+
             if (!alreadyExists) {
               allMessages.push(pendingMsg);
             } else {
@@ -412,22 +526,27 @@ export default function ConversationScreen() {
 
       if (allMessages.length > 0) {
         // Sort by timestamp DESC (newest first) - FlatList inverted will show newest at bottom
-        const sortedMessages = allMessages.sort((a, b) => b.timestamp - a.timestamp);
+        const sortedMessages = allMessages.sort(
+          (a, b) => b.timestamp - a.timestamp,
+        );
 
         if (loadOlder) {
           // Append older messages to end of existing messages
-          setMessages(prev => {
+          setMessages((prev) => {
             const combined = [...prev, ...sortedMessages];
             // Remove duplicates based on message ID
-            const unique = combined.filter((message, index, self) =>
-              index === self.findIndex(m => m.id === message.id)
+            const unique = combined.filter(
+              (message, index, self) =>
+                index === self.findIndex((m) => m.id === message.id),
             );
             return unique.sort((a, b) => b.timestamp - a.timestamp);
           });
 
           // Update oldest timestamp for next pagination (last in DESC array)
           if (sortedMessages.length > 0) {
-            setOldestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
+            setOldestTimestamp(
+              sortedMessages[sortedMessages.length - 1].timestamp,
+            );
           }
 
           // If we got fewer than requested, no more messages available
@@ -437,19 +556,24 @@ export default function ConversationScreen() {
         } else {
           // Replace all messages (initial load or refresh)
           // BUT preserve any optimistic messages (status='sending' with localId but no Firebase ID)
-          setMessages(prev => {
-            const optimisticMessages = prev.filter(m => m.status === 'sending' && !m.id && m.localId);
+          setMessages((prev) => {
+            const optimisticMessages = prev.filter(
+              (m) => m.status === "sending" && !m.id && m.localId,
+            );
             if (optimisticMessages.length > 0) {
               // Merge optimistic messages with loaded messages, remove duplicates
               const combined = [...optimisticMessages, ...sortedMessages];
               const unique = combined.filter((message, index, self) => {
                 // For messages with Firebase ID, dedupe by ID
                 if (message.id) {
-                  return index === self.findIndex(m => m.id === message.id);
+                  return index === self.findIndex((m) => m.id === message.id);
                 }
                 // For optimistic messages, dedupe by localId
                 if (message.localId) {
-                  return index === self.findIndex(m => m.localId === message.localId);
+                  return (
+                    index ===
+                    self.findIndex((m) => m.localId === message.localId)
+                  );
                 }
                 return true;
               });
@@ -460,7 +584,9 @@ export default function ConversationScreen() {
 
           // Update oldest timestamp for pagination (last in DESC array)
           if (sortedMessages.length > 0) {
-            setOldestTimestamp(sortedMessages[sortedMessages.length - 1].timestamp);
+            setOldestTimestamp(
+              sortedMessages[sortedMessages.length - 1].timestamp,
+            );
             setHasMoreMessages(sortedMessages.length >= 50); // If we got 50 messages, there might be more
           }
         }
@@ -473,10 +599,14 @@ export default function ConversationScreen() {
       try {
         const localResult = await getMessagesByChat(chatId);
         if (localResult.success && localResult.data) {
-          const sortedMessages = localResult.data.sort((a, b) => b.timestamp - a.timestamp); // DESC for consistency
+          const sortedMessages = localResult.data.sort(
+            (a, b) => b.timestamp - a.timestamp,
+          ); // DESC for consistency
           // Preserve optimistic messages here too
-          setMessages(prev => {
-            const optimisticMessages = prev.filter(m => m.status === 'sending' && !m.id && m.localId);
+          setMessages((prev) => {
+            const optimisticMessages = prev.filter(
+              (m) => m.status === "sending" && !m.id && m.localId,
+            );
             if (optimisticMessages.length > 0) {
               const combined = [...optimisticMessages, ...sortedMessages];
               return combined.sort((a, b) => b.timestamp - a.timestamp);
@@ -484,8 +614,7 @@ export default function ConversationScreen() {
             return sortedMessages;
           });
         }
-      } catch (localError) {
-      }
+      } catch (localError) {}
     } finally {
       if (loadOlder) {
         setLoadingOlderMessages(false);
@@ -519,99 +648,112 @@ export default function ConversationScreen() {
   };
 
   // Mark messages as delivered when they arrive on recipient's device
-  const markMessagesAsDelivered = useCallback(async (msgs: Message[]) => {
-    if (!userId || !chatId) return;
+  const markMessagesAsDelivered = useCallback(
+    async (msgs: Message[]) => {
+      if (!userId || !chatId) return;
 
-    for (const message of msgs) {
-      // Only mark messages we didn't send
-      // Must have Firebase ID (message is persisted)
-      // Don't mark if we're already in the deliveredTo array
-      // Don't mark if we're currently marking it
-      if (message.senderId !== userId &&
+      for (const message of msgs) {
+        // Only mark messages we didn't send
+        // Must have Firebase ID (message is persisted)
+        // Don't mark if we're already in the deliveredTo array
+        // Don't mark if we're currently marking it
+        if (
+          message.senderId !== userId &&
           message.id &&
           !message.deliveredTo?.includes(userId) &&
-          !markingAsDeliveredRef.current.has(message.id)) {
+          !markingAsDeliveredRef.current.has(message.id)
+        ) {
+          // Add to tracking set
+          markingAsDeliveredRef.current.add(message.id);
 
-        // Add to tracking set
-        markingAsDeliveredRef.current.add(message.id);
-
-        try {
-          // Update in Firebase (adds userId to deliveredTo array)
-          // Firebase listener will update local state automatically
-          await markMessageDelivered(message.id, chatId, userId);
-        } finally {
-          // Remove from tracking set after a delay (prevent immediate re-marking)
-          setTimeout(() => {
-            markingAsDeliveredRef.current.delete(message.id);
-          }, 1000);
+          try {
+            // Update in Firebase (adds userId to deliveredTo array)
+            // Firebase listener will update local state automatically
+            await markMessageDelivered(message.id, chatId, userId);
+          } finally {
+            // Remove from tracking set after a delay (prevent immediate re-marking)
+            setTimeout(() => {
+              markingAsDeliveredRef.current.delete(message.id);
+            }, 1000);
+          }
         }
       }
-    }
-  }, [userId, chatId]);
+    },
+    [userId, chatId],
+  );
 
   // Mark messages as read when they become visible
-  const markMessagesAsRead = useCallback(async (messageIds: string[]) => {
-    if (!userId || !chatId) return;
+  const markMessagesAsRead = useCallback(
+    async (messageIds: string[]) => {
+      if (!userId || !chatId) return;
 
-    for (const messageId of messageIds) {
-      // Use ref to avoid recreating callback on every messages change
-      const message = messagesRef.current.find(m => m.id === messageId);
-      if (!message) continue;
+      for (const messageId of messageIds) {
+        // Use ref to avoid recreating callback on every messages change
+        const message = messagesRef.current.find((m) => m.id === messageId);
+        if (!message) continue;
 
-      // Only mark messages we didn't send
-      // Must have Firebase ID (message is persisted)
-      // Don't mark if we're already in the readBy array
-      // Don't mark if we're currently marking it (prevent duplicate calls)
-      if (message.senderId !== userId &&
+        // Only mark messages we didn't send
+        // Must have Firebase ID (message is persisted)
+        // Don't mark if we're already in the readBy array
+        // Don't mark if we're currently marking it (prevent duplicate calls)
+        if (
+          message.senderId !== userId &&
           message.id &&
           !message.readBy?.includes(userId) &&
-          !markingAsReadRef.current.has(message.id)) {
+          !markingAsReadRef.current.has(message.id)
+        ) {
+          // Add to tracking set
+          markingAsReadRef.current.add(message.id);
 
-        // Add to tracking set
-        markingAsReadRef.current.add(message.id);
-
-        try {
-          // Update in Firebase (adds userId to readBy array)
-          // Firebase listener will update local state automatically
-          await markMessageRead(messageId, chatId, userId);
-        } finally {
-          // Remove from tracking set after a delay (prevent immediate re-marking)
-          setTimeout(() => {
-            markingAsReadRef.current.delete(message.id);
-          }, 1000);
+          try {
+            // Update in Firebase (adds userId to readBy array)
+            // Firebase listener will update local state automatically
+            await markMessageRead(messageId, chatId, userId);
+          } finally {
+            // Remove from tracking set after a delay (prevent immediate re-marking)
+            setTimeout(() => {
+              markingAsReadRef.current.delete(message.id);
+            }, 1000);
+          }
         }
       }
-    }
-  }, [userId, chatId]);
+    },
+    [userId, chatId],
+  );
 
   // Handle viewable items changed (for read receipts)
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    const visibleMessageIds = viewableItems
-      .map(item => (item.item as Message).id)
-      .filter(Boolean);
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      const visibleMessageIds = viewableItems
+        .map((item) => (item.item as Message).id)
+        .filter(Boolean);
 
-    // CRITICAL: Ignore empty arrays - FlatList fires these spuriously during layout
-    if (visibleMessageIds.length === 0) {
-      return;
-    }
+      // CRITICAL: Ignore empty arrays - FlatList fires these spuriously during layout
+      if (visibleMessageIds.length === 0) {
+        return;
+      }
 
-    // Create a Set of current visible IDs for comparison
-    const currentVisibleSet = new Set(visibleMessageIds);
+      // Create a Set of current visible IDs for comparison
+      const currentVisibleSet = new Set(visibleMessageIds);
 
-    // Check if visible items actually changed
-    const hasChanged =
-      currentVisibleSet.size !== previouslyVisibleRef.current.size ||
-      !Array.from(currentVisibleSet).every(id => previouslyVisibleRef.current.has(id));
+      // Check if visible items actually changed
+      const hasChanged =
+        currentVisibleSet.size !== previouslyVisibleRef.current.size ||
+        !Array.from(currentVisibleSet).every((id) =>
+          previouslyVisibleRef.current.has(id),
+        );
 
-    if (!hasChanged) {
-      return;
-    }
+      if (!hasChanged) {
+        return;
+      }
 
-    // Update the tracking ref
-    previouslyVisibleRef.current = currentVisibleSet;
+      // Update the tracking ref
+      previouslyVisibleRef.current = currentVisibleSet;
 
-    markMessagesAsRead(visibleMessageIds);
-  }, [markMessagesAsRead]);
+      markMessagesAsRead(visibleMessageIds);
+    },
+    [markMessagesAsRead],
+  );
 
   // Memoize viewabilityConfig to prevent unnecessary re-renders
   const viewabilityConfig = useRef({
@@ -626,30 +768,46 @@ export default function ConversationScreen() {
   }, []);
 
   // Memoize renderItem to prevent unnecessary FlatList re-renders
-  const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
-    // For group chats, show sender indicator only when sender changes
-    const showSenderIndicator = isGroup && item.senderId !== userId;
-    const senderName = showSenderIndicator ? userNames.get(item.senderId) || 'Unknown' : undefined;
+  const renderItem = useCallback(
+    ({ item, index }: { item: Message; index: number }) => {
+      // For group chats, show sender indicator only when sender changes
+      const showSenderIndicator = isGroup && item.senderId !== userId;
+      const senderName = showSenderIndicator
+        ? userNames.get(item.senderId) || "Unknown"
+        : undefined;
 
-    // Check if this is the first message or if sender changed from previous message
-    const shouldShowSenderIndicator = showSenderIndicator && (
-      index === 0 || // First message always shows sender
-      messagesRef.current[index - 1]?.senderId !== item.senderId // Sender changed from previous
-    );
+      // Check if this is the first message or if sender changed from previous message
+      const shouldShowSenderIndicator =
+        showSenderIndicator &&
+        (index === 0 || // First message always shows sender
+          messagesRef.current[index - 1]?.senderId !== item.senderId); // Sender changed from previous
 
-    return (
-      <MessageBubble
-        message={item}
-        isOwnMessage={item.senderId === userId}
-        currentUserId={userId}
-        showSenderIndicator={shouldShowSenderIndicator}
-        senderName={shouldShowSenderIndicator ? senderName : undefined}
-        isGroup={isGroup}
-        preferredLanguage={(preferredLanguage as LanguageCode) || 'en'}
-        languageHelpEnabled={user?.culturalHintsEnabled || user?.slangExplanationsEnabled || false}
-      />
-    );
-  }, [isGroup, userId, userNames, preferredLanguage, user?.culturalHintsEnabled, user?.slangExplanationsEnabled]);
+      return (
+        <MessageBubble
+          message={item}
+          isOwnMessage={item.senderId === userId}
+          currentUserId={userId}
+          showSenderIndicator={shouldShowSenderIndicator}
+          senderName={shouldShowSenderIndicator ? senderName : undefined}
+          isGroup={isGroup}
+          preferredLanguage={(preferredLanguage as LanguageCode) || "en"}
+          languageHelpEnabled={
+            user?.culturalHintsEnabled ||
+            user?.slangExplanationsEnabled ||
+            false
+          }
+        />
+      );
+    },
+    [
+      isGroup,
+      userId,
+      userNames,
+      preferredLanguage,
+      user?.culturalHintsEnabled,
+      user?.slangExplanationsEnabled,
+    ],
+  );
 
   // Mark messages as delivered when they load
   useEffect(() => {
@@ -658,7 +816,12 @@ export default function ConversationScreen() {
     }
   }, [messages.length]); // Only run when message count changes
 
-  const handleSendMessage = async (content: string, type: 'text' | 'image', imageUri?: string, caption?: string) => {
+  const handleSendMessage = async (
+    content: string,
+    type: "text" | "image",
+    imageUri?: string,
+    caption?: string,
+  ) => {
     if (!user || sending) return;
 
     try {
@@ -675,7 +838,10 @@ export default function ConversationScreen() {
 
         setCreatingChat(true);
 
-        const chatResult = await findOrCreateOneOnOneChat(user.uid!, otherUserId!);
+        const chatResult = await findOrCreateOneOnOneChat(
+          user.uid!,
+          otherUserId!,
+        );
 
         if (!chatResult.success) {
           // TODO: Show error to user (Snackbar or Alert)
@@ -699,17 +865,16 @@ export default function ConversationScreen() {
       // Create the message object
       const localId = `local_${Date.now()}_${Math.random()}`;
       const message: Message = {
-        id: '', // Will be generated by Firebase
+        id: "", // Will be generated by Firebase
         chatId: activeChatId,
         senderId: user.uid,
         type,
         content,
         timestamp: Date.now(),
-        status: 'sending',
+        status: "sending",
         localId, // Temporary local ID for tracking
         ...(caption && { caption }), // Add caption if provided
       };
-
 
       // Sync chat/users to local DB BEFORE enqueueing (required for foreign key constraints)
       if (!chatSyncedToLocal) {
@@ -722,18 +887,19 @@ export default function ConversationScreen() {
 
       // Add message to UI immediately (optimistic UI)
       // Prepend to array since messages are sorted DESC (newest first)
-      setMessages(prev => [message, ...prev]);
+      setMessages((prev) => [message, ...prev]);
 
       // ALL messages go through the queue (whether online or offline)
       const enqueueResult = await enqueueMessage(message);
 
       if (!enqueueResult.success) {
         // Remove the failed message from UI (check both localId and id)
-        setMessages(prev => prev.filter(m => m.localId !== localId && m.id !== message.id));
+        setMessages((prev) =>
+          prev.filter((m) => m.localId !== localId && m.id !== message.id),
+        );
         // TODO: Show error to user (Snackbar or Alert)
         return;
       }
-
 
       // Trigger NetworkProvider to process queue (single source of truth)
       // NetworkProvider will:
@@ -741,7 +907,6 @@ export default function ConversationScreen() {
       // - Wait until reconnection if offline
       // - Prevent concurrent processing
       triggerQueueProcessing();
-      
     } catch (error) {
       // TODO: Show error to user
     } finally {
@@ -757,14 +922,12 @@ export default function ConversationScreen() {
         await saveUser(currentUserData.data);
       } else {
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   // Background sync helper (non-blocking)
   const syncChatToLocal = async (chatId: string) => {
     try {
-
       // Sync current user (needed for message sending)
       await syncCurrentUserToLocal();
 
@@ -782,61 +945,70 @@ export default function ConversationScreen() {
         await saveChat(chatData.data);
         setChatSyncedToLocal(true);
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   };
 
   // Smart reply generation function
-  const generateReplies = useCallback(async (currentMessages: Message[]) => {
-    if (!chatId || !userId || smartRepliesEnabled === false || currentMessages.length === 0) {
-      return;
-    }
+  const generateReplies = useCallback(
+    async (currentMessages: Message[]) => {
+      if (
+        !chatId ||
+        !userId ||
+        smartRepliesEnabled === false ||
+        currentMessages.length === 0
+      ) {
+        return;
+      }
 
-    // Check cache first
-    const lastMessage = currentMessages[currentMessages.length - 1];
-    if (lastMessage.senderId === userId) {
-      // Don't generate replies for own messages
-      setShowSmartReplies(false);
-      return;
-    }
+      // Check cache first
+      const lastMessage = currentMessages[currentMessages.length - 1];
+      if (lastMessage.senderId === userId) {
+        // Don't generate replies for own messages
+        setShowSmartReplies(false);
+        return;
+      }
 
-    // Use user's preferred language for replies
-    const targetLanguage = (preferredLanguage as LanguageCode) || 'en';
+      // Use user's preferred language for replies
+      const targetLanguage = (preferredLanguage as LanguageCode) || "en";
 
-    const cached = getCachedReplies(chatId, lastMessage.id, targetLanguage);
-    if (cached) {
-      setSmartReplies(cached);
-      setShowSmartReplies(true);
-      return;
-    }
+      const cached = getCachedReplies(chatId, lastMessage.id, targetLanguage);
+      if (cached) {
+        setSmartReplies(cached);
+        setShowSmartReplies(true);
+        return;
+      }
 
-    setLoadingSmartReplies(true);
-    try {
-      // Build user style profile
-      const profile = await buildUserProfile(userId, chatId);
+      setLoadingSmartReplies(true);
+      try {
+        // Build user style profile
+        const profile = await buildUserProfile(userId, chatId);
 
-      // Generate smart replies
-      const replies = await generateSmartReplies(currentMessages, profile, {
-        count: 3,
-        targetLanguage
-      });
+        // Generate smart replies
+        const replies = await generateSmartReplies(currentMessages, profile, {
+          count: 3,
+          targetLanguage,
+        });
 
-      // Cache and display
-      cacheReplies(chatId, lastMessage.id, replies, targetLanguage);
-      setSmartReplies(replies);
-      setShowSmartReplies(true);
-    } catch (error) {
-      console.error('Failed to generate smart replies:', error);
-      setSmartReplies([]);
-    } finally {
-      setLoadingSmartReplies(false);
-    }
-  }, [chatId, userId, smartRepliesEnabled, preferredLanguage]);
+        // Cache and display
+        cacheReplies(chatId, lastMessage.id, replies, targetLanguage);
+        setSmartReplies(replies);
+        setShowSmartReplies(true);
+      } catch (error) {
+        console.error("Failed to generate smart replies:", error);
+        setSmartReplies([]);
+      } finally {
+        setLoadingSmartReplies(false);
+      }
+    },
+    [chatId, userId, smartRepliesEnabled, preferredLanguage],
+  );
 
   // Trigger smart reply generation when new messages arrive (debounced)
   // Use lastMessageId as dependency to avoid re-triggering on every messages array change
-  const lastMessageId = messages.length > 0 ? messages[messages.length - 1].id : null;
-  const lastMessageSenderId = messages.length > 0 ? messages[messages.length - 1].senderId : null;
+  const lastMessageId =
+    messages.length > 0 ? messages[messages.length - 1].id : null;
+  const lastMessageSenderId =
+    messages.length > 0 ? messages[messages.length - 1].senderId : null;
 
   useEffect(() => {
     if (!chatId || !userId || !lastMessageId) {
@@ -889,28 +1061,39 @@ export default function ConversationScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingBottom: insets.bottom, backgroundColor: colors.background }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={[
+        styles.container,
+        { paddingBottom: insets.bottom, backgroundColor: colors.background },
+      ]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={100}
     >
-      <View style={[styles.messagesContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.messagesContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         {creatingChat ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator animating size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Creating chat...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Creating chat...
+            </Text>
           </View>
         ) : loadingMessages ? (
           <View style={styles.centerContainer}>
             <ActivityIndicator animating size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading messages...</Text>
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+              Loading messages...
+            </Text>
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.centerContainer}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               {chatId
-                ? 'No messages yet. Start the conversation!'
-                : `Send a message to start chatting with ${otherUserName}`
-              }
+                ? "No messages yet. Start the conversation!"
+                : `Send a message to start chatting with ${otherUserName}`}
             </Text>
           </View>
         ) : (
@@ -936,17 +1119,50 @@ export default function ConversationScreen() {
             updateCellsBatchingPeriod={50}
             ListHeaderComponent={
               loadingOlderMessages ? (
-                <View style={[styles.loadingOlderContainer, { backgroundColor: colors.surface }]}>
+                <View
+                  style={[
+                    styles.loadingOlderContainer,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
                   <ActivityIndicator size="small" color={colors.primary} />
-                  <Text style={[styles.loadingOlderText, { color: colors.textSecondary }]}>Loading older messages...</Text>
+                  <Text
+                    style={[
+                      styles.loadingOlderText,
+                      { color: colors.textSecondary },
+                    ]}
+                  >
+                    Loading older messages...
+                  </Text>
                 </View>
               ) : hasMoreMessages ? (
-                <View style={[styles.loadMoreContainer, { backgroundColor: colors.surface }]}>
-                  <Text style={[styles.loadMoreText, { color: colors.textTertiary }]}>Scroll up to load older messages</Text>
+                <View
+                  style={[
+                    styles.loadMoreContainer,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.loadMoreText,
+                      { color: colors.textTertiary },
+                    ]}
+                  >
+                    Scroll up to load older messages
+                  </Text>
                 </View>
               ) : messages.length > 50 ? (
-                <View style={[styles.noMoreContainer, { backgroundColor: colors.surface }]}>
-                  <Text style={[styles.noMoreText, { color: colors.textSecondary }]}>No older messages</Text>
+                <View
+                  style={[
+                    styles.noMoreContainer,
+                    { backgroundColor: colors.surface },
+                  ]}
+                >
+                  <Text
+                    style={[styles.noMoreText, { color: colors.textSecondary }]}
+                  >
+                    No older messages
+                  </Text>
                 </View>
               ) : null
             }
@@ -972,7 +1188,9 @@ export default function ConversationScreen() {
         currentUserId={user?.uid}
         disabled={sending || creatingChat}
         placeholder={`Message ${otherUserName || otherUserEmail}...`}
-        onTextInserted={(fn) => { insertTextFnRef.current = fn; }}
+        onTextInserted={(fn) => {
+          insertTextFnRef.current = fn;
+        }}
       />
     </KeyboardAvoidingView>
   );
@@ -981,30 +1199,30 @@ export default function ConversationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     paddingBottom: 0, // Will be overridden by safe area insets
   },
   headerTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   headerTitleText: {
     fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
+    fontWeight: "600",
+    color: "#000",
   },
   avatarCircle: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatarText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   messagesContainer: {
     flex: 1,
@@ -1012,54 +1230,53 @@ const styles = StyleSheet.create({
   },
   centerContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 16,
   },
   emptyText: {
     fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     paddingHorizontal: 32,
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   messagesList: {
     paddingVertical: 8,
   },
   loadingOlderContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 12,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   loadingOlderText: {
     marginLeft: 8,
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   loadMoreContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   loadMoreText: {
     fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
+    color: "#999",
+    fontStyle: "italic",
   },
   noMoreContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
   },
   noMoreText: {
     fontSize: 12,
-    color: '#666',
-    fontStyle: 'italic',
+    color: "#666",
+    fontStyle: "italic",
   },
 });
-

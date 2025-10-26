@@ -4,7 +4,7 @@
  * Max 75 lines per function as per PRD requirements
  */
 
-import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
+import NetInfo, { NetInfoState } from "@react-native-community/netinfo";
 
 /**
  * Callback for network state changes
@@ -29,10 +29,11 @@ export async function isOnline(): Promise<boolean> {
  * Returns an unsubscribe function
  */
 export function subscribeToNetworkState(
-  callback: NetworkStateCallback
+  callback: NetworkStateCallback,
 ): () => void {
   const handleStateChange = (state: NetInfoState): void => {
-    const online = state.isConnected === true && state.isInternetReachable !== false;
+    const online =
+      state.isConnected === true && state.isInternetReachable !== false;
     callback(online);
   };
 

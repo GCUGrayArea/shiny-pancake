@@ -3,10 +3,16 @@
  * Displays horizontally scrollable smart reply suggestions above the keyboard
  */
 
-import React from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
-import { Reply } from '../services/ai/types';
-import AILoadingIndicator from './AILoadingIndicator';
+import React from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+} from "react-native";
+import { Reply } from "../services/ai/types";
+import AILoadingIndicator from "./AILoadingIndicator";
 
 interface SmartReplyBarProps {
   /** Array of reply suggestions to display */
@@ -96,79 +102,78 @@ function ReplyChip({ reply, onPress }: ReplyChipProps) {
   );
 }
 
-
 /**
  * Get emoji icon for reply type
  */
-function getReplyTypeEmoji(type: Reply['type']): string {
+function getReplyTypeEmoji(type: Reply["type"]): string {
   switch (type) {
-    case 'agree':
-      return '👍';
-    case 'question':
-      return '❓';
-    case 'continue':
-      return '💬';
-    case 'polite-close':
-      return '👋';
-    case 'enthusiasm':
-      return '🎉';
+    case "agree":
+      return "👍";
+    case "question":
+      return "❓";
+    case "continue":
+      return "💬";
+    case "polite-close":
+      return "👋";
+    case "enthusiasm":
+      return "🎉";
     default:
-      return '💬';
+      return "💬";
   }
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#e0e0e0",
     paddingVertical: 10,
   },
   scrollContent: {
     paddingHorizontal: 15,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 10,
   },
   chip: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#d0d0d0',
+    borderColor: "#d0d0d0",
     marginRight: 8,
     elevation: 1,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
   chipText: {
     fontSize: 15,
-    color: '#333',
+    color: "#333",
   },
   refreshButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: "#007AFF",
     width: 40,
     height: 40,
     borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 4,
     elevation: 2,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
   },
   refreshIcon: {
     fontSize: 24,
-    color: '#fff',
-    fontWeight: 'bold',
+    color: "#fff",
+    fontWeight: "bold",
   },
   noRepliesText: {
     fontSize: 14,
-    color: '#999',
-    fontStyle: 'italic',
+    color: "#999",
+    fontStyle: "italic",
   },
 });

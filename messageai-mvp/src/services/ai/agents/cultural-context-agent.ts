@@ -3,8 +3,8 @@
  * Detects and explains cultural references in messages
  */
 
-import { callCompletion } from '../ai-client';
-import { ContextHint, ContextHintCategory, LanguageCode } from '../types';
+import { callCompletion } from "../ai-client";
+import { ContextHint, ContextHintCategory, LanguageCode } from "../types";
 
 /**
  * Generate a unique ID for React Native
@@ -19,25 +19,25 @@ function generateId(): string {
  */
 function getLanguageName(code: LanguageCode): string {
   const names: Record<LanguageCode, string> = {
-    'en': 'English',
-    'es': 'Spanish',
-    'fr': 'French',
-    'de': 'German',
-    'it': 'Italian',
-    'pt': 'Portuguese',
-    'ru': 'Russian',
-    'zh': 'Chinese',
-    'ja': 'Japanese',
-    'ko': 'Korean',
-    'ar': 'Arabic',
-    'hi': 'Hindi',
-    'nl': 'Dutch',
-    'pl': 'Polish',
-    'sv': 'Swedish',
-    'tr': 'Turkish',
-    'unknown': 'English',
+    en: "English",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    it: "Italian",
+    pt: "Portuguese",
+    ru: "Russian",
+    zh: "Chinese",
+    ja: "Japanese",
+    ko: "Korean",
+    ar: "Arabic",
+    hi: "Hindi",
+    nl: "Dutch",
+    pl: "Polish",
+    sv: "Swedish",
+    tr: "Turkish",
+    unknown: "English",
   };
-  return names[code] || 'English';
+  return names[code] || "English";
 }
 
 /**
@@ -97,7 +97,7 @@ export async function analyzeCulturalContext(
   messageText: string,
   language: LanguageCode,
   messageId: string,
-  preferredLanguage: LanguageCode = 'en'
+  preferredLanguage: LanguageCode = "en",
 ): Promise<ContextHint[]> {
   try {
     // Skip if message is too short (likely no cultural references)
@@ -118,20 +118,20 @@ IMPORTANT: Provide all explanations and cultural background text in ${explanatio
     // Call OpenAI for analysis
     const response = await callCompletion(
       [
-        { role: 'system', content: CULTURAL_CONTEXT_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt }
+        { role: "system", content: CULTURAL_CONTEXT_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
       ],
       {
         temperature: 0.3, // Lower temperature for more consistent detection
-        maxTokens: 1000
-      }
+        maxTokens: 1000,
+      },
     );
 
     // Parse the response
     const detectedReferences = parseAIResponse(response);
 
     // Convert detected references to ContextHints
-    const hints: ContextHint[] = detectedReferences.map(ref => ({
+    const hints: ContextHint[] = detectedReferences.map((ref) => ({
       id: generateId(),
       messageId,
       phrase: ref.phrase,
@@ -141,12 +141,12 @@ IMPORTANT: Provide all explanations and cultural background text in ${explanatio
       startIndex: ref.startIndex,
       endIndex: ref.endIndex,
       seen: false,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }));
 
     return hints;
   } catch (error) {
-    console.error('Error analyzing cultural context:', error);
+    console.error("Error analyzing cultural context:", error);
     // Return empty array on error - cultural hints are optional
     return [];
   }
@@ -162,10 +162,10 @@ function parseAIResponse(response: string): DetectedReference[] {
   try {
     // Clean up the response (remove markdown code blocks if present)
     let cleaned = response.trim();
-    if (cleaned.startsWith('```json')) {
-      cleaned = cleaned.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-    } else if (cleaned.startsWith('```')) {
-      cleaned = cleaned.replace(/```\n?/g, '');
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.replace(/```json\n?/g, "").replace(/```\n?/g, "");
+    } else if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/```\n?/g, "");
     }
 
     // Parse JSON
@@ -173,36 +173,43 @@ function parseAIResponse(response: string): DetectedReference[] {
 
     // Validate it's an array
     if (!Array.isArray(parsed)) {
-      console.warn('AI response is not an array:', parsed);
+      console.warn("AI response is not an array:", parsed);
       return [];
     }
 
     // Valid cultural context categories for database constraint
-    const validCategories = ['holiday', 'idiom', 'custom', 'historical', 'norm'];
+    const validCategories = [
+      "holiday",
+      "idiom",
+      "custom",
+      "historical",
+      "norm",
+    ];
 
     // Validate and filter references
-    return parsed.filter(ref => {
-      const hasValidFields = (
+    return parsed.filter((ref) => {
+      const hasValidFields =
         ref.phrase &&
         ref.explanation &&
         ref.culturalBackground &&
         ref.category &&
-        typeof ref.startIndex === 'number' &&
-        typeof ref.endIndex === 'number'
-      );
+        typeof ref.startIndex === "number" &&
+        typeof ref.endIndex === "number";
 
       // Check if category is valid for cultural_hints table
       const hasValidCategory = validCategories.includes(ref.category);
 
       if (hasValidFields && !hasValidCategory) {
-        console.warn(`Skipping cultural hint with invalid category: ${ref.category} (phrase: "${ref.phrase}")`);
+        console.warn(
+          `Skipping cultural hint with invalid category: ${ref.category} (phrase: "${ref.phrase}")`,
+        );
       }
 
       return hasValidFields && hasValidCategory;
     });
   } catch (error) {
-    console.error('Error parsing AI response:', error);
-    console.error('Response was:', response);
+    console.error("Error parsing AI response:", error);
+    console.error("Response was:", response);
     return [];
   }
 }
@@ -216,7 +223,7 @@ function parseAIResponse(response: string): DetectedReference[] {
  */
 export async function analyzeCulturalContextBatch(
   messages: Array<{ id: string; text: string; language: LanguageCode }>,
-  preferredLanguage: LanguageCode = 'en'
+  preferredLanguage: LanguageCode = "en",
 ): Promise<Map<string, ContextHint[]>> {
   const results = new Map<string, ContextHint[]>();
 
@@ -224,8 +231,8 @@ export async function analyzeCulturalContextBatch(
   const BATCH_SIZE = 3;
   for (let i = 0; i < messages.length; i += BATCH_SIZE) {
     const batch = messages.slice(i, i + BATCH_SIZE);
-    const promises = batch.map(msg =>
-      analyzeCulturalContext(msg.text, msg.language, msg.id, preferredLanguage)
+    const promises = batch.map((msg) =>
+      analyzeCulturalContext(msg.text, msg.language, msg.id, preferredLanguage),
     );
 
     const batchResults = await Promise.all(promises);

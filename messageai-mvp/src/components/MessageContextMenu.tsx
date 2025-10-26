@@ -3,7 +3,7 @@
  * Displays action options for a message (Translate, Copy, etc.)
  */
 
-import React from 'react';
+import React from "react";
 import {
   View,
   StyleSheet,
@@ -11,9 +11,9 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   useWindowDimensions,
-} from 'react-native';
-import { Text } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+} from "react-native";
+import { Text } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export interface MenuAction {
   /** Unique identifier for the action */
@@ -73,7 +73,7 @@ export default function MessageContextMenu({
               style={[
                 styles.menu,
                 position && {
-                  position: 'absolute',
+                  position: "absolute",
                   left: Math.max(16, Math.min(position.x - 100, width - 216)),
                   top: shouldPositionAbove
                     ? Math.max(16, position.y - menuHeight - 8)
@@ -91,9 +91,7 @@ export default function MessageContextMenu({
                       name={action.icon as any}
                       size={22}
                       color={
-                        action.destructive
-                          ? '#F44336'
-                          : action.color || '#666'
+                        action.destructive ? "#F44336" : action.color || "#666"
                       }
                       style={styles.menuIcon}
                     />
@@ -107,7 +105,9 @@ export default function MessageContextMenu({
                       {action.label}
                     </Text>
                   </TouchableOpacity>
-                  {index < actions.length - 1 && <View style={styles.separator} />}
+                  {index < actions.length - 1 && (
+                    <View style={styles.separator} />
+                  )}
                 </React.Fragment>
               ))}
             </View>
@@ -121,17 +121,17 @@ export default function MessageContextMenu({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   menu: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     minWidth: 200,
     maxWidth: 280,
     paddingVertical: 8,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 4,
@@ -141,8 +141,8 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingVertical: 14,
     paddingHorizontal: 16,
   },
@@ -151,15 +151,15 @@ const styles = StyleSheet.create({
   },
   menuText: {
     fontSize: 16,
-    color: '#000',
+    color: "#000",
     flex: 1,
   },
   destructiveText: {
-    color: '#F44336',
+    color: "#F44336",
   },
   separator: {
     height: 1,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     marginHorizontal: 16,
   },
 });

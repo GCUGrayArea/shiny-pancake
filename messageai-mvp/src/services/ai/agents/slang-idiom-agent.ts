@@ -3,8 +3,8 @@
  * Detects and explains slang, idioms, and colloquial expressions in messages
  */
 
-import { callCompletion } from '../ai-client';
-import { SlangItem, SlangCategory, LanguageCode } from '../types';
+import { callCompletion } from "../ai-client";
+import { SlangItem, SlangCategory, LanguageCode } from "../types";
 
 /**
  * Generate a unique ID for React Native
@@ -19,25 +19,25 @@ function generateId(): string {
  */
 function getLanguageName(code: LanguageCode): string {
   const names: Record<LanguageCode, string> = {
-    'en': 'English',
-    'es': 'Spanish',
-    'fr': 'French',
-    'de': 'German',
-    'it': 'Italian',
-    'pt': 'Portuguese',
-    'ru': 'Russian',
-    'zh': 'Chinese',
-    'ja': 'Japanese',
-    'ko': 'Korean',
-    'ar': 'Arabic',
-    'hi': 'Hindi',
-    'nl': 'Dutch',
-    'pl': 'Polish',
-    'sv': 'Swedish',
-    'tr': 'Turkish',
-    'unknown': 'English',
+    en: "English",
+    es: "Spanish",
+    fr: "French",
+    de: "German",
+    it: "Italian",
+    pt: "Portuguese",
+    ru: "Russian",
+    zh: "Chinese",
+    ja: "Japanese",
+    ko: "Korean",
+    ar: "Arabic",
+    hi: "Hindi",
+    nl: "Dutch",
+    pl: "Polish",
+    sv: "Swedish",
+    tr: "Turkish",
+    unknown: "English",
   };
-  return names[code] || 'English';
+  return names[code] || "English";
 }
 
 /**
@@ -103,7 +103,7 @@ export async function detectSlangIdioms(
   messageText: string,
   language: LanguageCode,
   messageId: string,
-  preferredLanguage: LanguageCode = 'en'
+  preferredLanguage: LanguageCode = "en",
 ): Promise<SlangItem[]> {
   try {
     // Skip if message is too short (unlikely to have complex slang)
@@ -124,20 +124,20 @@ IMPORTANT: Provide all explanations (literal, actual, usage, formality) in ${exp
     // Call OpenAI for analysis
     const response = await callCompletion(
       [
-        { role: 'system', content: SLANG_IDIOM_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt }
+        { role: "system", content: SLANG_IDIOM_SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
       ],
       {
         temperature: 0.3, // Lower temperature for consistent detection
-        maxTokens: 1000
-      }
+        maxTokens: 1000,
+      },
     );
 
     // Parse the response
     const detectedSlang = parseAIResponse(response);
 
     // Convert detected slang to SlangItems
-    const slangItems: SlangItem[] = detectedSlang.map(item => ({
+    const slangItems: SlangItem[] = detectedSlang.map((item) => ({
       id: generateId(),
       messageId,
       phrase: item.phrase,
@@ -151,12 +151,12 @@ IMPORTANT: Provide all explanations (literal, actual, usage, formality) in ${exp
       startIndex: item.startIndex,
       endIndex: item.endIndex,
       known: false,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     }));
 
     return slangItems;
   } catch (error) {
-    console.error('Error detecting slang/idioms:', error);
+    console.error("Error detecting slang/idioms:", error);
     // Return empty array on error - slang explanations are optional
     return [];
   }
@@ -171,7 +171,7 @@ function parseAIResponse(response: string): DetectedSlang[] {
     // Try to find JSON array in response
     const jsonMatch = response.match(/\[[\s\S]*\]/);
     if (!jsonMatch) {
-      console.warn('No JSON array found in slang detection response');
+      console.warn("No JSON array found in slang detection response");
       return [];
     }
 
@@ -179,32 +179,38 @@ function parseAIResponse(response: string): DetectedSlang[] {
 
     // Validate that it's an array
     if (!Array.isArray(parsed)) {
-      console.warn('Parsed response is not an array');
+      console.warn("Parsed response is not an array");
       return [];
     }
 
     // Valid slang categories for database constraint
-    const validCategories = ['slang', 'idiom', 'colloquialism', 'internet-slang'];
+    const validCategories = [
+      "slang",
+      "idiom",
+      "colloquialism",
+      "internet-slang",
+    ];
 
     // Validate and filter items
-    const validItems = parsed.filter(item => {
-      const hasValidFields = (
+    const validItems = parsed.filter((item) => {
+      const hasValidFields =
         item &&
-        typeof item.phrase === 'string' &&
-        typeof item.literal === 'string' &&
-        typeof item.actual === 'string' &&
-        typeof item.usage === 'string' &&
-        typeof item.formality === 'string' &&
-        typeof item.category === 'string' &&
-        typeof item.startIndex === 'number' &&
-        typeof item.endIndex === 'number'
-      );
+        typeof item.phrase === "string" &&
+        typeof item.literal === "string" &&
+        typeof item.actual === "string" &&
+        typeof item.usage === "string" &&
+        typeof item.formality === "string" &&
+        typeof item.category === "string" &&
+        typeof item.startIndex === "number" &&
+        typeof item.endIndex === "number";
 
       // Check if category is valid for slang_items table
       const hasValidCategory = validCategories.includes(item.category);
 
       if (hasValidFields && !hasValidCategory) {
-        console.warn(`Skipping slang item with invalid category: ${item.category} (phrase: "${item.phrase}")`);
+        console.warn(
+          `Skipping slang item with invalid category: ${item.category} (phrase: "${item.phrase}")`,
+        );
       }
 
       return hasValidFields && hasValidCategory;
@@ -212,7 +218,7 @@ function parseAIResponse(response: string): DetectedSlang[] {
 
     return validItems as DetectedSlang[];
   } catch (error) {
-    console.error('Error parsing slang detection response:', error);
+    console.error("Error parsing slang detection response:", error);
     return [];
   }
 }

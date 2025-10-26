@@ -6,21 +6,21 @@
  * All conflicts are resolved by accepting Firebase data
  */
 
-import type { User, Chat, Message } from '../types';
-import type { Unsubscribe } from 'firebase/database';
+import type { User, Chat, Message } from "../types";
+import type { Unsubscribe } from "firebase/database";
 
 // Local services
-import * as LocalUserService from './local-user.service';
-import * as LocalChatService from './local-chat.service';
-import * as LocalMessageService from './local-message.service';
+import * as LocalUserService from "./local-user.service";
+import * as LocalChatService from "./local-chat.service";
+import * as LocalMessageService from "./local-message.service";
 
 // Firebase services
-import * as FirebaseUserService from './firebase-user.service';
-import * as FirebaseChatService from './firebase-chat.service';
-import * as FirebaseMessageService from './firebase-message.service';
+import * as FirebaseUserService from "./firebase-user.service";
+import * as FirebaseChatService from "./firebase-chat.service";
+import * as FirebaseMessageService from "./firebase-message.service";
 
 // Notification manager
-import * as NotificationManager from './notification-manager.service';
+import * as NotificationManager from "./notification-manager.service";
 
 /**
  * Active subscription tracking
@@ -47,10 +47,14 @@ export async function syncUserToLocal(firebaseUser: User): Promise<void> {
     const result = await LocalUserService.saveUser(firebaseUser);
 
     if (!result.success) {
-      console.error('[sync.service] FAILED to save user:', firebaseUser.uid, result.error);
+      console.error(
+        "[sync.service] FAILED to save user:",
+        firebaseUser.uid,
+        result.error,
+      );
     }
   } catch (error) {
-    console.error('[sync.service] Exception saving user:', error);
+    console.error("[sync.service] Exception saving user:", error);
   }
 }
 
@@ -63,10 +67,14 @@ export async function syncChatToLocal(firebaseChat: Chat): Promise<void> {
     const result = await LocalChatService.saveChat(firebaseChat);
 
     if (!result.success) {
-      console.error('[sync.service] FAILED to save chat:', firebaseChat.id, result.error);
+      console.error(
+        "[sync.service] FAILED to save chat:",
+        firebaseChat.id,
+        result.error,
+      );
     }
   } catch (error) {
-    console.error('[sync.service] Exception saving chat:', error);
+    console.error("[sync.service] Exception saving chat:", error);
   }
 }
 
@@ -78,14 +86,14 @@ async function syncChatWithParticipants(chat: Chat): Promise<void> {
   // Sync all participants first
   for (const participantId of chat.participantIds) {
     try {
-      const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
+      const userResult =
+        await FirebaseUserService.getUserFromFirebase(participantId);
       if (userResult.success && userResult.data) {
         await syncUserToLocal(userResult.data);
       }
-    } catch (error) {
-    }
+    } catch (error) {}
   }
-  
+
   // Now sync the chat
   await syncChatToLocal(chat);
 }
@@ -95,7 +103,7 @@ async function syncChatWithParticipants(chat: Chat): Promise<void> {
  */
 async function processIncomingMessage(
   message: Message,
-  currentUserId: string
+  currentUserId: string,
 ): Promise<Message> {
   // Skip translation for our own messages
   if (message.senderId === currentUserId) {
@@ -103,7 +111,7 @@ async function processIncomingMessage(
   }
 
   // Skip translation for image messages (only translate caption if needed)
-  if (message.type !== 'text') {
+  if (message.type !== "text") {
     return message;
   }
 
@@ -122,20 +130,20 @@ async function processIncomingMessage(
     }
 
     // Dynamically import translation services (avoid circular deps)
-    const { detectLanguage } = await import('./ai/language-detection.service');
-    const { translateText } = await import('./ai/translation.service');
+    const { detectLanguage } = await import("./ai/language-detection.service");
+    const { translateText } = await import("./ai/translation.service");
 
     // Detect message language
     const detectedLang = await detectLanguage(message.content);
     message.detectedLanguage = detectedLang;
 
     // Translate if language is different from preferred
-    if (detectedLang !== 'unknown' && detectedLang !== user.preferredLanguage) {
+    if (detectedLang !== "unknown" && detectedLang !== user.preferredLanguage) {
       const translatedText = await translateText(
         message.content,
         detectedLang as any,
         user.preferredLanguage as any,
-        message.id
+        message.id,
       );
 
       message.translatedText = translatedText;
@@ -144,7 +152,7 @@ async function processIncomingMessage(
 
     return message;
   } catch (error) {
-    console.error('Translation processing error:', error);
+    console.error("Translation processing error:", error);
     // Return original message on error
     return message;
   }
@@ -158,7 +166,7 @@ async function processIncomingMessage(
 export async function syncMessageToLocal(
   firebaseMessage: Message,
   currentUserId?: string,
-  skipTranslation?: boolean
+  skipTranslation?: boolean,
 ): Promise<void> {
   try {
     // CRITICAL FIX: Ensure chat exists before saving message (FK constraint)
@@ -167,22 +175,30 @@ export async function syncMessageToLocal(
 
     if (!chatResult.success || !chatResult.data) {
       // Chat doesn't exist locally - fetch from Firebase and save with participants
-      const fbChatResult = await FirebaseChatService.getChatFromFirebase(firebaseMessage.chatId);
+      const fbChatResult = await FirebaseChatService.getChatFromFirebase(
+        firebaseMessage.chatId,
+      );
 
       if (fbChatResult.success && fbChatResult.data) {
         // CRITICAL: Use helper that syncs participants FIRST
         await syncChatWithParticipants(fbChatResult.data);
       } else {
-        console.error('[sync.service] Could not fetch chat from Firebase, aborting message sync');
+        console.error(
+          "[sync.service] Could not fetch chat from Firebase, aborting message sync",
+        );
         // Don't save message if we can't get the chat (FK will fail)
         return;
       }
     }
 
     // Also ensure the message sender exists in local DB
-    const senderResult = await LocalUserService.getUser(firebaseMessage.senderId);
+    const senderResult = await LocalUserService.getUser(
+      firebaseMessage.senderId,
+    );
     if (!senderResult.success || !senderResult.data) {
-      const fbSenderResult = await FirebaseUserService.getUserFromFirebase(firebaseMessage.senderId);
+      const fbSenderResult = await FirebaseUserService.getUserFromFirebase(
+        firebaseMessage.senderId,
+      );
       if (fbSenderResult.success && fbSenderResult.data) {
         await syncUserToLocal(fbSenderResult.data);
       }
@@ -191,16 +207,23 @@ export async function syncMessageToLocal(
     // Process message for auto-translation if currentUserId provided and translation not skipped
     let processedMessage = firebaseMessage;
     if (currentUserId && !skipTranslation) {
-      processedMessage = await processIncomingMessage(firebaseMessage, currentUserId);
+      processedMessage = await processIncomingMessage(
+        firebaseMessage,
+        currentUserId,
+      );
     }
 
     const result = await LocalMessageService.saveMessage(processedMessage);
 
     if (!result.success) {
-      console.error('[sync.service] FAILED to save message:', processedMessage.id, result.error);
+      console.error(
+        "[sync.service] FAILED to save message:",
+        processedMessage.id,
+        result.error,
+      );
     }
   } catch (error) {
-    console.error('[sync.service] Exception in syncMessageToLocal:', error);
+    console.error("[sync.service] Exception in syncMessageToLocal:", error);
   }
 }
 
@@ -213,8 +236,7 @@ export async function syncUserToFirebase(localUser: User): Promise<void> {
 
     if (!result.success) {
     }
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -226,21 +248,22 @@ export async function syncChatToFirebase(localChat: Chat): Promise<void> {
 
     if (!result.success) {
     }
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
  * Sync a message from local database to Firebase
  */
-export async function syncMessageToFirebase(localMessage: Message): Promise<void> {
+export async function syncMessageToFirebase(
+  localMessage: Message,
+): Promise<void> {
   try {
-    const result = await FirebaseMessageService.sendMessageToFirebase(localMessage);
+    const result =
+      await FirebaseMessageService.sendMessageToFirebase(localMessage);
 
     if (!result.success) {
     }
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -249,69 +272,82 @@ export async function syncMessageToFirebase(localMessage: Message): Promise<void
  */
 export async function initialSync(userId: string): Promise<void> {
   try {
-
     // 1. Fetch user's chats from Firebase
     const chatsResult = await new Promise<Chat[]>((resolve) => {
       let unsubscribe: (() => void) | null = null;
-      unsubscribe = FirebaseChatService.subscribeToUserChats(userId, (chats) => {
-        if (unsubscribe) unsubscribe(); // One-time fetch
-        resolve(chats);
-      });
+      unsubscribe = FirebaseChatService.subscribeToUserChats(
+        userId,
+        (chats) => {
+          if (unsubscribe) unsubscribe(); // One-time fetch
+          resolve(chats);
+        },
+      );
     });
 
-
     // 2. Sync each chat and its recent messages in parallel (with error handling)
-    await Promise.all(chatsResult.map(async (chat) => {
-      try {
-        // IMPORTANT: Sync participants FIRST to avoid foreign key constraints
-        // Fetch participants and sync them (INCLUDING current user!)
-        await Promise.all(chat.participantIds.map(async (participantId) => {
-          try {
-            const userResult = await FirebaseUserService.getUserFromFirebase(participantId);
-            if (userResult.success && userResult.data) {
-              await syncUserToLocal(userResult.data);
-            }
-          } catch (error) {
-            // Ignore individual participant fetch errors
-          }
-        }));
-
-        // Now sync chat to local (after participants are in DB)
-        await syncChatToLocal(chat);
-
-        // Fetch recent messages (last 10) for this chat - optimized for faster initial sync
-        const messagesResult = await FirebaseMessageService.getMessagesFromFirebase(chat.id, 10);
-        if (messagesResult.success && messagesResult.data && messagesResult.data.length > 0) {
-          // Sync messages in parallel for this chat
-          await Promise.all(messagesResult.data.map(async (message) => {
-            try {
-              // Skip translation during initial sync for faster login
-              await syncMessageToLocal(message, userId, true);
-            } catch (error) {
-              // Ignore individual message sync errors
-            }
-          }));
-
-          // CRITICAL FIX: After parallel sync, ensure lastMessage is the newest
-          // Find the message with the highest timestamp
-          const newestMessage = messagesResult.data.reduce((newest, current) =>
-            current.timestamp > newest.timestamp ? current : newest
+    await Promise.all(
+      chatsResult.map(async (chat) => {
+        try {
+          // IMPORTANT: Sync participants FIRST to avoid foreign key constraints
+          // Fetch participants and sync them (INCLUDING current user!)
+          await Promise.all(
+            chat.participantIds.map(async (participantId) => {
+              try {
+                const userResult =
+                  await FirebaseUserService.getUserFromFirebase(participantId);
+                if (userResult.success && userResult.data) {
+                  await syncUserToLocal(userResult.data);
+                }
+              } catch (error) {
+                // Ignore individual participant fetch errors
+              }
+            }),
           );
 
-          // Explicitly update chat's lastMessage to prevent race condition
-          await LocalChatService.updateChatLastMessage(chat.id, {
-            content: newestMessage.content,
-            senderId: newestMessage.senderId,
-            timestamp: newestMessage.timestamp,
-            type: newestMessage.type,
-            caption: newestMessage.caption,
-          });
-        }
-      } catch (error) {
-        // Ignore individual chat sync errors to allow others to continue
-      }
-    }));
+          // Now sync chat to local (after participants are in DB)
+          await syncChatToLocal(chat);
 
+          // Fetch recent messages (last 10) for this chat - optimized for faster initial sync
+          const messagesResult =
+            await FirebaseMessageService.getMessagesFromFirebase(chat.id, 10);
+          if (
+            messagesResult.success &&
+            messagesResult.data &&
+            messagesResult.data.length > 0
+          ) {
+            // Sync messages in parallel for this chat
+            await Promise.all(
+              messagesResult.data.map(async (message) => {
+                try {
+                  // Skip translation during initial sync for faster login
+                  await syncMessageToLocal(message, userId, true);
+                } catch (error) {
+                  // Ignore individual message sync errors
+                }
+              }),
+            );
+
+            // CRITICAL FIX: After parallel sync, ensure lastMessage is the newest
+            // Find the message with the highest timestamp
+            const newestMessage = messagesResult.data.reduce(
+              (newest, current) =>
+                current.timestamp > newest.timestamp ? current : newest,
+            );
+
+            // Explicitly update chat's lastMessage to prevent race condition
+            await LocalChatService.updateChatLastMessage(chat.id, {
+              content: newestMessage.content,
+              senderId: newestMessage.senderId,
+              timestamp: newestMessage.timestamp,
+              type: newestMessage.type,
+              caption: newestMessage.caption,
+            });
+          }
+        } catch (error) {
+          // Ignore individual chat sync errors to allow others to continue
+        }
+      }),
+    );
   } catch (error) {
     throw error;
   }
@@ -323,7 +359,6 @@ export async function initialSync(userId: string): Promise<void> {
  */
 export async function startRealtimeSync(userId: string): Promise<void> {
   try {
-
     // Subscribe to user's chats
     activeSubscriptions.userChats = FirebaseChatService.subscribeToUserChats(
       userId,
@@ -333,19 +368,18 @@ export async function startRealtimeSync(userId: string): Promise<void> {
           // IMPORTANT: Sync participants FIRST to avoid foreign key constraints (INCLUDING current user!)
           for (const participantId of chat.participantIds) {
             try {
-              const participantResult = await FirebaseUserService.getUserFromFirebase(participantId);
+              const participantResult =
+                await FirebaseUserService.getUserFromFirebase(participantId);
               if (participantResult.success && participantResult.data) {
                 await syncUserToLocal(participantResult.data);
               }
-            } catch (error) {
-            }
+            } catch (error) {}
           }
 
           // Now sync chat to local (after participants are in DB)
           try {
             await syncChatToLocal(chat);
-          } catch (error) {
-          }
+          } catch (error) {}
 
           // Set up message subscription for this chat if not already subscribed
           if (!activeSubscriptions.messageSubscriptions.has(chat.id)) {
@@ -356,11 +390,14 @@ export async function startRealtimeSync(userId: string): Promise<void> {
                   await syncMessageToLocal(message, userId);
 
                   // Also sync the sender if we don't have them locally
-                  const localSender = await LocalUserService.getUser(message.senderId);
+                  const localSender = await LocalUserService.getUser(
+                    message.senderId,
+                  );
                   if (!localSender.success || !localSender.data) {
-                    const fbSender = await FirebaseUserService.getUserFromFirebase(
-                      message.senderId
-                    );
+                    const fbSender =
+                      await FirebaseUserService.getUserFromFirebase(
+                        message.senderId,
+                      );
                     if (fbSender.success && fbSender.data) {
                       await syncUserToLocal(fbSender.data);
                     }
@@ -368,9 +405,8 @@ export async function startRealtimeSync(userId: string): Promise<void> {
 
                   // Trigger notification for new message
                   await NotificationManager.handleNewMessage(message);
-                } catch (error) {
-                }
-              }
+                } catch (error) {}
+              },
             );
 
             activeSubscriptions.messageSubscriptions.set(chat.id, messageUnsub);
@@ -378,23 +414,28 @@ export async function startRealtimeSync(userId: string): Promise<void> {
 
           // Subscribe to participant presence
           for (const participantId of chat.participantIds) {
-            if (participantId !== userId && !activeSubscriptions.userPresenceSubscriptions.has(participantId)) {
+            if (
+              participantId !== userId &&
+              !activeSubscriptions.userPresenceSubscriptions.has(participantId)
+            ) {
               const presenceUnsub = FirebaseUserService.subscribeToUser(
                 participantId,
                 async (user) => {
                   if (user) {
                     await syncUserToLocal(user);
                   }
-                }
+                },
               );
 
-              activeSubscriptions.userPresenceSubscriptions.set(participantId, presenceUnsub);
+              activeSubscriptions.userPresenceSubscriptions.set(
+                participantId,
+                presenceUnsub,
+              );
             }
           }
         }
-      }
+      },
     );
-
   } catch (error) {
     throw error;
   }
@@ -406,7 +447,6 @@ export async function startRealtimeSync(userId: string): Promise<void> {
  */
 export function stopRealtimeSync(): void {
   try {
-
     // Unsubscribe from user chats
     if (activeSubscriptions.userChats) {
       activeSubscriptions.userChats();
@@ -430,9 +470,7 @@ export function stopRealtimeSync(): void {
       unsubscribe();
     });
     activeSubscriptions.userPresenceSubscriptions.clear();
-
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -448,6 +486,7 @@ export function getSyncStatus(): {
     hasUserChatsSubscription: !!activeSubscriptions.userChats,
     activeChatSubscriptions: activeSubscriptions.chatSubscriptions.size,
     activeMessageSubscriptions: activeSubscriptions.messageSubscriptions.size,
-    activePresenceSubscriptions: activeSubscriptions.userPresenceSubscriptions.size,
+    activePresenceSubscriptions:
+      activeSubscriptions.userPresenceSubscriptions.size,
   };
 }

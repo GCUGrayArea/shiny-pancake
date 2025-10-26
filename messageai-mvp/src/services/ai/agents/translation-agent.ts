@@ -4,30 +4,30 @@
  * Uses OpenAI for natural, fluent translations
  */
 
-import { callCompletion, isInitialized } from '../ai-client';
-import type { LanguageCode } from '../types';
+import { callCompletion, isInitialized } from "../ai-client";
+import type { LanguageCode } from "../types";
 
 /**
  * Language name mapping for better prompts
  */
 const LANGUAGE_NAMES: Record<LanguageCode, string> = {
-  en: 'English',
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  it: 'Italian',
-  pt: 'Portuguese',
-  ru: 'Russian',
-  zh: 'Chinese',
-  ja: 'Japanese',
-  ko: 'Korean',
-  ar: 'Arabic',
-  hi: 'Hindi',
-  nl: 'Dutch',
-  pl: 'Polish',
-  sv: 'Swedish',
-  tr: 'Turkish',
-  unknown: 'Unknown',
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  ru: "Russian",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  ar: "Arabic",
+  hi: "Hindi",
+  nl: "Dutch",
+  pl: "Polish",
+  sv: "Swedish",
+  tr: "Turkish",
+  unknown: "Unknown",
 };
 
 /**
@@ -41,7 +41,7 @@ const LANGUAGE_NAMES: Record<LanguageCode, string> = {
 export async function translateMessage(
   text: string,
   fromLang: LanguageCode,
-  toLang: LanguageCode
+  toLang: LanguageCode,
 ): Promise<string> {
   // Handle empty text
   if (!text || text.trim().length === 0) {
@@ -54,22 +54,23 @@ export async function translateMessage(
   }
 
   // Can't translate from/to unknown
-  if (fromLang === 'unknown' || toLang === 'unknown') {
-    throw new Error('Cannot translate from or to unknown language');
+  if (fromLang === "unknown" || toLang === "unknown") {
+    throw new Error("Cannot translate from or to unknown language");
   }
 
   if (!isInitialized()) {
-    throw new Error('OpenAI client not initialized');
+    throw new Error("OpenAI client not initialized");
   }
 
   try {
     const fromName = LANGUAGE_NAMES[fromLang] || fromLang;
     const toName = LANGUAGE_NAMES[toLang] || toLang;
 
-    const response = await callCompletion([
-      {
-        role: 'system',
-        content: `You are a professional translator. Translate text from ${fromName} to ${toName}.
+    const response = await callCompletion(
+      [
+        {
+          role: "system",
+          content: `You are a professional translator. Translate text from ${fromName} to ${toName}.
 
 IMPORTANT: Preserve the following in your translation:
 - Line breaks (\\n) - keep them exactly as they appear
@@ -81,21 +82,23 @@ IMPORTANT: Preserve the following in your translation:
 - Natural, fluent expression in the target language
 
 Respond with ONLY the translated text. Do not add any explanations, notes, or preambles.`,
-      },
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
       {
-        role: 'user',
-        content: text,
+        maxTokens: Math.max(500, Math.ceil(text.length * 2.5)), // Allow room for expansion
+        temperature: 0.3, // Low but not zero for natural translations
       },
-    ], {
-      maxTokens: Math.max(500, Math.ceil(text.length * 2.5)), // Allow room for expansion
-      temperature: 0.3, // Low but not zero for natural translations
-    });
+    );
 
     const translation = response.trim();
 
     // Basic validation - ensure we got a translation
     if (!translation || translation.length === 0) {
-      throw new Error('Empty translation received');
+      throw new Error("Empty translation received");
     }
 
     return translation;
@@ -113,10 +116,10 @@ Respond with ONLY the translated text. Do not add any explanations, notes, or pr
  */
 export function isLanguagePairSupported(
   fromLang: LanguageCode,
-  toLang: LanguageCode
+  toLang: LanguageCode,
 ): boolean {
   // All non-unknown languages are supported
-  return fromLang !== 'unknown' && toLang !== 'unknown' && fromLang !== toLang;
+  return fromLang !== "unknown" && toLang !== "unknown" && fromLang !== toLang;
 }
 
 /**

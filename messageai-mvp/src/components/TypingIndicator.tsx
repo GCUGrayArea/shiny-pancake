@@ -3,10 +3,10 @@
  * Displays who is currently typing in a conversation with animated dots
  */
 
-import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { Text } from 'react-native-paper';
-import { User } from '@/types';
+import React, { useEffect, useRef } from "react";
+import { View, StyleSheet, Animated } from "react-native";
+import { Text } from "react-native-paper";
+import { User } from "@/types";
 
 export interface TypingIndicatorProps {
   /** Users who are currently typing */
@@ -35,7 +35,7 @@ function AnimatedDot({ delay }: { delay: number }) {
           duration: 600,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
 
     animation.start();
@@ -57,7 +57,7 @@ function AnimatedDot({ delay }: { delay: number }) {
  */
 function formatTypingText(users: User[]): string {
   if (users.length === 0) {
-    return '';
+    return "";
   }
 
   if (users.length === 1) {
@@ -75,14 +75,17 @@ function formatTypingText(users: User[]): string {
   // More than 3 users
   const othersCount = users.length - 2;
   return `${users[0].displayName}, ${users[1].displayName}, and ${othersCount} ${
-    othersCount === 1 ? 'other' : 'others'
+    othersCount === 1 ? "other" : "others"
   } are typing`;
 }
 
 /**
  * TypingIndicator component
  */
-export default function TypingIndicator({ typingUsers, style }: TypingIndicatorProps) {
+export default function TypingIndicator({
+  typingUsers,
+  style,
+}: TypingIndicatorProps) {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -143,20 +146,20 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   content: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   text: {
     fontSize: 13,
-    color: '#757575',
-    fontStyle: 'italic',
+    color: "#757575",
+    fontStyle: "italic",
   },
   dotsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 4,
   },
   dot: {
@@ -164,7 +167,7 @@ const styles = StyleSheet.create({
   },
   dotText: {
     fontSize: 16,
-    color: '#757575',
+    color: "#757575",
     lineHeight: 16,
   },
 });

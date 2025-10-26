@@ -5,12 +5,12 @@
  */
 
 export enum AIErrorType {
-  NETWORK_ERROR = 'NETWORK_ERROR',
-  RATE_LIMIT = 'RATE_LIMIT',
-  TIMEOUT = 'TIMEOUT',
-  INVALID_RESPONSE = 'INVALID_RESPONSE',
-  API_ERROR = 'API_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+  NETWORK_ERROR = "NETWORK_ERROR",
+  RATE_LIMIT = "RATE_LIMIT",
+  TIMEOUT = "TIMEOUT",
+  INVALID_RESPONSE = "INVALID_RESPONSE",
+  API_ERROR = "API_ERROR",
+  UNKNOWN_ERROR = "UNKNOWN_ERROR",
 }
 
 export interface AIError {
@@ -38,44 +38,44 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
  */
 export function parseAIError(error: any): AIError {
   // Network errors
-  if (error.message?.includes('network') || error.code === 'ENOTFOUND') {
+  if (error.message?.includes("network") || error.code === "ENOTFOUND") {
     return {
       type: AIErrorType.NETWORK_ERROR,
-      message: 'Network connection failed',
-      userMessage: 'Unable to connect. Please check your internet connection.',
+      message: "Network connection failed",
+      userMessage: "Unable to connect. Please check your internet connection.",
       retryable: true,
       originalError: error,
     };
   }
 
   // Rate limiting
-  if (error.status === 429 || error.message?.includes('rate limit')) {
+  if (error.status === 429 || error.message?.includes("rate limit")) {
     return {
       type: AIErrorType.RATE_LIMIT,
-      message: 'API rate limit exceeded',
-      userMessage: 'Too many requests. Please wait a moment and try again.',
+      message: "API rate limit exceeded",
+      userMessage: "Too many requests. Please wait a moment and try again.",
       retryable: true,
       originalError: error,
     };
   }
 
   // Timeout errors
-  if (error.message?.includes('timeout') || error.code === 'ETIMEDOUT') {
+  if (error.message?.includes("timeout") || error.code === "ETIMEDOUT") {
     return {
       type: AIErrorType.TIMEOUT,
-      message: 'Request timed out',
-      userMessage: 'Request took too long. Please try again.',
+      message: "Request timed out",
+      userMessage: "Request took too long. Please try again.",
       retryable: true,
       originalError: error,
     };
   }
 
   // Invalid response
-  if (error.status === 400 || error.message?.includes('invalid')) {
+  if (error.status === 400 || error.message?.includes("invalid")) {
     return {
       type: AIErrorType.INVALID_RESPONSE,
-      message: 'Invalid response from AI service',
-      userMessage: 'Something went wrong. Please try again.',
+      message: "Invalid response from AI service",
+      userMessage: "Something went wrong. Please try again.",
       retryable: false,
       originalError: error,
     };
@@ -85,8 +85,8 @@ export function parseAIError(error: any): AIError {
   if (error.status >= 500) {
     return {
       type: AIErrorType.API_ERROR,
-      message: 'AI service error',
-      userMessage: 'Service temporarily unavailable. Please try again later.',
+      message: "AI service error",
+      userMessage: "Service temporarily unavailable. Please try again later.",
       retryable: true,
       originalError: error,
     };
@@ -95,8 +95,8 @@ export function parseAIError(error: any): AIError {
   // Unknown errors
   return {
     type: AIErrorType.UNKNOWN_ERROR,
-    message: error.message || 'Unknown error occurred',
-    userMessage: 'Something went wrong. Please try again.',
+    message: error.message || "Unknown error occurred",
+    userMessage: "Something went wrong. Please try again.",
     retryable: false,
     originalError: error,
   };
@@ -107,7 +107,7 @@ export function parseAIError(error: any): AIError {
  */
 export async function withRetry<T>(
   operation: () => Promise<T>,
-  config: Partial<RetryConfig> = {}
+  config: Partial<RetryConfig> = {},
 ): Promise<T> {
   const retryConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
   let lastError: any;
@@ -130,8 +130,10 @@ export async function withRetry<T>(
       }
 
       // Wait before retrying (exponential backoff)
-      const delay = retryConfig.retryDelay * Math.pow(retryConfig.backoffMultiplier, attempt);
-      await new Promise(resolve => setTimeout(resolve, delay));
+      const delay =
+        retryConfig.retryDelay *
+        Math.pow(retryConfig.backoffMultiplier, attempt);
+      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
@@ -143,12 +145,12 @@ export async function withRetry<T>(
  */
 export async function withTimeout<T>(
   operation: () => Promise<T>,
-  timeoutMs: number = 30000
+  timeoutMs: number = 30000,
 ): Promise<T> {
   return Promise.race([
     operation(),
     new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), timeoutMs)
+      setTimeout(() => reject(new Error("timeout")), timeoutMs),
     ),
   ]);
 }
@@ -159,12 +161,15 @@ export async function withTimeout<T>(
  */
 export async function withGracefulFallback<T>(
   operation: () => Promise<T>,
-  fallback: T | null = null
+  fallback: T | null = null,
 ): Promise<T | null> {
   try {
     return await operation();
   } catch (error) {
-    console.warn('AI operation failed gracefully:', parseAIError(error).message);
+    console.warn(
+      "AI operation failed gracefully:",
+      parseAIError(error).message,
+    );
     return fallback;
   }
 }
@@ -174,7 +179,7 @@ export async function withGracefulFallback<T>(
  */
 export function logAIError(error: AIError, context?: string): void {
   const timestamp = new Date().toISOString();
-  const logMessage = `[AI Error ${timestamp}] ${context ? `[${context}] ` : ''}${error.type}: ${error.message}`;
+  const logMessage = `[AI Error ${timestamp}] ${context ? `[${context}] ` : ""}${error.type}: ${error.message}`;
 
   console.error(logMessage);
 

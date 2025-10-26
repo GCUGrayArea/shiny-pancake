@@ -20,10 +20,10 @@ import {
   onChildChanged,
   type DatabaseReference,
   type Unsubscribe,
-} from 'firebase/database';
-import { getFirebaseDatabase } from './firebase';
-import { uploadImage } from './image.service';
-import type { Message } from '../types';
+} from "firebase/database";
+import { getFirebaseDatabase } from "./firebase";
+import { uploadImage } from "./image.service";
+import type { Message } from "../types";
 
 export interface FirebaseResult<T = any> {
   success: boolean;
@@ -53,7 +53,7 @@ const DEBOUNCE_DELAY = 500;
  * Returns the generated message ID
  */
 export async function sendMessageToFirebase(
-  message: Message
+  message: Message,
 ): Promise<FirebaseResult<string>> {
   try {
     const db = getFirebaseDatabase();
@@ -61,34 +61,30 @@ export async function sendMessageToFirebase(
     let messageContent = message.content;
 
     // Handle image upload for image messages
-    if (message.type === 'image' && message.content.startsWith('file://')) {
-
+    if (message.type === "image" && message.content.startsWith("file://")) {
       try {
         // Ensure user is authenticated before uploading
-        const { getAuth } = await import('firebase/auth');
+        const { getAuth } = await import("firebase/auth");
         const auth = getAuth();
         const user = auth.currentUser;
 
         if (!user) {
           return {
             success: false,
-            error: 'User must be authenticated to upload images',
+            error: "User must be authenticated to upload images",
           };
         }
-
 
         // Generate unique path for the image
         const timestamp = Date.now();
         const randomSuffix = Math.random().toString(36).substring(2);
         const path = `images/${message.chatId}/${timestamp}_${randomSuffix}.jpg`;
 
-
         // Upload image to Firebase Storage
         const uploadResult = await uploadImage(message.content, path);
 
         // Update content with Firebase Storage URL
         messageContent = uploadResult.url;
-
       } catch (uploadError) {
         return {
           success: false,
@@ -113,7 +109,7 @@ export async function sendMessageToFirebase(
       type: message.type,
       content: messageContent,
       timestamp: message.timestamp,
-      status: 'sent',  // Message is 'sent' once it's in Firebase
+      status: "sent", // Message is 'sent' once it's in Firebase
       localId: message.localId || null,
       caption: message.caption || null,
       deliveredTo: message.deliveredTo || [],
@@ -136,7 +132,10 @@ export async function sendMessageToFirebase(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to send message to Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to send message to Firebase",
     };
   }
 }
@@ -148,7 +147,7 @@ export async function sendMessageToFirebase(
 export async function getMessagesFromFirebase(
   chatId: string,
   limit: number = 50,
-  startAfterTimestamp?: number
+  startAfterTimestamp?: number,
 ): Promise<FirebaseResult<Message[]>> {
   try {
     const db = getFirebaseDatabase();
@@ -160,16 +159,16 @@ export async function getMessagesFromFirebase(
       // Get messages before a specific timestamp (for pagination)
       messagesQuery = query(
         messagesRef,
-        orderByChild('timestamp'),
+        orderByChild("timestamp"),
         endBefore(startAfterTimestamp),
-        limitToLast(limit)
+        limitToLast(limit),
       );
     } else {
       // Get most recent messages
       messagesQuery = query(
         messagesRef,
-        orderByChild('timestamp'),
-        limitToLast(limit)
+        orderByChild("timestamp"),
+        limitToLast(limit),
       );
     }
 
@@ -189,7 +188,10 @@ export async function getMessagesFromFirebase(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get messages from Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to get messages from Firebase",
     };
   }
 }
@@ -200,17 +202,21 @@ export async function getMessagesFromFirebase(
  */
 export function subscribeToMessages(
   chatId: string,
-  callback: (message: Message) => void
+  callback: (message: Message) => void,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
   const messagesRef = ref(db, `messages/${chatId}`);
 
-  return onChildAdded(messagesRef, (snapshot) => {
-    const messageData = snapshot.val();
-    callback(messageData as Message);
-  }, (error) => {
-    console.error('[Firebase] Error in message subscription:', error);
-  });
+  return onChildAdded(
+    messagesRef,
+    (snapshot) => {
+      const messageData = snapshot.val();
+      callback(messageData as Message);
+    },
+    (error) => {
+      console.error("[Firebase] Error in message subscription:", error);
+    },
+  );
 }
 
 /**
@@ -219,16 +225,19 @@ export function subscribeToMessages(
  */
 export function subscribeToMessageUpdates(
   chatId: string,
-  callback: (message: Message) => void
+  callback: (message: Message) => void,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
   const messagesRef = ref(db, `messages/${chatId}`);
 
-  return onChildChanged(messagesRef, (snapshot) => {
-    const messageData = snapshot.val();
-    callback(messageData as Message);
-  }, (error) => {
-  });
+  return onChildChanged(
+    messagesRef,
+    (snapshot) => {
+      const messageData = snapshot.val();
+      callback(messageData as Message);
+    },
+    (error) => {},
+  );
 }
 
 /**
@@ -238,7 +247,7 @@ export function subscribeToMessageUpdates(
 export async function updateMessageStatusInFirebase(
   messageId: string,
   chatId: string,
-  status: Message['status']
+  status: Message["status"],
 ): Promise<FirebaseResult<void>> {
   // Use debouncing for status updates
   return debouncedUpdate(messageId, chatId, { status });
@@ -250,7 +259,7 @@ export async function updateMessageStatusInFirebase(
 export async function markMessageDelivered(
   messageId: string,
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<FirebaseResult<void>> {
   try {
     const db = getFirebaseDatabase();
@@ -262,7 +271,7 @@ export async function markMessageDelivered(
     if (!snapshot.exists()) {
       return {
         success: false,
-        error: 'Message not found',
+        error: "Message not found",
       };
     }
 
@@ -281,7 +290,10 @@ export async function markMessageDelivered(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to mark message as delivered',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to mark message as delivered",
     };
   }
 }
@@ -292,7 +304,7 @@ export async function markMessageDelivered(
 export async function markMessageRead(
   messageId: string,
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<FirebaseResult<void>> {
   try {
     const db = getFirebaseDatabase();
@@ -304,7 +316,7 @@ export async function markMessageRead(
     if (!snapshot.exists()) {
       return {
         success: false,
-        error: 'Message not found',
+        error: "Message not found",
       };
     }
 
@@ -323,7 +335,10 @@ export async function markMessageRead(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to mark message as read',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to mark message as read",
     };
   }
 }
@@ -333,8 +348,10 @@ export async function markMessageRead(
  */
 export async function getMessageDeliveryFromFirebase(
   messageId: string,
-  chatId: string
-): Promise<FirebaseResult<{ [userId: string]: { delivered: boolean; read: boolean } }>> {
+  chatId: string,
+): Promise<
+  FirebaseResult<{ [userId: string]: { delivered: boolean; read: boolean } }>
+> {
   try {
     const db = getFirebaseDatabase();
     const messageRef = ref(db, `messages/${chatId}/${messageId}`);
@@ -350,7 +367,9 @@ export async function getMessageDeliveryFromFirebase(
     const readBy = messageData.readBy || [];
 
     // Build delivery status object
-    const deliveryStatus: { [userId: string]: { delivered: boolean; read: boolean } } = {};
+    const deliveryStatus: {
+      [userId: string]: { delivered: boolean; read: boolean };
+    } = {};
 
     // Add delivered users
     deliveredTo.forEach((userId: string) => {
@@ -374,7 +393,10 @@ export async function getMessageDeliveryFromFirebase(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get message delivery status',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to get message delivery status",
     };
   }
 }
@@ -386,7 +408,7 @@ export async function getMessageDeliveryFromFirebase(
 function debouncedUpdate(
   messageId: string,
   chatId: string,
-  updates: any
+  updates: any,
 ): Promise<FirebaseResult<void>> {
   return new Promise((resolve) => {
     // Clear existing timer
@@ -421,7 +443,8 @@ function debouncedUpdate(
       } catch (error) {
         resolve({
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to update message',
+          error:
+            error instanceof Error ? error.message : "Failed to update message",
         });
       }
     }, DEBOUNCE_DELAY);

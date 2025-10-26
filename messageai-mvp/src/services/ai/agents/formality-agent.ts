@@ -4,18 +4,18 @@
  * Helps users adapt their message tone for different cultural contexts
  */
 
-import { callCompletion, isInitialized } from '../ai-client';
-import type { LanguageCode } from '../types';
+import { callCompletion, isInitialized } from "../ai-client";
+import type { LanguageCode } from "../types";
 
 /**
  * Formality levels from very informal to very formal
  */
 export type FormalityLevel =
-  | 'very-informal'
-  | 'informal'
-  | 'neutral'
-  | 'formal'
-  | 'very-formal';
+  | "very-informal"
+  | "informal"
+  | "neutral"
+  | "formal"
+  | "very-formal";
 
 /**
  * Formality detection result with confidence and explanation
@@ -82,14 +82,14 @@ function clearExpiredCache(): void {
  */
 export async function detectFormality(
   text: string,
-  language: LanguageCode = 'en'
+  language: LanguageCode = "en",
 ): Promise<FormalityDetectionResult> {
   // Handle empty text
   if (!text || text.trim().length === 0) {
     return {
-      level: 'neutral',
+      level: "neutral",
       confidence: 1.0,
-      explanation: 'Empty text',
+      explanation: "Empty text",
     };
   }
 
@@ -100,16 +100,17 @@ export async function detectFormality(
   }
 
   if (!isInitialized()) {
-    throw new Error('OpenAI client not initialized');
+    throw new Error("OpenAI client not initialized");
   }
 
   try {
     const culturalNotes = getCulturalNotes(language);
 
-    const response = await callCompletion([
-      {
-        role: 'system',
-        content: `You are a linguistic expert analyzing text formality.
+    const response = await callCompletion(
+      [
+        {
+          role: "system",
+          content: `You are a linguistic expert analyzing text formality.
 
 Formality levels:
 - very-informal: Slang, abbreviations (lol, brb), minimal punctuation, casual grammar
@@ -128,22 +129,24 @@ Analyze the formality level of the text and respond with ONLY a JSON object in t
 }
 
 No other text, just the JSON object.`,
-      },
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
       {
-        role: 'user',
-        content: text,
+        maxTokens: 150,
+        temperature: 0.2, // Low temperature for consistent analysis
       },
-    ], {
-      maxTokens: 150,
-      temperature: 0.2, // Low temperature for consistent analysis
-    });
+    );
 
     // Parse JSON response
     const result = JSON.parse(response.trim());
 
     // Validate result
     if (!result.level || !result.confidence || !result.explanation) {
-      throw new Error('Invalid detection response format');
+      throw new Error("Invalid detection response format");
     }
 
     const detectionResult: FormalityDetectionResult = {
@@ -177,8 +180,8 @@ No other text, just the JSON object.`,
 export async function adjustFormality(
   text: string,
   targetLevel: FormalityLevel,
-  language: LanguageCode = 'en',
-  currentLevel?: FormalityLevel
+  language: LanguageCode = "en",
+  currentLevel?: FormalityLevel,
 ): Promise<FormalityAdjustmentResult> {
   // Handle empty text
   if (!text || text.trim().length === 0) {
@@ -186,7 +189,7 @@ export async function adjustFormality(
       originalText: text,
       adjustedText: text,
       changes: [],
-      fromLevel: currentLevel || 'neutral',
+      fromLevel: currentLevel || "neutral",
       toLevel: targetLevel,
     };
   }
@@ -203,24 +206,25 @@ export async function adjustFormality(
     return {
       originalText: text,
       adjustedText: text,
-      changes: ['Text is already at target formality level'],
+      changes: ["Text is already at target formality level"],
       fromLevel: sourceLevel,
       toLevel: targetLevel,
     };
   }
 
   if (!isInitialized()) {
-    throw new Error('OpenAI client not initialized');
+    throw new Error("OpenAI client not initialized");
   }
 
   try {
     const culturalNotes = getCulturalNotes(language);
     const direction = getFormalityDirection(sourceLevel, targetLevel);
 
-    const response = await callCompletion([
-      {
-        role: 'system',
-        content: `You are a linguistic expert helping users adjust message formality.
+    const response = await callCompletion(
+      [
+        {
+          role: "system",
+          content: `You are a linguistic expert helping users adjust message formality.
 
 Task: Rewrite the text to be ${targetLevel} (currently ${sourceLevel}).
 
@@ -242,22 +246,24 @@ Respond with ONLY a JSON object in this exact format:
 }
 
 No other text, just the JSON object.`,
-      },
+        },
+        {
+          role: "user",
+          content: text,
+        },
+      ],
       {
-        role: 'user',
-        content: text,
+        maxTokens: Math.max(300, Math.ceil(text.length * 3)), // Allow room for elaboration
+        temperature: 0.3, // Low but allow some variation for natural adjustments
       },
-    ], {
-      maxTokens: Math.max(300, Math.ceil(text.length * 3)), // Allow room for elaboration
-      temperature: 0.3, // Low but allow some variation for natural adjustments
-    });
+    );
 
     // Parse JSON response
     const result = JSON.parse(response.trim());
 
     // Validate result
     if (!result.adjustedText || !result.changes) {
-      throw new Error('Invalid adjustment response format');
+      throw new Error("Invalid adjustment response format");
     }
 
     return {
@@ -280,28 +286,31 @@ No other text, just the JSON object.`,
  */
 function getCulturalNotes(language: LanguageCode): string {
   const notes: Record<string, string> = {
-    es: 'Spanish: Consider tú (informal) vs. usted (formal) forms. Latin American Spanish tends more formal than European Spanish.',
-    fr: 'French: Consider tu (informal) vs. vous (formal) forms. Professional contexts require vous.',
-    de: 'German: Consider du (informal) vs. Sie (formal) forms. Use Sie in professional and unfamiliar contexts.',
-    ja: 'Japanese: Consider keigo (honorific speech) levels. Use more formal language with superiors and strangers.',
-    ko: 'Korean: Consider speech levels (반말/존댓말). Hierarchy and age determine formality.',
-    ar: 'Arabic: Formal address is more common. Use appropriate honorifics and polite expressions.',
+    es: "Spanish: Consider tú (informal) vs. usted (formal) forms. Latin American Spanish tends more formal than European Spanish.",
+    fr: "French: Consider tu (informal) vs. vous (formal) forms. Professional contexts require vous.",
+    de: "German: Consider du (informal) vs. Sie (formal) forms. Use Sie in professional and unfamiliar contexts.",
+    ja: "Japanese: Consider keigo (honorific speech) levels. Use more formal language with superiors and strangers.",
+    ko: "Korean: Consider speech levels (반말/존댓말). Hierarchy and age determine formality.",
+    ar: "Arabic: Formal address is more common. Use appropriate honorifics and polite expressions.",
     zh: 'Chinese: Consider formal vs. casual expressions. Use 您 (nín) for formal "you".',
   };
 
-  return notes[language] || 'Apply standard English formality conventions.';
+  return notes[language] || "Apply standard English formality conventions.";
 }
 
 /**
  * Get guidance text for formality adjustment direction
  */
-function getFormalityDirection(from: FormalityLevel, to: FormalityLevel): string {
+function getFormalityDirection(
+  from: FormalityLevel,
+  to: FormalityLevel,
+): string {
   const formalityOrder: FormalityLevel[] = [
-    'very-informal',
-    'informal',
-    'neutral',
-    'formal',
-    'very-formal',
+    "very-informal",
+    "informal",
+    "neutral",
+    "formal",
+    "very-formal",
   ];
 
   const fromIndex = formalityOrder.indexOf(from);
@@ -333,11 +342,11 @@ function getFormalityDirection(from: FormalityLevel, to: FormalityLevel): string
  */
 export function getFormalityLabel(level: FormalityLevel): string {
   const labels: Record<FormalityLevel, string> = {
-    'very-informal': 'Very Casual',
-    'informal': 'Casual',
-    'neutral': 'Neutral',
-    'formal': 'Polite',
-    'very-formal': 'Very Formal',
+    "very-informal": "Very Casual",
+    informal: "Casual",
+    neutral: "Neutral",
+    formal: "Polite",
+    "very-formal": "Very Formal",
   };
   return labels[level];
 }
@@ -347,11 +356,11 @@ export function getFormalityLabel(level: FormalityLevel): string {
  */
 export function getFormalityEmoji(level: FormalityLevel): string {
   const emojis: Record<FormalityLevel, string> = {
-    'very-informal': '😎',
-    'informal': '😊',
-    'neutral': '🙂',
-    'formal': '🎩',
-    'very-formal': '🤵',
+    "very-informal": "😎",
+    informal: "😊",
+    neutral: "🙂",
+    formal: "🎩",
+    "very-formal": "🤵",
   };
   return emojis[level];
 }

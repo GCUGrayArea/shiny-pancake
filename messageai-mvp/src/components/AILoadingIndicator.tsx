@@ -4,11 +4,11 @@
  * Supports spinner, skeleton, and inline loading styles with timeout indicators
  */
 
-import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
+import React, { useEffect, useState } from "react";
+import { View, StyleSheet, ViewStyle } from "react-native";
+import { Text, ActivityIndicator } from "react-native-paper";
 
-export type LoadingStyle = 'spinner' | 'skeleton' | 'inline';
+export type LoadingStyle = "spinner" | "skeleton" | "inline";
 
 interface AILoadingIndicatorProps {
   /** Loading style variant */
@@ -24,7 +24,7 @@ interface AILoadingIndicatorProps {
   /** Custom container style */
   containerStyle?: ViewStyle;
   /** Size of the spinner (default: 'small') */
-  size?: 'small' | 'large';
+  size?: "small" | "large";
 }
 
 /**
@@ -32,13 +32,13 @@ interface AILoadingIndicatorProps {
  * Shows timeout message if operation takes longer than expected
  */
 export default function AILoadingIndicator({
-  style = 'spinner',
+  style = "spinner",
   message,
   visible = true,
   timeout = 10000,
   onTimeout,
   containerStyle,
-  size = 'small',
+  size = "small",
 }: AILoadingIndicatorProps) {
   const [isTimedOut, setIsTimedOut] = useState(false);
 
@@ -66,7 +66,7 @@ export default function AILoadingIndicator({
 
   // Render based on style
   switch (style) {
-    case 'spinner':
+    case "spinner":
       return (
         <View style={[styles.spinnerContainer, containerStyle]}>
           <ActivityIndicator size={size} color="#6200ee" />
@@ -83,7 +83,7 @@ export default function AILoadingIndicator({
         </View>
       );
 
-    case 'skeleton':
+    case "skeleton":
       return (
         <View style={[styles.skeletonContainer, containerStyle]}>
           <SkeletonLoader />
@@ -95,7 +95,7 @@ export default function AILoadingIndicator({
         </View>
       );
 
-    case 'inline':
+    case "inline":
       return (
         <View style={[styles.inlineContainer, containerStyle]}>
           <ActivityIndicator size="small" color="#6200ee" />
@@ -128,20 +128,20 @@ function SkeletonLoader() {
 
 const styles = StyleSheet.create({
   spinnerContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
   message: {
     marginTop: 8,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   timeoutMessage: {
     marginTop: 4,
-    color: '#FF9800',
-    textAlign: 'center',
-    fontStyle: 'italic',
+    color: "#FF9800",
+    textAlign: "center",
+    fontStyle: "italic",
   },
   skeletonContainer: {
     padding: 12,
@@ -151,24 +151,24 @@ const styles = StyleSheet.create({
   },
   skeletonLine: {
     height: 12,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
     borderRadius: 4,
   },
   skeletonLineShort: {
-    width: '60%',
+    width: "60%",
   },
   skeletonLineMedium: {
-    width: '80%',
+    width: "80%",
   },
   skeletonLineLong: {
-    width: '95%',
+    width: "95%",
   },
   inlineContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   inlineMessage: {
-    color: '#666',
+    color: "#666",
   },
 });

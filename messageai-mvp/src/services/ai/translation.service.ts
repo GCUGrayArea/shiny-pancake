@@ -3,10 +3,10 @@
  * Translates text between languages using OpenAI with caching and request deduplication
  */
 
-import { callCompletion, isInitialized } from './ai-client';
-import type { LanguageCode, TranslationResult, CacheEntry } from './types';
-import { logAIError, parseAIError } from './error-handler';
-import { createDeduplicator } from './request-batcher';
+import { callCompletion, isInitialized } from "./ai-client";
+import type { LanguageCode, TranslationResult, CacheEntry } from "./types";
+import { logAIError, parseAIError } from "./error-handler";
+import { createDeduplicator } from "./request-batcher";
 
 /**
  * In-memory cache for translations
@@ -34,7 +34,7 @@ function getCacheKey(
   text: string,
   fromLang: LanguageCode,
   toLang: LanguageCode,
-  messageId?: string
+  messageId?: string,
 ): string {
   if (messageId) {
     return `${messageId}_${toLang}`;
@@ -59,7 +59,7 @@ function getCached(
   text: string,
   fromLang: LanguageCode,
   toLang: LanguageCode,
-  messageId?: string
+  messageId?: string,
 ): string | null {
   const key = getCacheKey(text, fromLang, toLang, messageId);
   const entry = translationCache.get(key);
@@ -84,7 +84,7 @@ function setCached(
   fromLang: LanguageCode,
   toLang: LanguageCode,
   translation: string,
-  messageId?: string
+  messageId?: string,
 ): void {
   const key = getCacheKey(text, fromLang, toLang, messageId);
 
@@ -107,23 +107,23 @@ function setCached(
  * Language name mapping for better prompts
  */
 const LANGUAGE_NAMES: Record<LanguageCode, string> = {
-  en: 'English',
-  es: 'Spanish',
-  fr: 'French',
-  de: 'German',
-  it: 'Italian',
-  pt: 'Portuguese',
-  ru: 'Russian',
-  zh: 'Chinese',
-  ja: 'Japanese',
-  ko: 'Korean',
-  ar: 'Arabic',
-  hi: 'Hindi',
-  nl: 'Dutch',
-  pl: 'Polish',
-  sv: 'Swedish',
-  tr: 'Turkish',
-  unknown: 'Unknown',
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  it: "Italian",
+  pt: "Portuguese",
+  ru: "Russian",
+  zh: "Chinese",
+  ja: "Japanese",
+  ko: "Korean",
+  ar: "Arabic",
+  hi: "Hindi",
+  nl: "Dutch",
+  pl: "Polish",
+  sv: "Swedish",
+  tr: "Turkish",
+  unknown: "Unknown",
 };
 
 /**
@@ -133,7 +133,7 @@ export async function translateText(
   text: string,
   fromLang: LanguageCode,
   toLang: LanguageCode,
-  messageId?: string
+  messageId?: string,
 ): Promise<string> {
   // Handle empty text
   if (!text || text.trim().length === 0) {
@@ -146,7 +146,7 @@ export async function translateText(
   }
 
   // Can't translate from/to unknown
-  if (fromLang === 'unknown' || toLang === 'unknown') {
+  if (fromLang === "unknown" || toLang === "unknown") {
     return text;
   }
 
@@ -157,7 +157,7 @@ export async function translateText(
   }
 
   if (!isInitialized()) {
-    console.error('OpenAI client not initialized - cannot translate');
+    console.error("OpenAI client not initialized - cannot translate");
     return text;
   }
 
@@ -168,25 +168,28 @@ export async function translateText(
       const fromName = LANGUAGE_NAMES[fromLang] || fromLang;
       const toName = LANGUAGE_NAMES[toLang] || toLang;
 
-      const response = await callCompletion([
-        {
-          role: 'system',
-          content: `You are a professional translator. Translate text from ${fromName} to ${toName}. Preserve:
+      const response = await callCompletion(
+        [
+          {
+            role: "system",
+            content: `You are a professional translator. Translate text from ${fromName} to ${toName}. Preserve:
 - Line breaks and formatting
 - Emojis (keep unchanged)
 - Tone and style
 - Special characters
 
 Respond with ONLY the translated text, nothing else.`,
-        },
+          },
+          {
+            role: "user",
+            content: text,
+          },
+        ],
         {
-          role: 'user',
-          content: text,
+          maxTokens: Math.max(500, Math.ceil(text.length * 2)), // Allow room for expansion
+          temperature: 0.3, // Low but not zero for natural translations
         },
-      ], {
-        maxTokens: Math.max(500, Math.ceil(text.length * 2)), // Allow room for expansion
-        temperature: 0.3, // Low but not zero for natural translations
-      });
+      );
 
       const translation = response.trim();
 
@@ -210,7 +213,7 @@ export async function translate(
   text: string,
   fromLang: LanguageCode,
   toLang: LanguageCode,
-  messageId?: string
+  messageId?: string,
 ): Promise<TranslationResult> {
   const translatedText = await translateText(text, fromLang, toLang, messageId);
 
@@ -247,7 +250,7 @@ export function getCacheStats() {
 export function invalidateMessageCache(messageId: string): void {
   // Remove all cache entries for this message
   for (const key of translationCache.keys()) {
-    if (key.startsWith(messageId + '_')) {
+    if (key.startsWith(messageId + "_")) {
       translationCache.delete(key);
     }
   }
@@ -261,7 +264,7 @@ export async function translateMessageOnDemand(
   text: string,
   fromLang: LanguageCode,
   toLang: LanguageCode,
-  messageId?: string
+  messageId?: string,
 ): Promise<string> {
   // Reuse the existing translateText function which already has caching
   return translateText(text, fromLang, toLang, messageId);
@@ -274,7 +277,7 @@ export function hasTranslationInCache(
   text: string,
   fromLang: LanguageCode,
   toLang: LanguageCode,
-  messageId?: string
+  messageId?: string,
 ): boolean {
   const cached = getCached(text, fromLang, toLang, messageId);
   return cached !== null;
@@ -298,8 +301,11 @@ export async function translateWithSlangDetection(
   toLang: LanguageCode,
   messageId: string,
   detectSlang: boolean,
-  userPreferredLanguage: LanguageCode = 'en'
-): Promise<{ translatedText: string; slangItems?: import('./types').SlangItem[] }> {
+  userPreferredLanguage: LanguageCode = "en",
+): Promise<{
+  translatedText: string;
+  slangItems?: import("./types").SlangItem[];
+}> {
   // First translate the text
   const translatedText = await translateText(text, fromLang, toLang, messageId);
 
@@ -311,24 +317,24 @@ export async function translateWithSlangDetection(
   // Detect slang in the ORIGINAL text (not translation)
   // We detect in original because that's where slang actually appears
   try {
-    const { detectSlangIdioms } = await import('./agents/slang-idiom-agent');
+    const { detectSlangIdioms } = await import("./agents/slang-idiom-agent");
     const slangItems = await detectSlangIdioms(
       text,
       fromLang,
       messageId,
-      userPreferredLanguage
+      userPreferredLanguage,
     );
 
     // Save slang items if any were found
     if (slangItems.length > 0) {
-      const { saveSlangItems } = await import('../slang-glossary.service');
+      const { saveSlangItems } = await import("../slang-glossary.service");
       await saveSlangItems(slangItems);
     }
 
     return { translatedText, slangItems };
   } catch (error) {
     const aiError = parseAIError(error);
-    logAIError(aiError, 'Slang Detection during Translation');
+    logAIError(aiError, "Slang Detection during Translation");
     // Return translation even if slang detection fails (graceful fallback)
     return { translatedText };
   }

@@ -4,11 +4,14 @@
  * Displays above message input for real-time feedback
  */
 
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, ActivityIndicator, Chip } from 'react-native-paper';
-import type { FormalityLevel } from '@/services/ai/types';
-import { getFormalityLabel, getFormalityEmoji } from '@/services/ai/agents/formality-agent';
+import React from "react";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, ActivityIndicator, Chip } from "react-native-paper";
+import type { FormalityLevel } from "@/services/ai/types";
+import {
+  getFormalityLabel,
+  getFormalityEmoji,
+} from "@/services/ai/agents/formality-agent";
 
 interface FormalityIndicatorProps {
   /** Current detected formality level */
@@ -60,8 +63,10 @@ export default function FormalityIndicator({
   const label = getFormalityLabel(currentLevel);
 
   // Check if we can make more formal or more casual
-  const canMakeFormal = currentLevel !== 'very-formal' && currentLevel !== 'formal';
-  const canMakeCasual = currentLevel !== 'very-informal' && currentLevel !== 'informal';
+  const canMakeFormal =
+    currentLevel !== "very-formal" && currentLevel !== "formal";
+  const canMakeCasual =
+    currentLevel !== "very-informal" && currentLevel !== "informal";
 
   return (
     <View style={styles.container}>
@@ -114,18 +119,18 @@ export default function FormalityIndicator({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#e0e0e0",
   },
   levelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
   },
   emoji: {
@@ -133,22 +138,22 @@ const styles = StyleSheet.create({
   },
   levelText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#424242',
+    fontWeight: "500",
+    color: "#424242",
   },
   lowConfidence: {
     fontSize: 12,
-    color: '#ff9800',
+    color: "#ff9800",
     marginLeft: 2,
   },
   loadingText: {
     fontSize: 13,
-    color: '#757575',
+    color: "#757575",
     marginLeft: 8,
   },
   buttonsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   adjustButton: {
@@ -158,26 +163,26 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   casualButton: {
-    backgroundColor: '#e3f2fd',
-    borderColor: '#2196f3',
+    backgroundColor: "#e3f2fd",
+    borderColor: "#2196f3",
   },
   formalButton: {
-    backgroundColor: '#f3e5f5',
-    borderColor: '#9c27b0',
+    backgroundColor: "#f3e5f5",
+    borderColor: "#9c27b0",
   },
   buttonText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#424242',
+    fontWeight: "600",
+    color: "#424242",
   },
   adjustingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   adjustingText: {
     fontSize: 13,
-    color: '#6200ee',
-    fontWeight: '500',
+    color: "#6200ee",
+    fontWeight: "500",
   },
 });

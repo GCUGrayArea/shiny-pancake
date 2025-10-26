@@ -14,8 +14,8 @@ import {
   serverTimestamp,
   remove,
   type Unsubscribe,
-} from 'firebase/database';
-import { getFirebaseDatabase } from './firebase';
+} from "firebase/database";
+import { getFirebaseDatabase } from "./firebase";
 
 /**
  * Typing data structure stored in Firebase
@@ -74,7 +74,7 @@ const AUTO_CLEAR_MS = 5000;
 export async function setTyping(
   chatId: string,
   userId: string,
-  isTyping: boolean
+  isTyping: boolean,
 ): Promise<void> {
   try {
     const db = getFirebaseDatabase();
@@ -116,7 +116,7 @@ export async function setTyping(
       clearAutoClear(chatId, userId);
     }
   } catch (error) {
-    console.error('Error setting typing state:', error);
+    console.error("Error setting typing state:", error);
     throw error;
   }
 }
@@ -126,7 +126,7 @@ export async function setTyping(
  */
 export async function clearTyping(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   await setTyping(chatId, userId, false);
 }
@@ -170,7 +170,7 @@ function clearAutoClear(chatId: string, userId: string): void {
 export function subscribeToTyping(
   chatId: string,
   currentUserId: string,
-  callback: TypingCallback
+  callback: TypingCallback,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
   const typingRef = ref(db, `typing/${chatId}`);

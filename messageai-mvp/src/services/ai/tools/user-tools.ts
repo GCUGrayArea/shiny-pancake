@@ -3,27 +3,27 @@
  * Provides tools for retrieving user preferences and information
  */
 
-import type { FunctionTool, FunctionHandler, LanguageCode } from '../types';
-import { getUser } from '../../local-user.service';
+import type { FunctionTool, FunctionHandler, LanguageCode } from "../types";
+import { getUser } from "../../local-user.service";
 
 /**
  * Tool definition: Get user preferences
  * Retrieves user profile and preferences
  */
 export const getUserPreferencesTool: FunctionTool = {
-  type: 'function',
+  type: "function",
   function: {
-    name: 'get_user_preferences',
-    description: 'Retrieve user profile information and preferences',
+    name: "get_user_preferences",
+    description: "Retrieve user profile information and preferences",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         userId: {
-          type: 'string',
-          description: 'The unique identifier of the user',
+          type: "string",
+          description: "The unique identifier of the user",
         },
       },
-      required: ['userId'],
+      required: ["userId"],
     },
   },
 };
@@ -41,7 +41,7 @@ export const getUserPreferencesHandler: FunctionHandler = async (args: {
 
   if (!result.success || !result.data) {
     return {
-      error: 'User not found',
+      error: "User not found",
       userId,
     };
   }
@@ -63,19 +63,19 @@ export const getUserPreferencesHandler: FunctionHandler = async (args: {
  * Detects the language of a given text
  */
 export const detectLanguageTool: FunctionTool = {
-  type: 'function',
+  type: "function",
   function: {
-    name: 'detect_language',
-    description: 'Detect the language of a text message',
+    name: "detect_language",
+    description: "Detect the language of a text message",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         text: {
-          type: 'string',
-          description: 'The text to analyze for language detection',
+          type: "string",
+          description: "The text to analyze for language detection",
         },
       },
-      required: ['text'],
+      required: ["text"],
     },
   },
 };
@@ -92,24 +92,24 @@ export const detectLanguageHandler: FunctionHandler = async (args: {
 
   // Simple heuristic-based detection for common patterns
   // This will be replaced with OpenAI-based detection in PR-043
-  let detectedLanguage: LanguageCode = 'unknown';
+  let detectedLanguage: LanguageCode = "unknown";
   let confidence = 0.5;
 
   // Very basic pattern matching (placeholder)
   if (/^[a-zA-Z\s.,!?'-]+$/.test(text)) {
-    detectedLanguage = 'en';
+    detectedLanguage = "en";
     confidence = 0.7;
   } else if (/[\u4e00-\u9fa5]/.test(text)) {
-    detectedLanguage = 'zh';
+    detectedLanguage = "zh";
     confidence = 0.8;
   } else if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) {
-    detectedLanguage = 'ja';
+    detectedLanguage = "ja";
     confidence = 0.8;
   } else if (/[\uac00-\ud7af]/.test(text)) {
-    detectedLanguage = 'ko';
+    detectedLanguage = "ko";
     confidence = 0.8;
   } else if (/[\u0600-\u06ff]/.test(text)) {
-    detectedLanguage = 'ar';
+    detectedLanguage = "ar";
     confidence = 0.8;
   }
 
@@ -117,7 +117,7 @@ export const detectLanguageHandler: FunctionHandler = async (args: {
     text: text.substring(0, 50), // Return first 50 chars for reference
     detectedLanguage,
     confidence,
-    note: 'Using basic pattern matching. Will be enhanced with AI in PR-043.',
+    note: "Using basic pattern matching. Will be enhanced with AI in PR-043.",
   };
 };
 

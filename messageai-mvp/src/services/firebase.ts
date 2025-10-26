@@ -1,14 +1,22 @@
-import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import {
   initializeAuth,
   getAuth,
   connectAuthEmulator,
   getReactNativePersistence,
-  type Auth
-} from 'firebase/auth';
-import { getDatabase, connectDatabaseEmulator, type Database } from 'firebase/database';
-import { getStorage, connectStorageEmulator, type FirebaseStorage } from 'firebase/storage';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  type Auth,
+} from "firebase/auth";
+import {
+  getDatabase,
+  connectDatabaseEmulator,
+  type Database,
+} from "firebase/database";
+import {
+  getStorage,
+  connectStorageEmulator,
+  type FirebaseStorage,
+} from "firebase/storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   FIREBASE_API_KEY,
   FIREBASE_AUTH_DOMAIN,
@@ -18,10 +26,10 @@ import {
   FIREBASE_MESSAGING_SENDER_ID,
   FIREBASE_APP_ID,
   USE_FIREBASE_EMULATORS,
-} from '@env';
+} from "@env";
 
 // Check if emulators should be used
-const shouldUseEmulators = USE_FIREBASE_EMULATORS === 'true';
+const shouldUseEmulators = USE_FIREBASE_EMULATORS === "true";
 
 function getFirebaseApp(): FirebaseApp {
   // Check if app is already initialized
@@ -32,21 +40,31 @@ function getFirebaseApp(): FirebaseApp {
 
   const config = {
     apiKey: (FIREBASE_API_KEY as string)?.trim?.() || FIREBASE_API_KEY,
-    authDomain: (FIREBASE_AUTH_DOMAIN as string)?.trim?.() || FIREBASE_AUTH_DOMAIN,
-    databaseURL: (FIREBASE_DATABASE_URL as string)?.trim?.() || FIREBASE_DATABASE_URL,
+    authDomain:
+      (FIREBASE_AUTH_DOMAIN as string)?.trim?.() || FIREBASE_AUTH_DOMAIN,
+    databaseURL:
+      (FIREBASE_DATABASE_URL as string)?.trim?.() || FIREBASE_DATABASE_URL,
     projectId: (FIREBASE_PROJECT_ID as string)?.trim?.() || FIREBASE_PROJECT_ID,
-    storageBucket: (FIREBASE_STORAGE_BUCKET as string)?.trim?.() || FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: (FIREBASE_MESSAGING_SENDER_ID as string)?.trim?.() || FIREBASE_MESSAGING_SENDER_ID,
+    storageBucket:
+      (FIREBASE_STORAGE_BUCKET as string)?.trim?.() || FIREBASE_STORAGE_BUCKET,
+    messagingSenderId:
+      (FIREBASE_MESSAGING_SENDER_ID as string)?.trim?.() ||
+      FIREBASE_MESSAGING_SENDER_ID,
     appId: (FIREBASE_APP_ID as string)?.trim?.() || FIREBASE_APP_ID,
   } as const;
 
   // Validate that we have all required config values
   const missingKeys = Object.entries(config)
-    .filter(([key, value]) => !value || value === 'undefined' || value === 'your_firebase_api_key_here')
+    .filter(
+      ([key, value]) =>
+        !value ||
+        value === "undefined" ||
+        value === "your_firebase_api_key_here",
+    )
     .map(([key]) => key);
 
   if (missingKeys.length > 0) {
-    const errorMsg = `Firebase configuration error: Missing or invalid values for: ${missingKeys.join(', ')}. Check your .env file.`;
+    const errorMsg = `Firebase configuration error: Missing or invalid values for: ${missingKeys.join(", ")}. Check your .env file.`;
     console.error(errorMsg);
     throw new Error(errorMsg);
   }
@@ -54,7 +72,7 @@ function getFirebaseApp(): FirebaseApp {
   try {
     return initializeApp(config);
   } catch (error) {
-    console.error('Failed to initialize Firebase:', error);
+    console.error("Failed to initialize Firebase:", error);
     throw error;
   }
 }
@@ -71,30 +89,32 @@ export function getFirebaseAuth(): Auth {
       // Initialize with AsyncStorage persistence for React Native
       // This ensures auth state persists across app restarts (killed state)
       const auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
+        persistence: getReactNativePersistence(AsyncStorage),
       });
 
       // Connect to Auth emulator if explicitly enabled
       if (shouldUseEmulators) {
         try {
-          connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-        } catch (error) {
-        }
+          connectAuthEmulator(auth, "http://127.0.0.1:9099", {
+            disableWarnings: true,
+          });
+        } catch (error) {}
       } else {
       }
 
       return auth;
     } catch (error: any) {
       // If already initialized (shouldn't happen, but handle it)
-      if (error?.code === 'auth/already-initialized') {
+      if (error?.code === "auth/already-initialized") {
         const auth = getAuth(app);
 
         // Connect to Auth emulator if explicitly enabled
         if (shouldUseEmulators) {
           try {
-            connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
-          } catch (emulatorError) {
-          }
+            connectAuthEmulator(auth, "http://127.0.0.1:9099", {
+              disableWarnings: true,
+            });
+          } catch (emulatorError) {}
         } else {
         }
 
@@ -116,10 +136,9 @@ export function getFirebaseDatabase(): Database {
   if (shouldUseEmulators) {
     try {
       connectDatabaseEmulator(db, "127.0.0.1", 9000, {
-        mockUserToken: 'test-user-token'
+        mockUserToken: "test-user-token",
       });
-    } catch (error) {
-    }
+    } catch (error) {}
   } else {
   }
 
@@ -133,12 +152,9 @@ export function getFirebaseStorage(): FirebaseStorage {
   if (shouldUseEmulators) {
     try {
       connectStorageEmulator(getStorage(app), "127.0.0.1", 9199);
-    } catch (error) {
-    }
+    } catch (error) {}
   } else {
   }
 
   return getStorage(app);
 }
-
-

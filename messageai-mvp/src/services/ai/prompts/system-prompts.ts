@@ -203,13 +203,13 @@ export function getSystemPrompt(agentType: string): string {
   const prompts: Record<string, string> = {
     base: BASE_SYSTEM_PROMPT,
     translation: TRANSLATION_AGENT_PROMPT,
-    'language-detection': LANGUAGE_DETECTION_PROMPT,
-    'cultural-context': CULTURAL_CONTEXT_PROMPT,
-    'formality-analysis': FORMALITY_ANALYSIS_PROMPT,
-    'formality-adjustment': FORMALITY_ADJUSTMENT_PROMPT,
-    'slang-idiom': SLANG_IDIOM_PROMPT,
-    'smart-reply': SMART_REPLY_PROMPT,
-    'user-style': USER_STYLE_ANALYSIS_PROMPT,
+    "language-detection": LANGUAGE_DETECTION_PROMPT,
+    "cultural-context": CULTURAL_CONTEXT_PROMPT,
+    "formality-analysis": FORMALITY_ANALYSIS_PROMPT,
+    "formality-adjustment": FORMALITY_ADJUSTMENT_PROMPT,
+    "slang-idiom": SLANG_IDIOM_PROMPT,
+    "smart-reply": SMART_REPLY_PROMPT,
+    "user-style": USER_STYLE_ANALYSIS_PROMPT,
   };
 
   return prompts[agentType] || BASE_SYSTEM_PROMPT;

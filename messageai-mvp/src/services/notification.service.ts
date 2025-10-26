@@ -1,15 +1,15 @@
 /**
  * Notification Service
  * Handles local notification scheduling, permissions, and display
- * 
+ *
  * This is a client-side implementation that works with Expo Go.
  * For true background/killed state support, this will need to be
  * upgraded to FCM with Cloud Functions (see POST_MVP_NOTIFICATIONS_UPGRADE.md)
  */
 
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import type { Message, Chat, User } from '../types';
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+import type { Message, Chat, User } from "../types";
 
 /**
  * Notification data payload for deep linking
@@ -19,7 +19,7 @@ export interface NotificationData extends Record<string, unknown> {
   messageId?: string;
   senderId?: string;
   senderName?: string;
-  type: 'message';
+  type: "message";
 }
 
 /**
@@ -42,13 +42,13 @@ export function configureNotificationHandler(): void {
  * Required for Android 8.0+ to show notifications
  */
 export async function setupNotificationChannel(): Promise<void> {
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('messages', {
-      name: 'Messages',
+  if (Platform.OS === "android") {
+    await Notifications.setNotificationChannelAsync("messages", {
+      name: "Messages",
       importance: Notifications.AndroidImportance.HIGH,
       vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#2196F3',
-      sound: 'default',
+      lightColor: "#2196F3",
+      sound: "default",
       enableVibrate: true,
       enableLights: true,
       showBadge: true,
@@ -62,16 +62,17 @@ export async function setupNotificationChannel(): Promise<void> {
  */
 export async function requestNotificationPermissions(): Promise<boolean> {
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     // Request if not already granted
-    if (existingStatus !== 'granted') {
+    if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    return finalStatus === 'granted';
+    return finalStatus === "granted";
   } catch (error) {
     return false;
   }
@@ -85,7 +86,7 @@ export async function getNotificationPermissionsStatus(): Promise<string> {
     const { status } = await Notifications.getPermissionsAsync();
     return status;
   } catch (error) {
-    return 'undetermined';
+    return "undetermined";
   }
 }
 
@@ -97,7 +98,7 @@ export async function scheduleMessageNotification(
   message: Message,
   chat: Chat,
   sender: User,
-  currentUserId: string
+  currentUserId: string,
 ): Promise<string | null> {
   try {
     // Don't notify for own messages
@@ -106,15 +107,17 @@ export async function scheduleMessageNotification(
     }
 
     // Format notification content based on message type and chat type
-    const title = chat.type === 'group' 
-      ? `${sender.displayName} in ${chat.name || 'Group Chat'}`
-      : sender.displayName;
+    const title =
+      chat.type === "group"
+        ? `${sender.displayName} in ${chat.name || "Group Chat"}`
+        : sender.displayName;
 
-    const body = message.type === 'text'
-      ? message.content.length > 100 
-        ? `${message.content.substring(0, 97)}...`
-        : message.content
-      : '📷 Photo';
+    const body =
+      message.type === "text"
+        ? message.content.length > 100
+          ? `${message.content.substring(0, 97)}...`
+          : message.content
+        : "📷 Photo";
 
     // Schedule notification
     const notificationId = await Notifications.scheduleNotificationAsync({
@@ -126,9 +129,9 @@ export async function scheduleMessageNotification(
           messageId: message.id,
           senderId: message.senderId,
           senderName: sender.displayName,
-          type: 'message',
+          type: "message",
         } as NotificationData,
-        sound: 'default',
+        sound: "default",
         badge: 1,
       },
       trigger: null, // Show immediately
@@ -143,11 +146,12 @@ export async function scheduleMessageNotification(
 /**
  * Cancel a scheduled notification
  */
-export async function cancelNotification(notificationId: string): Promise<void> {
+export async function cancelNotification(
+  notificationId: string,
+): Promise<void> {
   try {
     await Notifications.cancelScheduledNotificationAsync(notificationId);
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -156,8 +160,7 @@ export async function cancelNotification(notificationId: string): Promise<void> 
 export async function cancelAllNotifications(): Promise<void> {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -166,8 +169,7 @@ export async function cancelAllNotifications(): Promise<void> {
 export async function setBadgeCount(count: number): Promise<void> {
   try {
     await Notifications.setBadgeCountAsync(count);
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -176,8 +178,7 @@ export async function setBadgeCount(count: number): Promise<void> {
 export async function clearAllNotifications(): Promise<void> {
   try {
     await Notifications.dismissAllNotificationsAsync();
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -187,15 +188,16 @@ export async function clearAllNotifications(): Promise<void> {
 export async function getPushToken(): Promise<string | null> {
   try {
     // Check if we have permission first
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } =
+      await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
+    if (existingStatus !== "granted") {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    if (finalStatus !== 'granted') {
+    if (finalStatus !== "granted") {
       return null;
     }
 
@@ -205,7 +207,7 @@ export async function getPushToken(): Promise<string | null> {
 
     return devicePushToken.data;
   } catch (error) {
-    console.error('Error getting push token:', error);
+    console.error("Error getting push token:", error);
     return null;
   }
 }
@@ -215,19 +217,18 @@ export async function getPushToken(): Promise<string | null> {
  */
 export async function savePushTokenToProfile(
   userId: string,
-  token: string
+  token: string,
 ): Promise<void> {
   try {
-    const { getFirebaseDatabase } = await import('./firebase');
-    const { ref, set } = await import('firebase/database');
+    const { getFirebaseDatabase } = await import("./firebase");
+    const { ref, set } = await import("firebase/database");
 
     const database = getFirebaseDatabase();
     const tokenRef = ref(database, `/users/${userId}/pushToken`);
 
     await set(tokenRef, token);
   } catch (error) {
-    console.error('Error saving push token:', error);
+    console.error("Error saving push token:", error);
     throw error;
   }
 }
-

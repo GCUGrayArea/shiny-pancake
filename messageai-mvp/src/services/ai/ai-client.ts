@@ -3,20 +3,20 @@
  * Provides a clean interface to OpenAI API with error handling, retry logic, and streaming
  */
 
-import OpenAI from 'openai';
+import OpenAI from "openai";
 import type {
   OpenAIConfig,
   CompletionOptions,
   ChatMessage,
   AIError,
   RetryConfig,
-} from './types';
+} from "./types";
 
 /**
  * Default configuration values
  */
 const DEFAULT_CONFIG: Partial<OpenAIConfig> = {
-  model: 'gpt-4-turbo',
+  model: "gpt-4-turbo",
   maxTokens: 1000,
   temperature: 0.7,
   timeout: 30000, // 30 seconds
@@ -41,7 +41,7 @@ let currentConfig: OpenAIConfig | null = null;
  */
 export function initializeClient(config: OpenAIConfig): OpenAI {
   if (!config.apiKey) {
-    throw new Error('OpenAI API key is required');
+    throw new Error("OpenAI API key is required");
   }
 
   currentConfig = { ...DEFAULT_CONFIG, ...config };
@@ -60,7 +60,9 @@ export function initializeClient(config: OpenAIConfig): OpenAI {
  */
 export function getClient(): OpenAI {
   if (!openaiClient) {
-    throw new Error('OpenAI client not initialized. Call initializeClient() first.');
+    throw new Error(
+      "OpenAI client not initialized. Call initializeClient() first.",
+    );
   }
   return openaiClient;
 }
@@ -69,14 +71,15 @@ export function getClient(): OpenAI {
  * Sleep utility for retry delays
  */
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
  * Calculate retry delay with exponential backoff
  */
 function getRetryDelay(attempt: number, config: RetryConfig): number {
-  const delay = config.initialDelay * Math.pow(config.backoffMultiplier, attempt);
+  const delay =
+    config.initialDelay * Math.pow(config.backoffMultiplier, attempt);
   return Math.min(delay, config.maxDelay);
 }
 
@@ -88,30 +91,35 @@ function toAIError(error: any): AIError {
   if (error?.error?.type) {
     const errorType = error.error.type;
     return {
-      type: errorType.includes('rate_limit') ? 'rate_limit' :
-            errorType.includes('auth') ? 'auth_error' :
-            errorType.includes('invalid') ? 'invalid_request' : 'api_error',
-      message: error.error.message || 'OpenAI API error',
+      type: errorType.includes("rate_limit")
+        ? "rate_limit"
+        : errorType.includes("auth")
+          ? "auth_error"
+          : errorType.includes("invalid")
+            ? "invalid_request"
+            : "api_error",
+      message: error.error.message || "OpenAI API error",
       originalError: error,
-      retryable: errorType.includes('rate_limit') || errorType.includes('server'),
+      retryable:
+        errorType.includes("rate_limit") || errorType.includes("server"),
     };
   }
 
   // Timeout errors
-  if (error?.code === 'ETIMEDOUT' || error?.message?.includes('timeout')) {
+  if (error?.code === "ETIMEDOUT" || error?.message?.includes("timeout")) {
     return {
-      type: 'timeout',
-      message: 'Request timed out',
+      type: "timeout",
+      message: "Request timed out",
       originalError: error,
       retryable: true,
     };
   }
 
   // Network errors
-  if (error?.code === 'ENOTFOUND' || error?.code === 'ECONNREFUSED') {
+  if (error?.code === "ENOTFOUND" || error?.code === "ECONNREFUSED") {
     return {
-      type: 'network_error',
-      message: 'Network error',
+      type: "network_error",
+      message: "Network error",
       originalError: error,
       retryable: true,
     };
@@ -119,8 +127,8 @@ function toAIError(error: any): AIError {
 
   // Unknown errors
   return {
-    type: 'unknown',
-    message: error?.message || 'Unknown error',
+    type: "unknown",
+    message: error?.message || "Unknown error",
     originalError: error,
     retryable: false,
   };
@@ -131,7 +139,7 @@ function toAIError(error: any): AIError {
  */
 async function withRetry<T>(
   fn: () => Promise<T>,
-  config: RetryConfig = DEFAULT_RETRY_CONFIG
+  config: RetryConfig = DEFAULT_RETRY_CONFIG,
 ): Promise<T> {
   let lastError: AIError | null = null;
 
@@ -166,7 +174,7 @@ async function withRetry<T>(
  */
 export async function callCompletion(
   messages: ChatMessage[],
-  options: CompletionOptions = {}
+  options: CompletionOptions = {},
 ): Promise<string> {
   const client = getClient();
   const config = currentConfig!;
@@ -183,7 +191,7 @@ export async function callCompletion(
 
     const content = response.choices[0]?.message?.content;
     if (!content) {
-      throw new Error('No content in OpenAI response');
+      throw new Error("No content in OpenAI response");
     }
 
     return content;
@@ -196,7 +204,7 @@ export async function callCompletion(
  */
 export async function* callStream(
   messages: ChatMessage[],
-  options: CompletionOptions = {}
+  options: CompletionOptions = {},
 ): AsyncGenerator<string> {
   const client = getClient();
   const config = currentConfig!;

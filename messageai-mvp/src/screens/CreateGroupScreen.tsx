@@ -3,22 +3,31 @@
  * Allows users to create a new group chat with selected participants
  */
 
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Alert } from 'react-native';
-import { Text, TextInput, Button, ActivityIndicator, Chip } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { MainStackParamList } from '@/navigation/AppNavigator';
-import { createChatInFirebase } from '@/services/firebase-chat.service';
-import { generateGroupName, validateGroupCreation } from '@/utils/group.utils';
-import Avatar from '@/components/Avatar';
-import type { User } from '@/types';
+import React, { useState, useCallback } from "react";
+import { View, StyleSheet, FlatList, Alert } from "react-native";
+import {
+  Text,
+  TextInput,
+  Button,
+  ActivityIndicator,
+  Chip,
+} from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { MainStackParamList } from "@/navigation/AppNavigator";
+import { createChatInFirebase } from "@/services/firebase-chat.service";
+import { generateGroupName, validateGroupCreation } from "@/utils/group.utils";
+import Avatar from "@/components/Avatar";
+import type { User } from "@/types";
 
-type CreateGroupScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'CreateGroup'>;
-type CreateGroupScreenRouteProp = RouteProp<MainStackParamList, 'CreateGroup'>;
+type CreateGroupScreenNavigationProp = NativeStackNavigationProp<
+  MainStackParamList,
+  "CreateGroup"
+>;
+type CreateGroupScreenRouteProp = RouteProp<MainStackParamList, "CreateGroup">;
 
 interface Participant {
   uid: string;
@@ -30,7 +39,7 @@ interface Participant {
 }
 
 export default function CreateGroupScreen() {
-  const [groupName, setGroupName] = useState('');
+  const [groupName, setGroupName] = useState("");
   const [participants, setParticipants] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [userHasEdited, setUserHasEdited] = useState(false);
@@ -44,16 +53,18 @@ export default function CreateGroupScreen() {
   React.useEffect(() => {
     if (route.params?.participants) {
       // Map participants to ensure required User fields are present
-      const mappedParticipants: User[] = route.params.participants.map((p: any) => ({
-        uid: p.uid,
-        email: p.email,
-        displayName: p.displayName,
-        createdAt: p.createdAt ?? Date.now(),
-        lastSeen: p.lastSeen ?? Date.now(),
-        isOnline: p.isOnline ?? false,
-        autoTranslateEnabled: p.autoTranslateEnabled ?? false,
-        preferredLanguage: p.preferredLanguage ?? 'en',
-      }));
+      const mappedParticipants: User[] = route.params.participants.map(
+        (p: any) => ({
+          uid: p.uid,
+          email: p.email,
+          displayName: p.displayName,
+          createdAt: p.createdAt ?? Date.now(),
+          lastSeen: p.lastSeen ?? Date.now(),
+          isOnline: p.isOnline ?? false,
+          autoTranslateEnabled: p.autoTranslateEnabled ?? false,
+          preferredLanguage: p.preferredLanguage ?? "en",
+        }),
+      );
       setParticipants(mappedParticipants);
       // Auto-generate group name if not set
       if (!groupName) {
@@ -63,24 +74,29 @@ export default function CreateGroupScreen() {
   }, [route.params?.participants, groupName]);
 
   // Handle removing a participant
-  const handleRemoveParticipant = useCallback((participantId: string) => {
-    if (!user || participantId === user.uid) return; // Can't remove self
+  const handleRemoveParticipant = useCallback(
+    (participantId: string) => {
+      if (!user || participantId === user.uid) return; // Can't remove self
 
-    Alert.alert(
-      'Remove Participant',
-      `Remove ${participants.find(p => p.uid === participantId)?.displayName} from the group?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            setParticipants(prev => prev.filter(p => p.uid !== participantId));
-          }
-        }
-      ]
-    );
-  }, [participants, user]);
+      Alert.alert(
+        "Remove Participant",
+        `Remove ${participants.find((p) => p.uid === participantId)?.displayName} from the group?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Remove",
+            style: "destructive",
+            onPress: () => {
+              setParticipants((prev) =>
+                prev.filter((p) => p.uid !== participantId),
+              );
+            },
+          },
+        ],
+      );
+    },
+    [participants, user],
+  );
 
   // Handle creating the group
   const handleCreateGroup = useCallback(async () => {
@@ -88,7 +104,7 @@ export default function CreateGroupScreen() {
 
     // Validate group creation
     const validation = validateGroupCreation(
-      participants.map(p => ({
+      participants.map((p) => ({
         uid: p.uid,
         email: p.email,
         displayName: p.displayName,
@@ -96,7 +112,7 @@ export default function CreateGroupScreen() {
         lastSeen: p.lastSeen || Date.now(),
         isOnline: p.isOnline || false,
         autoTranslateEnabled: false,
-        preferredLanguage: 'en',
+        preferredLanguage: "en",
       })),
       {
         uid: user.uid,
@@ -107,11 +123,11 @@ export default function CreateGroupScreen() {
         isOnline: true,
         autoTranslateEnabled: user.autoTranslateEnabled,
         preferredLanguage: user.preferredLanguage,
-      }
+      },
     );
 
     if (!validation.isValid) {
-      Alert.alert('Error', validation.error);
+      Alert.alert("Error", validation.error);
       return;
     }
 
@@ -119,38 +135,36 @@ export default function CreateGroupScreen() {
       setLoading(true);
 
       // Create group chat in Firebase
-      const participantIds = participants.map(p => p.uid);
-      const finalGroupName = groupName.trim() || generateGroupName(participants);
+      const participantIds = participants.map((p) => p.uid);
+      const finalGroupName =
+        groupName.trim() || generateGroupName(participants);
 
       const chatData = {
-        id: '', // Will be assigned by Firebase
-        type: 'group' as const,
+        id: "", // Will be assigned by Firebase
+        type: "group" as const,
         participantIds,
         name: finalGroupName,
-        createdAt: Date.now()
+        createdAt: Date.now(),
       };
 
       const result = await createChatInFirebase(chatData);
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to create group');
+        throw new Error(result.error || "Failed to create group");
       }
 
       const chatId = result.data!;
 
       // Navigate to conversation
-      navigation.navigate('Conversation', {
+      navigation.navigate("Conversation", {
         chatId,
         isGroup: true,
-        groupName: finalGroupName
+        groupName: finalGroupName,
       });
-
     } catch (error) {
-      Alert.alert(
-        'Error',
-        'Failed to create group. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert("Error", "Failed to create group. Please try again.", [
+        { text: "OK" },
+      ]);
     } finally {
       setLoading(false);
     }
@@ -161,7 +175,12 @@ export default function CreateGroupScreen() {
     const isCurrentUser = item.uid === user?.uid;
 
     return (
-      <View style={[styles.participantItem, { backgroundColor: colors.surfaceElevated }]}>
+      <View
+        style={[
+          styles.participantItem,
+          { backgroundColor: colors.surfaceElevated },
+        ]}
+      >
         <Avatar
           userId={item.uid}
           displayName={item.displayName}
@@ -169,11 +188,17 @@ export default function CreateGroupScreen() {
           showOnlineStatus={true}
         />
         <View style={styles.participantInfo}>
-          <Text variant="bodyLarge" style={[styles.participantName, { color: colors.text }]}>
+          <Text
+            variant="bodyLarge"
+            style={[styles.participantName, { color: colors.text }]}
+          >
             {item.displayName}
-            {isCurrentUser && ' (You)'}
+            {isCurrentUser && " (You)"}
           </Text>
-          <Text variant="bodySmall" style={[styles.participantEmail, { color: colors.textSecondary }]}>
+          <Text
+            variant="bodySmall"
+            style={[styles.participantEmail, { color: colors.textSecondary }]}
+          >
             {item.email}
           </Text>
         </View>
@@ -193,21 +218,33 @@ export default function CreateGroupScreen() {
 
   // Set initial group name only once when participants are first loaded (if user hasn't edited)
   React.useEffect(() => {
-    if (participants.length > 0 && !groupName && !userHasEdited && suggestedName) {
+    if (
+      participants.length > 0 &&
+      !groupName &&
+      !userHasEdited &&
+      suggestedName
+    ) {
       setGroupName(suggestedName);
     }
   }, [participants.length]); // Only depend on participants.length to avoid re-triggering
 
   const canCreateGroup = participants.length >= 3 && !loading; // Need current user + at least 2 others
-  const suggestedName = participants.length > 0 ? generateGroupName(participants) : '';
+  const suggestedName =
+    participants.length > 0 ? generateGroupName(participants) : "";
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
-        <Text variant="headlineSmall" style={[styles.title, { color: colors.text }]}>
+        <Text
+          variant="headlineSmall"
+          style={[styles.title, { color: colors.text }]}
+        >
           Create Group
         </Text>
-        <Text variant="bodyMedium" style={[styles.subtitle, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodyMedium"
+          style={[styles.subtitle, { color: colors.textSecondary }]}
+        >
           Add a name for your group chat (optional)
         </Text>
       </View>
@@ -226,18 +263,27 @@ export default function CreateGroupScreen() {
           placeholder={suggestedName || "Enter group name (optional)"}
           placeholderTextColor={colors.textSecondary}
           maxLength={50}
-          style={[styles.nameInput, { backgroundColor: colors.inputBackground }]}
+          style={[
+            styles.nameInput,
+            { backgroundColor: colors.inputBackground },
+          ]}
           textColor={colors.text}
           outlineColor={colors.inputBorder}
           activeOutlineColor={colors.primary}
         />
 
-        <Text variant="bodySmall" style={[styles.participantCount, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.participantCount, { color: colors.textSecondary }]}
+        >
           {participants.length} participants
         </Text>
 
         <View style={styles.participantsSection}>
-          <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text
+            variant="titleMedium"
+            style={[styles.sectionTitle, { color: colors.text }]}
+          >
             Participants
           </Text>
           <FlatList
@@ -257,7 +303,7 @@ export default function CreateGroupScreen() {
           buttonColor={canCreateGroup ? colors.primary : colors.border}
           style={[styles.createButton, { marginBottom: insets.bottom }]}
         >
-          {loading ? 'Creating Group...' : 'Create Group'}
+          {loading ? "Creating Group..." : "Create Group"}
         </Button>
       </View>
     </View>
@@ -267,17 +313,17 @@ export default function CreateGroupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   header: {
     padding: 16,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   title: {
     marginBottom: 4,
   },
   subtitle: {
-    color: '#666',
+    color: "#666",
   },
   form: {
     flex: 1,
@@ -287,9 +333,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   participantCount: {
-    color: '#666',
+    color: "#666",
     marginBottom: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   participantsSection: {
     flex: 1,
@@ -301,10 +347,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   participantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 8,
     gap: 12,
   },
@@ -312,17 +358,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   participantName: {
-    fontWeight: '500',
+    fontWeight: "500",
   },
   participantEmail: {
-    color: '#666',
+    color: "#666",
   },
   removeChip: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   createButton: {
     marginTop: 16,
     marginBottom: 0, // Set dynamically with safe area insets
   },
 });
-

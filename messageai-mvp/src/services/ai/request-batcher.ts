@@ -26,10 +26,13 @@ const DEFAULT_CONFIG: BatchConfig = {
  */
 export function createBatcher<TInput, TOutput>(
   batchHandler: (inputs: TInput[]) => Promise<TOutput[]>,
-  config: Partial<BatchConfig> = {}
+  config: Partial<BatchConfig> = {},
 ) {
   const fullConfig = { ...DEFAULT_CONFIG, ...config };
-  const pendingRequests: Array<{ input: TInput; request: BatchRequest<TOutput> }> = [];
+  const pendingRequests: Array<{
+    input: TInput;
+    request: BatchRequest<TOutput>;
+  }> = [];
   let batchTimeout: NodeJS.Timeout | null = null;
 
   /**
@@ -44,7 +47,7 @@ export function createBatcher<TInput, TOutput>(
 
     try {
       // Extract inputs and execute batch handler
-      const inputs = batch.map(item => item.input);
+      const inputs = batch.map((item) => item.input);
       const results = await batchHandler(inputs);
 
       // Resolve all promises with their corresponding results
@@ -53,7 +56,7 @@ export function createBatcher<TInput, TOutput>(
       });
     } catch (error) {
       // Reject all promises with the error
-      batch.forEach(item => {
+      batch.forEach((item) => {
         item.request.reject(error);
       });
     }
@@ -113,8 +116,11 @@ export function createDeduplicator<TKey, TValue>() {
    * Execute operation with deduplication
    * If the same key is requested multiple times while pending, all requests share the same promise
    */
-  const execute = (key: TKey, operation: () => Promise<TValue>): Promise<TValue> => {
-    const keyString = typeof key === 'string' ? key : JSON.stringify(key);
+  const execute = (
+    key: TKey,
+    operation: () => Promise<TValue>,
+  ): Promise<TValue> => {
+    const keyString = typeof key === "string" ? key : JSON.stringify(key);
 
     // Return existing promise if already pending
     const existingPromise = pending.get(keyString);
@@ -123,11 +129,10 @@ export function createDeduplicator<TKey, TValue>() {
     }
 
     // Create new promise and store it
-    const promise = operation()
-      .finally(() => {
-        // Remove from pending once complete
-        pending.delete(keyString);
-      });
+    const promise = operation().finally(() => {
+      // Remove from pending once complete
+      pending.delete(keyString);
+    });
 
     pending.set(keyString, promise);
     return promise;

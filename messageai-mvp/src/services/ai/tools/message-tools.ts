@@ -3,31 +3,33 @@
  * Provides tools for retrieving and analyzing message history
  */
 
-import type { FunctionTool, FunctionHandler } from '../types';
-import { getConversationContext, formatMessagesForLLM } from '../rag.service';
+import type { FunctionTool, FunctionHandler } from "../types";
+import { getConversationContext, formatMessagesForLLM } from "../rag.service";
 
 /**
  * Tool definition: Get message history
  * Retrieves recent messages from a conversation
  */
 export const getMessageHistoryTool: FunctionTool = {
-  type: 'function',
+  type: "function",
   function: {
-    name: 'get_message_history',
-    description: 'Retrieve recent messages from a conversation to understand context',
+    name: "get_message_history",
+    description:
+      "Retrieve recent messages from a conversation to understand context",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         chatId: {
-          type: 'string',
-          description: 'The unique identifier of the chat/conversation',
+          type: "string",
+          description: "The unique identifier of the chat/conversation",
         },
         limit: {
-          type: 'number',
-          description: 'Maximum number of messages to retrieve (default: 50, max: 100)',
+          type: "number",
+          description:
+            "Maximum number of messages to retrieve (default: 50, max: 100)",
         },
       },
-      required: ['chatId'],
+      required: ["chatId"],
     },
   },
 };
@@ -63,23 +65,24 @@ export const getMessageHistoryHandler: FunctionHandler = async (args: {
  * Analyzes the overall tone and formality of a conversation
  */
 export const analyzeConversationToneTool: FunctionTool = {
-  type: 'function',
+  type: "function",
   function: {
-    name: 'analyze_conversation_tone',
-    description: 'Analyze the tone and formality level of recent messages in a conversation',
+    name: "analyze_conversation_tone",
+    description:
+      "Analyze the tone and formality level of recent messages in a conversation",
     parameters: {
-      type: 'object',
+      type: "object",
       properties: {
         chatId: {
-          type: 'string',
-          description: 'The unique identifier of the chat/conversation',
+          type: "string",
+          description: "The unique identifier of the chat/conversation",
         },
         messageLimit: {
-          type: 'number',
-          description: 'Number of recent messages to analyze (default: 20)',
+          type: "number",
+          description: "Number of recent messages to analyze (default: 20)",
         },
       },
-      required: ['chatId'],
+      required: ["chatId"],
     },
   },
 };
@@ -100,7 +103,7 @@ export const analyzeConversationToneHandler: FunctionHandler = async (args: {
   return {
     chatId,
     messageCount: context.messageCount,
-    messages: context.messages.map(m => ({
+    messages: context.messages.map((m) => ({
       sender: m.senderName,
       content: m.content,
       type: m.type,

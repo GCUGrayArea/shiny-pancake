@@ -3,8 +3,13 @@
  * Handles CRUD operations for users in SQLite
  */
 
-import { User } from '../types';
-import { executeQuery, executeQueryFirst, executeUpdate, DbResult } from './database.service';
+import { User } from "../types";
+import {
+  executeQuery,
+  executeQueryFirst,
+  executeUpdate,
+  DbResult,
+} from "./database.service";
 
 /**
  * Save a user to local database
@@ -27,12 +32,12 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
       user.isOnline ? 1 : 0,
       user.fcmToken ?? null,
       user.autoTranslateEnabled ? 1 : 0,
-      user.preferredLanguage ?? 'en',
+      user.preferredLanguage ?? "en",
       user.profilePictureUrl ?? null,
       user.culturalHintsEnabled ? 1 : 0,
       user.slangExplanationsEnabled ? 1 : 0,
       user.smartRepliesEnabled !== false ? 1 : 0, // Default to enabled
-      user.themeMode ?? 'auto', // Default to auto
+      user.themeMode ?? "auto", // Default to auto
     ];
 
     const result = await executeUpdate(sql, params);
@@ -55,7 +60,7 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
  */
 export async function getUser(uid: string): Promise<DbResult<User | null>> {
   try {
-    const sql = 'SELECT * FROM users WHERE uid = ?';
+    const sql = "SELECT * FROM users WHERE uid = ?";
     const result = await executeQueryFirst<any>(sql, [uid]);
 
     if (!result.success) {
@@ -85,7 +90,7 @@ export async function getUsers(uids: string[]): Promise<DbResult<User[]>> {
       return { success: true, data: [] };
     }
 
-    const placeholders = uids.map(() => '?').join(',');
+    const placeholders = uids.map(() => "?").join(",");
     const sql = `SELECT * FROM users WHERE uid IN (${placeholders})`;
     const result = await executeQuery<any>(sql, uids);
 
@@ -109,7 +114,7 @@ export async function getUsers(uids: string[]): Promise<DbResult<User[]>> {
 export async function updateUserPresence(
   uid: string,
   isOnline: boolean,
-  lastSeen?: number
+  lastSeen?: number,
 ): Promise<DbResult<void>> {
   try {
     const sql = `
@@ -139,7 +144,7 @@ export async function updateUserPresence(
  */
 export async function getAllUsers(): Promise<DbResult<User[]>> {
   try {
-    const sql = 'SELECT * FROM users ORDER BY displayName ASC';
+    const sql = "SELECT * FROM users ORDER BY displayName ASC";
     const result = await executeQuery<any>(sql);
 
     if (!result.success) {
@@ -161,10 +166,10 @@ export async function getAllUsers(): Promise<DbResult<User[]>> {
  */
 export async function updateUserFcmToken(
   uid: string,
-  fcmToken: string
+  fcmToken: string,
 ): Promise<DbResult<void>> {
   try {
-    const sql = 'UPDATE users SET fcmToken = ? WHERE uid = ?';
+    const sql = "UPDATE users SET fcmToken = ? WHERE uid = ?";
     const result = await executeUpdate(sql, [fcmToken, uid]);
 
     if (!result.success) {
@@ -185,7 +190,7 @@ export async function updateUserFcmToken(
  */
 export async function deleteUser(uid: string): Promise<DbResult<void>> {
   try {
-    const sql = 'DELETE FROM users WHERE uid = ?';
+    const sql = "DELETE FROM users WHERE uid = ?";
     const result = await executeUpdate(sql, [uid]);
 
     if (!result.success) {
@@ -206,7 +211,7 @@ export async function deleteUser(uid: string): Promise<DbResult<void>> {
  */
 export async function updateUser(
   uid: string,
-  updates: Partial<Omit<User, 'uid' | 'email' | 'createdAt'>>
+  updates: Partial<Omit<User, "uid" | "email" | "createdAt">>,
 ): Promise<DbResult<void>> {
   try {
     // Build dynamic UPDATE query
@@ -215,20 +220,20 @@ export async function updateUser(
       return { success: true }; // Nothing to update
     }
 
-    const setClauses = fields.map(field => {
+    const setClauses = fields.map((field) => {
       // Handle boolean fields
-      if (field === 'isOnline' || field === 'autoTranslateEnabled') {
+      if (field === "isOnline" || field === "autoTranslateEnabled") {
         return `${field} = ?`;
       }
       return `${field} = ?`;
     });
 
-    const sql = `UPDATE users SET ${setClauses.join(', ')} WHERE uid = ?`;
+    const sql = `UPDATE users SET ${setClauses.join(", ")} WHERE uid = ?`;
 
-    const params = fields.map(field => {
+    const params = fields.map((field) => {
       const value = updates[field as keyof typeof updates];
       // Convert booleans to 0/1 for SQLite
-      if (typeof value === 'boolean') {
+      if (typeof value === "boolean") {
         return value ? 1 : 0;
       }
       return value ?? null;
@@ -263,11 +268,11 @@ function mapRowToUser(row: any): User {
     isOnline: row.isOnline === 1,
     fcmToken: row.fcmToken ?? undefined,
     autoTranslateEnabled: row.autoTranslateEnabled === 1,
-    preferredLanguage: row.preferredLanguage ?? 'en',
+    preferredLanguage: row.preferredLanguage ?? "en",
     profilePictureUrl: row.profilePictureUrl ?? undefined,
     culturalHintsEnabled: row.culturalHintsEnabled === 1,
     slangExplanationsEnabled: row.slangExplanationsEnabled === 1,
     smartRepliesEnabled: row.smartRepliesEnabled !== 0, // Default to true
-    themeMode: (row.themeMode as 'light' | 'dark' | 'auto') ?? 'auto',
+    themeMode: (row.themeMode as "light" | "dark" | "auto") ?? "auto",
   };
 }

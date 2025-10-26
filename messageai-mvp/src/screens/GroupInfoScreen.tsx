@@ -3,23 +3,29 @@
  * Shows group details, participants, and allows leaving the group
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, Alert } from 'react-native';
-import { Text, Button, ActivityIndicator, Chip } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '@/contexts/AuthContext';
-import { MainStackParamList } from '@/navigation/AppNavigator';
-import { getChatFromFirebase } from '@/services/firebase-chat.service';
-import { getUserFromFirebase, getAllUsersFromFirebase } from '@/services/firebase-user.service';
-import { getUserPresence } from '@/services/presence.service';
-import { generateGroupInitials } from '@/utils/group.utils';
-import Avatar from '@/components/Avatar';
-import { Chat, User } from '@/types';
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, FlatList, Alert } from "react-native";
+import { Text, Button, ActivityIndicator, Chip } from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuth } from "@/contexts/AuthContext";
+import { MainStackParamList } from "@/navigation/AppNavigator";
+import { getChatFromFirebase } from "@/services/firebase-chat.service";
+import {
+  getUserFromFirebase,
+  getAllUsersFromFirebase,
+} from "@/services/firebase-user.service";
+import { getUserPresence } from "@/services/presence.service";
+import { generateGroupInitials } from "@/utils/group.utils";
+import Avatar from "@/components/Avatar";
+import { Chat, User } from "@/types";
 
-type GroupInfoScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'GroupInfo'>;
-type GroupInfoScreenRouteProp = RouteProp<MainStackParamList, 'GroupInfo'>;
+type GroupInfoScreenNavigationProp = NativeStackNavigationProp<
+  MainStackParamList,
+  "GroupInfo"
+>;
+type GroupInfoScreenRouteProp = RouteProp<MainStackParamList, "GroupInfo">;
 
 interface ParticipantWithPresence extends User {
   isOnline: boolean;
@@ -28,7 +34,9 @@ interface ParticipantWithPresence extends User {
 
 export default function GroupInfoScreen() {
   const [chat, setChat] = useState<Chat | null>(null);
-  const [participants, setParticipants] = useState<ParticipantWithPresence[]>([]);
+  const [participants, setParticipants] = useState<ParticipantWithPresence[]>(
+    [],
+  );
   const [loading, setLoading] = useState(true);
   const [leaving, setLeaving] = useState(false);
   const insets = useSafeAreaInsets();
@@ -48,7 +56,7 @@ export default function GroupInfoScreen() {
       // Load chat data from Firebase
       const chatResult = await getChatFromFirebase(chatId);
       if (!chatResult.success) {
-        Alert.alert('Error', 'Failed to load group information');
+        Alert.alert("Error", "Failed to load group information");
         return;
       }
 
@@ -70,7 +78,7 @@ export default function GroupInfoScreen() {
         // Filter to only group participants and enhance with presence
         const groupParticipants = await Promise.all(
           participantIds.map(async (participantId) => {
-            const firebaseUser = allUsers.find(u => u.uid === participantId);
+            const firebaseUser = allUsers.find((u) => u.uid === participantId);
             if (!firebaseUser) {
               return null;
             }
@@ -89,14 +97,16 @@ export default function GroupInfoScreen() {
                 lastSeen: Date.now(),
               };
             }
-          })
+          }),
         );
 
-        const validParticipants = groupParticipants.filter(p => p !== null) as ParticipantWithPresence[];
+        const validParticipants = groupParticipants.filter(
+          (p) => p !== null,
+        ) as ParticipantWithPresence[];
         setParticipants(validParticipants);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to load group information');
+      Alert.alert("Error", "Failed to load group information");
     } finally {
       setLoading(false);
     }
@@ -109,13 +119,13 @@ export default function GroupInfoScreen() {
   // Handle leaving the group
   const handleLeaveGroup = useCallback(async () => {
     Alert.alert(
-      'Leave Group',
+      "Leave Group",
       `Are you sure you want to leave "${chatName}"? You won't receive messages from this group anymore.`,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Leave',
-          style: 'destructive',
+          text: "Leave",
+          style: "destructive",
           onPress: async () => {
             try {
               setLeaving(true);
@@ -125,19 +135,18 @@ export default function GroupInfoScreen() {
               // and updating the chat in Firebase
 
               Alert.alert(
-                'Group Left',
+                "Group Left",
                 `You have left "${chatName}". You can rejoin by being added back by another participant.`,
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
+                [{ text: "OK", onPress: () => navigation.goBack() }],
               );
-
             } catch (error) {
-              Alert.alert('Error', 'Failed to leave group. Please try again.');
+              Alert.alert("Error", "Failed to leave group. Please try again.");
             } finally {
               setLeaving(false);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
   }, [chatId, chatName, navigation]);
 
@@ -156,7 +165,7 @@ export default function GroupInfoScreen() {
         <View style={styles.participantInfo}>
           <Text variant="bodyLarge" style={styles.participantName}>
             {item.displayName}
-            {isCurrentUser && ' (You)'}
+            {isCurrentUser && " (You)"}
           </Text>
           <Text variant="bodySmall" style={styles.participantEmail}>
             {item.email}
@@ -187,7 +196,8 @@ export default function GroupInfoScreen() {
           Group Not Found
         </Text>
         <Text variant="bodyMedium" style={styles.errorText}>
-          This group chat may have been deleted or you no longer have access to it.
+          This group chat may have been deleted or you no longer have access to
+          it.
         </Text>
         <Button mode="contained" onPress={() => navigation.goBack()}>
           Go Back
@@ -197,7 +207,7 @@ export default function GroupInfoScreen() {
   }
 
   const groupInitials = generateGroupInitials(participants);
-  const onlineCount = participants.filter(p => p.isOnline).length;
+  const onlineCount = participants.filter((p) => p.isOnline).length;
 
   return (
     <View style={styles.container}>
@@ -231,7 +241,9 @@ export default function GroupInfoScreen() {
         />
       </View>
 
-      <View style={[styles.actionsSection, { paddingBottom: insets.bottom + 16 }]}>
+      <View
+        style={[styles.actionsSection, { paddingBottom: insets.bottom + 16 }]}
+      >
         <Button
           mode="outlined"
           onPress={handleLeaveGroup}
@@ -239,7 +251,7 @@ export default function GroupInfoScreen() {
           disabled={leaving}
           style={styles.leaveButton}
         >
-          {leaving ? 'Leaving Group...' : 'Leave Group'}
+          {leaving ? "Leaving Group..." : "Leave Group"}
         </Button>
       </View>
     </View>
@@ -249,38 +261,38 @@ export default function GroupInfoScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 16,
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   errorContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 32,
     gap: 16,
   },
   errorTitle: {
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 8,
   },
   errorText: {
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
   },
   groupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     gap: 16,
   },
   groupInfo: {
@@ -290,7 +302,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   groupSubtitle: {
-    color: '#666',
+    color: "#666",
   },
   participantsSection: {
     flex: 1,
@@ -303,10 +315,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   participantItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 8,
     gap: 12,
   },
@@ -314,13 +326,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   participantName: {
-    fontWeight: '500',
+    fontWeight: "500",
   },
   participantEmail: {
-    color: '#666',
+    color: "#666",
   },
   currentUserChip: {
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   actionsSection: {
     padding: 16,
@@ -328,7 +340,6 @@ const styles = StyleSheet.create({
     paddingBottom: 0, // Set dynamically with safe area insets
   },
   leaveButton: {
-    borderColor: '#F44336',
+    borderColor: "#F44336",
   },
 });
-

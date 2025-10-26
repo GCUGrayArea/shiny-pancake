@@ -3,11 +3,11 @@
  * Handles conversation context retrieval and formatting for LLM consumption
  */
 
-import { Message } from '../../types';
-import { getMessagesByChat } from '../local-message.service';
-import { getUsers } from '../local-user.service';
-import type { RAGContext } from './types';
-import { estimateTokens } from './ai-client';
+import { Message } from "../../types";
+import { getMessagesByChat } from "../local-message.service";
+import { getUsers } from "../local-user.service";
+import type { RAGContext } from "./types";
+import { estimateTokens } from "./ai-client";
 
 /**
  * Maximum number of messages to retrieve for context
@@ -25,7 +25,7 @@ const MAX_CONTEXT_TOKENS = 3000;
  */
 export async function getConversationContext(
   chatId: string,
-  limit: number = DEFAULT_CONTEXT_LIMIT
+  limit: number = DEFAULT_CONTEXT_LIMIT,
 ): Promise<RAGContext> {
   // Retrieve messages from local database
   const messagesResult = await getMessagesByChat(chatId, limit, 0);
@@ -44,18 +44,18 @@ export async function getConversationContext(
   const chronologicalMessages = messages.reverse();
 
   // Get unique sender IDs
-  const senderIds = [...new Set(messages.map(m => m.senderId))];
+  const senderIds = [...new Set(messages.map((m) => m.senderId))];
 
   // Fetch user information for all senders
   const usersResult = await getUsers(senderIds);
   const users = usersResult.success && usersResult.data ? usersResult.data : [];
 
   // Create user lookup map
-  const userMap = new Map(users.map(u => [u.uid, u]));
+  const userMap = new Map(users.map((u) => [u.uid, u]));
 
   // Format messages for context
-  const formattedMessages = chronologicalMessages.map(msg => ({
-    senderName: userMap.get(msg.senderId)?.displayName || 'Unknown',
+  const formattedMessages = chronologicalMessages.map((msg) => ({
+    senderName: userMap.get(msg.senderId)?.displayName || "Unknown",
     content: formatMessageContent(msg),
     timestamp: msg.timestamp,
     type: msg.type,
@@ -63,8 +63,8 @@ export async function getConversationContext(
 
   // Calculate estimated tokens
   const contextText = formattedMessages
-    .map(m => `${m.senderName}: ${m.content}`)
-    .join('\n');
+    .map((m) => `${m.senderName}: ${m.content}`)
+    .join("\n");
   const estimatedTokenCount = estimateTokens(contextText);
 
   return {
@@ -78,16 +78,16 @@ export async function getConversationContext(
  * Format message content based on type
  */
 function formatMessageContent(message: Message): string {
-  if (message.type === 'text') {
+  if (message.type === "text") {
     return message.content;
   }
 
   // Image messages
-  if (message.type === 'image') {
+  if (message.type === "image") {
     if (message.caption) {
       return `[Image: ${message.caption}]`;
     }
-    return '[Image]';
+    return "[Image]";
   }
 
   return message.content;
@@ -98,21 +98,21 @@ function formatMessageContent(message: Message): string {
  * Creates a readable conversation format
  */
 export function formatMessagesForLLM(
-  messages: RAGContext['messages'],
-  includeTimestamps: boolean = false
+  messages: RAGContext["messages"],
+  includeTimestamps: boolean = false,
 ): string {
   if (messages.length === 0) {
-    return 'No previous messages in this conversation.';
+    return "No previous messages in this conversation.";
   }
 
   return messages
-    .map(msg => {
+    .map((msg) => {
       const timestamp = includeTimestamps
         ? ` [${new Date(msg.timestamp).toLocaleString()}]`
-        : '';
+        : "";
       return `${msg.senderName}${timestamp}: ${msg.content}`;
     })
-    .join('\n');
+    .join("\n");
 }
 
 /**
@@ -122,7 +122,7 @@ export function formatMessagesForLLM(
 export function buildContextPrompt(
   query: string,
   context: RAGContext,
-  systemInstructions?: string
+  systemInstructions?: string,
 ): string {
   const conversationText = formatMessagesForLLM(context.messages);
 
@@ -130,15 +130,15 @@ export function buildContextPrompt(
 
   if (systemInstructions) {
     parts.push(systemInstructions);
-    parts.push('');
+    parts.push("");
   }
 
-  parts.push('Conversation history:');
+  parts.push("Conversation history:");
   parts.push(conversationText);
-  parts.push('');
+  parts.push("");
   parts.push(`User query: ${query}`);
 
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
 /**
@@ -147,7 +147,7 @@ export function buildContextPrompt(
  */
 export function trimContextToTokenLimit(
   context: RAGContext,
-  maxTokens: number = MAX_CONTEXT_TOKENS
+  maxTokens: number = MAX_CONTEXT_TOKENS,
 ): RAGContext {
   if (context.estimatedTokens <= maxTokens) {
     return context;
@@ -165,8 +165,8 @@ export function trimContextToTokenLimit(
 
   // Recalculate exact token count
   const contextText = trimmedMessages
-    .map(m => `${m.senderName}: ${m.content}`)
-    .join('\n');
+    .map((m) => `${m.senderName}: ${m.content}`)
+    .join("\n");
 
   return {
     messages: trimmedMessages,
@@ -182,7 +182,7 @@ export function trimContextToTokenLimit(
 export async function getUserMessageHistory(
   userId: string,
   chatIds: string[],
-  limit: number = 100
+  limit: number = 100,
 ): Promise<Message[]> {
   const allMessages: Message[] = [];
 
@@ -191,7 +191,7 @@ export async function getUserMessageHistory(
     const result = await getMessagesByChat(chatId, limit, 0);
     if (result.success && result.data) {
       // Filter for messages sent by the user
-      const userMessages = result.data.filter(m => m.senderId === userId);
+      const userMessages = result.data.filter((m) => m.senderId === userId);
       allMessages.push(...userMessages);
     }
   }
@@ -208,21 +208,22 @@ export async function getUserMessageHistory(
  * Useful for analyzing user's writing style
  */
 export function extractTextContent(messages: Message[]): string[] {
-  return messages
-    .filter(m => m.type === 'text')
-    .map(m => m.content);
+  return messages.filter((m) => m.type === "text").map((m) => m.content);
 }
 
 /**
  * Calculate average message length for a user
  */
 export function calculateAverageMessageLength(messages: Message[]): number {
-  const textMessages = messages.filter(m => m.type === 'text');
+  const textMessages = messages.filter((m) => m.type === "text");
 
   if (textMessages.length === 0) {
     return 0;
   }
 
-  const totalLength = textMessages.reduce((sum, m) => sum + m.content.length, 0);
+  const totalLength = textMessages.reduce(
+    (sum, m) => sum + m.content.length,
+    0,
+  );
   return Math.round(totalLength / textMessages.length);
 }

@@ -3,10 +3,14 @@
  * Detects the language of text using OpenAI with caching and request deduplication
  */
 
-import { callCompletion, isInitialized } from './ai-client';
-import type { LanguageCode, LanguageDetectionResult, CacheEntry } from './types';
-import { logAIError, parseAIError } from './error-handler';
-import { createDeduplicator } from './request-batcher';
+import { callCompletion, isInitialized } from "./ai-client";
+import type {
+  LanguageCode,
+  LanguageDetectionResult,
+  CacheEntry,
+} from "./types";
+import { logAIError, parseAIError } from "./error-handler";
+import { createDeduplicator } from "./request-batcher";
 
 /**
  * In-memory cache for language detections
@@ -90,7 +94,7 @@ function setCached(text: string, language: LanguageCode): void {
 export async function detectLanguage(text: string): Promise<LanguageCode> {
   // Handle empty or very short text
   if (!text || text.trim().length < 2) {
-    return 'unknown';
+    return "unknown";
   }
 
   // Check cache first
@@ -100,37 +104,56 @@ export async function detectLanguage(text: string): Promise<LanguageCode> {
   }
 
   if (!isInitialized()) {
-    console.error('OpenAI client not initialized - cannot detect language');
-    return 'unknown';
+    console.error("OpenAI client not initialized - cannot detect language");
+    return "unknown";
   }
 
   // Use deduplicator to prevent duplicate requests for the same text
   return deduplicator.execute(getCacheKey(text), async () => {
     try {
-      const response = await callCompletion([
+      const response = await callCompletion(
+        [
+          {
+            role: "system",
+            content:
+              'You are a language detection expert. Respond with ONLY the ISO 639-1 language code (e.g., "en", "es", "fr"). If uncertain or the text is too short, respond with "unknown".',
+          },
+          {
+            role: "user",
+            content: `Detect the language of this text: "${text}"`,
+          },
+        ],
         {
-          role: 'system',
-          content: 'You are a language detection expert. Respond with ONLY the ISO 639-1 language code (e.g., "en", "es", "fr"). If uncertain or the text is too short, respond with "unknown".',
+          maxTokens: 10,
+          temperature: 0, // Deterministic
         },
-        {
-          role: 'user',
-          content: `Detect the language of this text: "${text}"`,
-        },
-      ], {
-        maxTokens: 10,
-        temperature: 0, // Deterministic
-      });
+      );
 
       // Extract language code from response
       const langCode = response.trim().toLowerCase() as LanguageCode;
 
       // Validate it's a known language code
       const validCodes: LanguageCode[] = [
-        'en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko',
-        'ar', 'hi', 'nl', 'pl', 'sv', 'tr', 'unknown'
+        "en",
+        "es",
+        "fr",
+        "de",
+        "it",
+        "pt",
+        "ru",
+        "zh",
+        "ja",
+        "ko",
+        "ar",
+        "hi",
+        "nl",
+        "pl",
+        "sv",
+        "tr",
+        "unknown",
       ];
 
-      const detectedLang = validCodes.includes(langCode) ? langCode : 'unknown';
+      const detectedLang = validCodes.includes(langCode) ? langCode : "unknown";
 
       // Cache the result
       setCached(text, detectedLang);
@@ -138,8 +161,8 @@ export async function detectLanguage(text: string): Promise<LanguageCode> {
       return detectedLang;
     } catch (error) {
       const aiError = parseAIError(error);
-      logAIError(aiError, 'Language Detection');
-      return 'unknown'; // Graceful fallback
+      logAIError(aiError, "Language Detection");
+      return "unknown"; // Graceful fallback
     }
   });
 }
@@ -148,10 +171,10 @@ export async function detectLanguage(text: string): Promise<LanguageCode> {
  * Detect languages for multiple texts in batch
  */
 export async function detectMultipleLanguages(
-  texts: string[]
+  texts: string[],
 ): Promise<LanguageCode[]> {
   // Process in parallel with individual caching
-  const promises = texts.map(text => detectLanguage(text));
+  const promises = texts.map((text) => detectLanguage(text));
   return Promise.all(promises);
 }
 
@@ -159,11 +182,11 @@ export async function detectMultipleLanguages(
  * Detect language with confidence score
  */
 export async function detectLanguageWithConfidence(
-  text: string
+  text: string,
 ): Promise<LanguageDetectionResult> {
   // Handle empty or very short text
   if (!text || text.trim().length < 2) {
-    return { language: 'unknown', confidence: 0 };
+    return { language: "unknown", confidence: 0 };
   }
 
   // Check cache first
@@ -173,19 +196,23 @@ export async function detectLanguageWithConfidence(
   }
 
   try {
-    const response = await callCompletion([
+    const response = await callCompletion(
+      [
+        {
+          role: "system",
+          content:
+            'You are a language detection expert. Respond with a JSON object containing "language" (ISO 639-1 code) and "confidence" (0-1 score). Example: {"language":"en","confidence":0.95}',
+        },
+        {
+          role: "user",
+          content: `Detect the language of this text: "${text}"`,
+        },
+      ],
       {
-        role: 'system',
-        content: 'You are a language detection expert. Respond with a JSON object containing "language" (ISO 639-1 code) and "confidence" (0-1 score). Example: {"language":"en","confidence":0.95}',
+        maxTokens: 50,
+        temperature: 0,
       },
-      {
-        role: 'user',
-        content: `Detect the language of this text: "${text}"`,
-      },
-    ], {
-      maxTokens: 50,
-      temperature: 0,
-    });
+    );
 
     // Parse JSON response
     const result = JSON.parse(response);
@@ -200,8 +227,8 @@ export async function detectLanguageWithConfidence(
     return { language, confidence };
   } catch (error) {
     const aiError = parseAIError(error);
-    logAIError(aiError, 'Language Detection (with confidence)');
-    return { language: 'unknown', confidence: 0 }; // Graceful fallback
+    logAIError(aiError, "Language Detection (with confidence)");
+    return { language: "unknown", confidence: 0 }; // Graceful fallback
   }
 }
 

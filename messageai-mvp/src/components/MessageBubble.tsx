@@ -5,25 +5,45 @@
  * Status is computed from message data (deliveredTo, readBy arrays)
  */
 
-import React, { useState } from 'react';
-import { View, StyleSheet, Text as RNText, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
-import { Text } from 'react-native-paper';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Message } from '@/types';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { computeMessageStatus, getDeliveryCount, getReadCount } from '@/utils/message-status.utils';
-import MessageContextMenu, { MenuAction } from './MessageContextMenu';
-import LanguagePickerModal from './LanguagePickerModal';
-import TranslationBubble from './TranslationBubble';
-import LanguageHelpModal from './LanguageHelpModal';
-import { detectLanguage } from '@/services/ai/language-detection.service';
-import { translateMessageOnDemand } from '@/services/ai/translation.service';
-import type { LanguageCode, ContextHint, SlangItem } from '@/services/ai/types';
-import Avatar from '@/components/Avatar';
-import { analyzeCulturalContext } from '@/services/ai/agents/cultural-context-agent';
-import { getCulturalHints, saveCulturalHints, markHintAsSeen } from '@/services/cultural-hints.service';
-import { detectSlangIdioms } from '@/services/ai/agents/slang-idiom-agent';
-import { getSlangItems, saveSlangItems, markSlangAsKnown } from '@/services/slang-glossary.service';
+import React, { useState } from "react";
+import {
+  View,
+  StyleSheet,
+  Text as RNText,
+  TouchableOpacity,
+  Image,
+  Modal,
+  Pressable,
+} from "react-native";
+import { Text } from "react-native-paper";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Message } from "@/types";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  computeMessageStatus,
+  getDeliveryCount,
+  getReadCount,
+} from "@/utils/message-status.utils";
+import MessageContextMenu, { MenuAction } from "./MessageContextMenu";
+import LanguagePickerModal from "./LanguagePickerModal";
+import TranslationBubble from "./TranslationBubble";
+import LanguageHelpModal from "./LanguageHelpModal";
+import { detectLanguage } from "@/services/ai/language-detection.service";
+import { translateMessageOnDemand } from "@/services/ai/translation.service";
+import type { LanguageCode, ContextHint, SlangItem } from "@/services/ai/types";
+import Avatar from "@/components/Avatar";
+import { analyzeCulturalContext } from "@/services/ai/agents/cultural-context-agent";
+import {
+  getCulturalHints,
+  saveCulturalHints,
+  markHintAsSeen,
+} from "@/services/cultural-hints.service";
+import { detectSlangIdioms } from "@/services/ai/agents/slang-idiom-agent";
+import {
+  getSlangItems,
+  saveSlangItems,
+  markSlangAsKnown,
+} from "@/services/slang-glossary.service";
 
 interface MessageBubbleProps {
   message: Message;
@@ -36,7 +56,11 @@ interface MessageBubbleProps {
   isGroup?: boolean; // For showing delivery counts in group chats
   showSenderIndicator?: boolean; // Only show when sender changes from previous message
   preferredLanguage?: LanguageCode; // User's preferred language for translations
-  onTranslationUpdate?: (messageId: string, translation: string, targetLang: LanguageCode) => void;
+  onTranslationUpdate?: (
+    messageId: string,
+    translation: string,
+    targetLang: LanguageCode,
+  ) => void;
   languageHelpEnabled?: boolean; // Whether language help feature is enabled (cultural + slang)
 }
 
@@ -50,7 +74,7 @@ function MessageBubble({
   currentUserId,
   isGroup = false,
   showSenderIndicator = false,
-  preferredLanguage = 'en',
+  preferredLanguage = "en",
   onTranslationUpdate,
   languageHelpEnabled = false,
 }: MessageBubbleProps) {
@@ -59,12 +83,19 @@ function MessageBubble({
   const [showOriginal, setShowOriginal] = useState(false);
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
-  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | undefined>();
-  const [messageImageLoading, setMessageImageLoading] = useState(message.type === 'image');
+  const [menuPosition, setMenuPosition] = useState<
+    { x: number; y: number } | undefined
+  >();
+  const [messageImageLoading, setMessageImageLoading] = useState(
+    message.type === "image",
+  );
 
   // On-demand translation state (separate from auto-translation)
-  const [onDemandTranslation, setOnDemandTranslation] = useState<string | null>(null);
-  const [onDemandTargetLang, setOnDemandTargetLang] = useState<LanguageCode | null>(null);
+  const [onDemandTranslation, setOnDemandTranslation] = useState<string | null>(
+    null,
+  );
+  const [onDemandTargetLang, setOnDemandTargetLang] =
+    useState<LanguageCode | null>(null);
   const [translating, setTranslating] = useState(false);
   const [translationError, setTranslationError] = useState<string | null>(null);
 
@@ -73,22 +104,23 @@ function MessageBubble({
   const [slangItems, setSlangItems] = useState<SlangItem[]>([]);
   const [analyzingLanguage, setAnalyzingLanguage] = useState(false);
   const [languageError, setLanguageError] = useState<string | null>(null);
-  const [languageHelpModalVisible, setLanguageHelpModalVisible] = useState(false);
+  const [languageHelpModalVisible, setLanguageHelpModalVisible] =
+    useState(false);
 
   // Compute the actual status from message data
   const displayStatus = computeMessageStatus(message, currentUserId);
-  
+
   // Format timestamp
   const formatTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], {
-      hour: '2-digit',
-      minute: '2-digit'
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   // Handle long press on message
   const handleLongPress = (event: any) => {
-    if (message.type !== 'text') return; // Only for text messages
+    if (message.type !== "text") return; // Only for text messages
 
     const { pageX, pageY } = event.nativeEvent;
     setMenuPosition({ x: pageX, y: pageY });
@@ -107,21 +139,23 @@ function MessageBubble({
 
   // Perform the actual translation
   const performTranslation = async (targetLang: LanguageCode) => {
-    if (message.type !== 'text') return;
+    if (message.type !== "text") return;
 
     setTranslating(true);
     setTranslationError(null);
 
     try {
       // Detect source language
-      const sourceLang = message.detectedLanguage as LanguageCode || await detectLanguage(message.content);
+      const sourceLang =
+        (message.detectedLanguage as LanguageCode) ||
+        (await detectLanguage(message.content));
 
       // Translate
       const translation = await translateMessageOnDemand(
         message.content,
         sourceLang,
         targetLang,
-        message.id
+        message.id,
       );
 
       setOnDemandTranslation(translation);
@@ -133,8 +167,8 @@ function MessageBubble({
         onTranslationUpdate(message.id, translation, targetLang);
       }
     } catch (error) {
-      console.error('Translation error:', error);
-      setTranslationError('Translation failed. Please try again.');
+      console.error("Translation error:", error);
+      setTranslationError("Translation failed. Please try again.");
     } finally {
       setTranslating(false);
     }
@@ -149,18 +183,18 @@ function MessageBubble({
   // Handle context menu actions
   const handleMenuAction = (actionId: string) => {
     switch (actionId) {
-      case 'translate':
+      case "translate":
         handleTranslate();
         break;
-      case 'translate-to':
+      case "translate-to":
         handleTranslateTo();
         break;
-      case 'language-help':
+      case "language-help":
         handleLanguageHelp();
         break;
-      case 'copy':
+      case "copy":
         // TODO: Implement copy functionality
-        console.log('Copy message:', message.content);
+        console.log("Copy message:", message.content);
         break;
     }
   };
@@ -173,7 +207,9 @@ function MessageBubble({
 
     try {
       // Detect language for the message if not already detected
-      const messageLanguage = message.detectedLanguage as LanguageCode || await detectLanguage(message.content);
+      const messageLanguage =
+        (message.detectedLanguage as LanguageCode) ||
+        (await detectLanguage(message.content));
 
       // Check cache first
       const cachedHints = await getCulturalHints(message.id);
@@ -189,8 +225,18 @@ function MessageBubble({
 
       // Run both analyses in parallel for better performance
       const [hints, items] = await Promise.all([
-        analyzeCulturalContext(message.content, messageLanguage, message.id, preferredLanguage),
-        detectSlangIdioms(message.content, messageLanguage, message.id, preferredLanguage),
+        analyzeCulturalContext(
+          message.content,
+          messageLanguage,
+          message.id,
+          preferredLanguage,
+        ),
+        detectSlangIdioms(
+          message.content,
+          messageLanguage,
+          message.id,
+          preferredLanguage,
+        ),
       ]);
 
       // Save results to database
@@ -204,8 +250,8 @@ function MessageBubble({
       setCulturalHints(hints);
       setSlangItems(items);
     } catch (error) {
-      console.error('Error analyzing language:', error);
-      setLanguageError('Failed to analyze language');
+      console.error("Error analyzing language:", error);
+      setLanguageError("Failed to analyze language");
     } finally {
       setAnalyzingLanguage(false);
     }
@@ -215,10 +261,8 @@ function MessageBubble({
   const handleMarkHintAsSeen = async (hintId: string) => {
     await markHintAsSeen(hintId);
     // Update local state
-    setCulturalHints(prev =>
-      prev.map(hint =>
-        hint.id === hintId ? { ...hint, seen: true } : hint
-      )
+    setCulturalHints((prev) =>
+      prev.map((hint) => (hint.id === hintId ? { ...hint, seen: true } : hint)),
     );
   };
 
@@ -226,10 +270,10 @@ function MessageBubble({
   const handleMarkSlangAsKnown = async (itemId: string) => {
     await markSlangAsKnown(itemId);
     // Update local state
-    setSlangItems(prev =>
-      prev.map(item =>
-        item.id === itemId ? { ...item, known: true } : item
-      )
+    setSlangItems((prev) =>
+      prev.map((item) =>
+        item.id === itemId ? { ...item, known: true } : item,
+      ),
     );
   };
 
@@ -238,35 +282,35 @@ function MessageBubble({
     const actions: MenuAction[] = [];
 
     // Always show translate option for text messages
-    if (message.type === 'text') {
+    if (message.type === "text") {
       actions.push({
-        id: 'translate',
+        id: "translate",
         label: `Translate to ${preferredLanguage.toUpperCase()}`,
-        icon: 'translate',
-        color: '#2196F3',
+        icon: "translate",
+        color: "#2196F3",
       });
 
       actions.push({
-        id: 'translate-to',
-        label: 'Translate to...',
-        icon: 'earth',
-        color: '#2196F3',
+        id: "translate-to",
+        label: "Translate to...",
+        icon: "earth",
+        color: "#2196F3",
       });
 
       // Show language help option if feature is enabled
       if (languageHelpEnabled) {
         actions.push({
-          id: 'language-help',
-          label: 'Language Help',
-          icon: 'lightbulb-on-outline',
-          color: '#FF6F00',
+          id: "language-help",
+          label: "Language Help",
+          icon: "lightbulb-on-outline",
+          color: "#FF6F00",
         });
       }
 
       actions.push({
-        id: 'copy',
-        label: 'Copy',
-        icon: 'content-copy',
+        id: "copy",
+        label: "Copy",
+        icon: "content-copy",
       });
     }
 
@@ -282,7 +326,7 @@ function MessageBubble({
     const readCount = getReadCount(message);
 
     switch (displayStatus) {
-      case 'sending':
+      case "sending":
         // Gray single checkmark
         return (
           <View style={styles.statusContainer}>
@@ -295,7 +339,7 @@ function MessageBubble({
           </View>
         );
 
-      case 'sent':
+      case "sent":
         // Gray double checkmark
         return (
           <View style={styles.statusContainer}>
@@ -308,7 +352,7 @@ function MessageBubble({
           </View>
         );
 
-      case 'delivered':
+      case "delivered":
         // Blue double checkmark with delivery count for groups
         if (isGroup && deliveryCount > 0) {
           return (
@@ -319,9 +363,7 @@ function MessageBubble({
                 color="#2196F3"
                 style={styles.statusIcon}
               />
-              <Text style={styles.statusText}>
-                {deliveryCount}
-              </Text>
+              <Text style={styles.statusText}>{deliveryCount}</Text>
             </View>
           );
         }
@@ -335,7 +377,7 @@ function MessageBubble({
           />
         );
 
-      case 'read':
+      case "read":
         // Darker blue double checkmark with read count for groups
         if (isGroup && readCount > 0) {
           return (
@@ -346,9 +388,7 @@ function MessageBubble({
                 color="#1976D2"
                 style={styles.statusIcon}
               />
-              <Text style={styles.statusText}>
-                {readCount}
-              </Text>
+              <Text style={styles.statusText}>{readCount}</Text>
             </View>
           );
         }
@@ -415,7 +455,9 @@ function MessageBubble({
       <View
         style={[
           styles.container,
-          isOwnMessage ? styles.ownMessageContainer : styles.otherMessageContainer,
+          isOwnMessage
+            ? styles.ownMessageContainer
+            : styles.otherMessageContainer,
         ]}
       >
         {/* Sender name and avatar for group chats */}
@@ -427,7 +469,10 @@ function MessageBubble({
               profilePictureUrl={senderProfilePictureUrl}
               size="small"
             />
-            <Text variant="bodySmall" style={[styles.senderName, { color: colors.textSecondary }]}>
+            <Text
+              variant="bodySmall"
+              style={[styles.senderName, { color: colors.textSecondary }]}
+            >
               {senderName}
             </Text>
           </View>
@@ -440,19 +485,27 @@ function MessageBubble({
           style={[
             styles.bubble,
             isOwnMessage
-              ? { backgroundColor: colors.messageBubbleSent, borderBottomRightRadius: 4 }
-              : { backgroundColor: colors.messageBubbleReceived, borderBottomLeftRadius: 4 },
+              ? {
+                  backgroundColor: colors.messageBubbleSent,
+                  borderBottomRightRadius: 4,
+                }
+              : {
+                  backgroundColor: colors.messageBubbleReceived,
+                  borderBottomLeftRadius: 4,
+                },
           ]}
         >
           {/* Message content */}
-          {message.type === 'text' ? (
+          {message.type === "text" ? (
             <>
               {/* Show on-demand translation if available, otherwise auto-translation, otherwise original */}
               {onDemandTranslation && onDemandTargetLang ? (
                 <TranslationBubble
                   original={message.content}
                   translated={onDemandTranslation}
-                  fromLang={(message.detectedLanguage as LanguageCode) || 'unknown'}
+                  fromLang={
+                    (message.detectedLanguage as LanguageCode) || "unknown"
+                  }
                   toLang={onDemandTargetLang}
                   loading={translating}
                   error={translationError || undefined}
@@ -465,7 +518,11 @@ function MessageBubble({
                   <RNText
                     style={[
                       styles.messageText,
-                      { color: isOwnMessage ? colors.messageBubbleSentText : colors.messageBubbleReceivedText },
+                      {
+                        color: isOwnMessage
+                          ? colors.messageBubbleSentText
+                          : colors.messageBubbleReceivedText,
+                      },
                     ]}
                   >
                     {showOriginal || !message.translatedText
@@ -473,17 +530,30 @@ function MessageBubble({
                       : message.translatedText}
                   </RNText>
                   {message.translatedText && (
-                    <View style={[styles.translationInfo, { borderTopColor: isOwnMessage ? 'rgba(255, 255, 255, 0.2)' : colors.border }]}>
+                    <View
+                      style={[
+                        styles.translationInfo,
+                        {
+                          borderTopColor: isOwnMessage
+                            ? "rgba(255, 255, 255, 0.2)"
+                            : colors.border,
+                        },
+                      ]}
+                    >
                       <Text
                         variant="bodySmall"
                         style={[
                           styles.translationLabel,
-                          { color: isOwnMessage ? colors.messageBubbleSentText : colors.textSecondary },
+                          {
+                            color: isOwnMessage
+                              ? colors.messageBubbleSentText
+                              : colors.textSecondary,
+                          },
                         ]}
                       >
                         {showOriginal
-                          ? `Original (${message.detectedLanguage?.toUpperCase() || 'unknown'})`
-                          : `Translated from ${message.detectedLanguage?.toUpperCase() || 'unknown'}`}
+                          ? `Original (${message.detectedLanguage?.toUpperCase() || "unknown"})`
+                          : `Translated from ${message.detectedLanguage?.toUpperCase() || "unknown"}`}
                       </Text>
                       <TouchableOpacity
                         onPress={() => setShowOriginal(!showOriginal)}
@@ -493,10 +563,14 @@ function MessageBubble({
                           variant="bodySmall"
                           style={[
                             styles.translationToggle,
-                            { color: isOwnMessage ? colors.messageBubbleSentText : colors.primary },
+                            {
+                              color: isOwnMessage
+                                ? colors.messageBubbleSentText
+                                : colors.primary,
+                            },
                           ]}
                         >
-                          {showOriginal ? 'Show Translation' : 'Show Original'}
+                          {showOriginal ? "Show Translation" : "Show Original"}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -504,7 +578,7 @@ function MessageBubble({
                 </>
               )}
             </>
-          ) : message.type === 'image' ? (
+          ) : message.type === "image" ? (
             <>
               <TouchableOpacity
                 onPress={() => setImagePreviewVisible(true)}
@@ -512,15 +586,26 @@ function MessageBubble({
               >
                 {/* Loading placeholder */}
                 {messageImageLoading && (
-                  <View style={[styles.imageLoadingPlaceholder, { backgroundColor: colors.surface }]}>
-                    <MaterialCommunityIcons name="image" size={40} color={colors.textTertiary} />
+                  <View
+                    style={[
+                      styles.imageLoadingPlaceholder,
+                      { backgroundColor: colors.surface },
+                    ]}
+                  >
+                    <MaterialCommunityIcons
+                      name="image"
+                      size={40}
+                      color={colors.textTertiary}
+                    />
                   </View>
                 )}
                 <Image
                   source={{ uri: message.content }}
                   style={[
                     styles.messageImage,
-                    isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
+                    isOwnMessage
+                      ? styles.ownMessageImage
+                      : styles.otherMessageImage,
                     { opacity: messageImageLoading ? 0 : 1 },
                   ]}
                   resizeMode="cover"
@@ -535,7 +620,11 @@ function MessageBubble({
                 <RNText
                   style={[
                     styles.captionText,
-                    { color: isOwnMessage ? colors.messageBubbleSentText : colors.messageBubbleReceivedText },
+                    {
+                      color: isOwnMessage
+                        ? colors.messageBubbleSentText
+                        : colors.messageBubbleReceivedText,
+                    },
                   ]}
                   selectable
                 >
@@ -550,7 +639,11 @@ function MessageBubble({
             <RNText
               style={[
                 styles.timestamp,
-                { color: isOwnMessage ? 'rgba(255, 255, 255, 0.8)' : colors.textSecondary },
+                {
+                  color: isOwnMessage
+                    ? "rgba(255, 255, 255, 0.8)"
+                    : colors.textSecondary,
+                },
               ]}
             >
               {formatTime(message.timestamp)}
@@ -561,7 +654,7 @@ function MessageBubble({
       </View>
 
       {/* Image preview modal */}
-      {message.type === 'image' && <ImagePreview />}
+      {message.type === "image" && <ImagePreview />}
 
       {/* Context menu for message actions */}
       <MessageContextMenu
@@ -598,25 +691,36 @@ function MessageBubble({
 
 // Custom comparison function for React.memo
 // Only re-render if message content, status, or relevant props change
-function arePropsEqual(prevProps: MessageBubbleProps, nextProps: MessageBubbleProps): boolean {
+function arePropsEqual(
+  prevProps: MessageBubbleProps,
+  nextProps: MessageBubbleProps,
+): boolean {
   // If message ID or content changed, re-render
   if (prevProps.message.id !== nextProps.message.id) return false;
   if (prevProps.message.content !== nextProps.message.content) return false;
   if (prevProps.message.timestamp !== nextProps.message.timestamp) return false;
 
   // If delivery/read status changed, re-render
-  if (prevProps.message.deliveredTo?.length !== nextProps.message.deliveredTo?.length) return false;
-  if (prevProps.message.readBy?.length !== nextProps.message.readBy?.length) return false;
+  if (
+    prevProps.message.deliveredTo?.length !==
+    nextProps.message.deliveredTo?.length
+  )
+    return false;
+  if (prevProps.message.readBy?.length !== nextProps.message.readBy?.length)
+    return false;
 
   // If sender/display props changed, re-render
   if (prevProps.isOwnMessage !== nextProps.isOwnMessage) return false;
-  if (prevProps.showSenderIndicator !== nextProps.showSenderIndicator) return false;
+  if (prevProps.showSenderIndicator !== nextProps.showSenderIndicator)
+    return false;
   if (prevProps.senderName !== nextProps.senderName) return false;
-  if (prevProps.senderProfilePictureUrl !== nextProps.senderProfilePictureUrl) return false;
+  if (prevProps.senderProfilePictureUrl !== nextProps.senderProfilePictureUrl)
+    return false;
 
   // If settings changed, re-render
   if (prevProps.preferredLanguage !== nextProps.preferredLanguage) return false;
-  if (prevProps.languageHelpEnabled !== nextProps.languageHelpEnabled) return false;
+  if (prevProps.languageHelpEnabled !== nextProps.languageHelpEnabled)
+    return false;
 
   // Props are equal, skip re-render
   return true;
@@ -631,34 +735,34 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
   },
   ownMessageContainer: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   otherMessageContainer: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   bubble: {
-    maxWidth: '75%',
+    maxWidth: "75%",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
   },
   ownBubble: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     borderBottomRightRadius: 4,
   },
   otherBubble: {
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
     borderBottomLeftRadius: 4,
   },
   senderName: {
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
     marginLeft: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   senderHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
     marginLeft: 8,
   },
@@ -667,14 +771,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   ownMessageText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   otherMessageText: {
-    color: '#000000',
+    color: "#000000",
   },
   footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 4,
     gap: 4,
   },
@@ -682,28 +786,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   ownTimestamp: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: "rgba(255, 255, 255, 0.8)",
   },
   otherTimestamp: {
-    color: '#666',
+    color: "#666",
   },
   statusIcon: {
     marginTop: 1,
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 2,
   },
   statusText: {
     fontSize: 10,
-    color: '#666',
-    fontWeight: '500',
+    color: "#666",
+    fontWeight: "500",
   },
   // Image styles
   imageContainer: {
     borderRadius: 8,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   messageImage: {
     width: 200,
@@ -723,94 +827,93 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   ownCaptionText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   otherCaptionText: {
-    color: '#000000',
+    color: "#000000",
   },
   // Modal styles for full-screen image preview
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    backgroundColor: "rgba(0, 0, 0, 0.9)",
   },
   modalBackdrop: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    position: 'relative',
-    width: '100%',
-    height: '100%',
+    position: "relative",
+    width: "100%",
+    height: "100%",
   },
   fullScreenImage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   closeButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 50,
     right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     borderRadius: 20,
     padding: 8,
     zIndex: 1,
   },
   modalCaptionContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 50,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     borderRadius: 8,
     padding: 12,
     maxHeight: 150,
   },
   modalCaptionText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
     lineHeight: 18,
   },
   // Translation styles
   translationInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 6,
     paddingTop: 6,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderTopColor: "rgba(255, 255, 255, 0.2)",
   },
   translationLabel: {
     fontSize: 11,
-    fontStyle: 'italic',
+    fontStyle: "italic",
     opacity: 0.8,
   },
   ownTranslationLabel: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   otherTranslationLabel: {
-    color: '#666',
+    color: "#666",
   },
   translationToggle: {
     fontSize: 11,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+    fontWeight: "600",
+    textDecorationLine: "underline",
   },
   ownTranslationToggle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   otherTranslationToggle: {
-    color: '#2196F3',
+    color: "#2196F3",
   },
   // Image loading placeholder
   imageLoadingPlaceholder: {
-    position: 'absolute',
+    position: "absolute",
     width: 200,
     height: 200,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f0f0f0',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f0f0f0",
   },
 });
-

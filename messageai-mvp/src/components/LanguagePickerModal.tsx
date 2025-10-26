@@ -3,7 +3,7 @@
  * Allows users to select a target language for translation
  */
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   StyleSheet,
@@ -11,10 +11,10 @@ import {
   TouchableOpacity,
   FlatList,
   TextInput,
-} from 'react-native';
-import { Text } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { LanguageCode } from '@/services/ai/types';
+} from "react-native";
+import { Text } from "react-native-paper";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import type { LanguageCode } from "@/services/ai/types";
 
 interface LanguagePickerModalProps {
   /** Whether the modal is visible */
@@ -40,22 +40,22 @@ interface LanguageOption {
  * Available languages for translation
  */
 const LANGUAGES: LanguageOption[] = [
-  { code: 'en', name: 'English', nativeName: 'English', flag: '🇺🇸' },
-  { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', name: 'Italian', nativeName: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇵🇹' },
-  { code: 'ru', name: 'Russian', nativeName: 'Русский', flag: '🇷🇺' },
-  { code: 'zh', name: 'Chinese', nativeName: '中文', flag: '🇨🇳' },
-  { code: 'ja', name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
-  { code: 'ko', name: 'Korean', nativeName: '한국어', flag: '🇰🇷' },
-  { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦' },
-  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी', flag: '🇮🇳' },
-  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands', flag: '🇳🇱' },
-  { code: 'pl', name: 'Polish', nativeName: 'Polski', flag: '🇵🇱' },
-  { code: 'sv', name: 'Swedish', nativeName: 'Svenska', flag: '🇸🇪' },
-  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe', flag: '🇹🇷' },
+  { code: "en", name: "English", nativeName: "English", flag: "🇺🇸" },
+  { code: "es", name: "Spanish", nativeName: "Español", flag: "🇪🇸" },
+  { code: "fr", name: "French", nativeName: "Français", flag: "🇫🇷" },
+  { code: "de", name: "German", nativeName: "Deutsch", flag: "🇩🇪" },
+  { code: "it", name: "Italian", nativeName: "Italiano", flag: "🇮🇹" },
+  { code: "pt", name: "Portuguese", nativeName: "Português", flag: "🇵🇹" },
+  { code: "ru", name: "Russian", nativeName: "Русский", flag: "🇷🇺" },
+  { code: "zh", name: "Chinese", nativeName: "中文", flag: "🇨🇳" },
+  { code: "ja", name: "Japanese", nativeName: "日本語", flag: "🇯🇵" },
+  { code: "ko", name: "Korean", nativeName: "한국어", flag: "🇰🇷" },
+  { code: "ar", name: "Arabic", nativeName: "العربية", flag: "🇸🇦" },
+  { code: "hi", name: "Hindi", nativeName: "हिन्दी", flag: "🇮🇳" },
+  { code: "nl", name: "Dutch", nativeName: "Nederlands", flag: "🇳🇱" },
+  { code: "pl", name: "Polish", nativeName: "Polski", flag: "🇵🇱" },
+  { code: "sv", name: "Swedish", nativeName: "Svenska", flag: "🇸🇪" },
+  { code: "tr", name: "Turkish", nativeName: "Türkçe", flag: "🇹🇷" },
 ];
 
 export default function LanguagePickerModal({
@@ -63,9 +63,9 @@ export default function LanguagePickerModal({
   selectedLanguage,
   onSelect,
   onClose,
-  title = 'Select Language',
+  title = "Select Language",
 }: LanguagePickerModalProps) {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Filter languages based on search query
   const filteredLanguages = searchQuery.trim()
@@ -73,17 +73,17 @@ export default function LanguagePickerModal({
         (lang) =>
           lang.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           lang.nativeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          lang.code.toLowerCase().includes(searchQuery.toLowerCase())
+          lang.code.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : LANGUAGES;
 
   const handleSelect = (language: LanguageCode) => {
-    setSearchQuery(''); // Reset search
+    setSearchQuery(""); // Reset search
     onSelect(language);
   };
 
   const handleClose = () => {
-    setSearchQuery(''); // Reset search
+    setSearchQuery(""); // Reset search
     onClose();
   };
 
@@ -98,12 +98,17 @@ export default function LanguagePickerModal({
         <View style={styles.languageInfo}>
           <Text style={styles.flag}>{item.flag}</Text>
           <View style={styles.languageNames}>
-            <Text style={[styles.languageName, isSelected && styles.selectedText]}>
+            <Text
+              style={[styles.languageName, isSelected && styles.selectedText]}
+            >
               {item.name}
             </Text>
             <Text
               variant="bodySmall"
-              style={[styles.nativeName, isSelected && styles.selectedNativeText]}
+              style={[
+                styles.nativeName,
+                isSelected && styles.selectedNativeText,
+              ]}
             >
               {item.nativeName}
             </Text>
@@ -152,10 +157,14 @@ export default function LanguagePickerModal({
           />
           {searchQuery.length > 0 && (
             <TouchableOpacity
-              onPress={() => setSearchQuery('')}
+              onPress={() => setSearchQuery("")}
               style={styles.clearButton}
             >
-              <MaterialCommunityIcons name="close-circle" size={20} color="#666" />
+              <MaterialCommunityIcons
+                name="close-circle"
+                size={20}
+                color="#666"
+              />
             </TouchableOpacity>
           )}
         </View>
@@ -182,31 +191,31 @@ export default function LanguagePickerModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   title: {
-    fontWeight: '600',
+    fontWeight: "600",
   },
   closeButton: {
     padding: 4,
   },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: 16,
     marginVertical: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
     borderRadius: 8,
   },
   searchIcon: {
@@ -215,7 +224,7 @@ const styles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#000',
+    color: "#000",
   },
   clearButton: {
     padding: 4,
@@ -227,19 +236,19 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   languageItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   selectedItem: {
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
   },
   languageInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   flag: {
@@ -251,32 +260,32 @@ const styles = StyleSheet.create({
   },
   languageName: {
     fontSize: 16,
-    fontWeight: '500',
-    color: '#000',
+    fontWeight: "500",
+    color: "#000",
   },
   selectedText: {
-    color: '#2196F3',
-    fontWeight: '600',
+    color: "#2196F3",
+    fontWeight: "600",
   },
   nativeName: {
     fontSize: 13,
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   selectedNativeText: {
-    color: '#1976D2',
+    color: "#1976D2",
   },
   separator: {
     height: 1,
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     marginLeft: 64, // Align with text, not flag
   },
   emptyState: {
     padding: 32,
-    alignItems: 'center',
+    alignItems: "center",
   },
   emptyText: {
     fontSize: 16,
-    color: '#999',
+    color: "#999",
   },
 });

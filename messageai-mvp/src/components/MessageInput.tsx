@@ -5,28 +5,42 @@
  * Includes typing indicator integration and formality adjustment
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Alert, Image, TouchableOpacity } from 'react-native';
-import { TextInput, IconButton, Text, ActivityIndicator } from 'react-native-paper';
-import * as ImagePicker from 'expo-image-picker';
-import { useTheme } from '@/contexts/ThemeContext';
-import { Message, MessageType } from '@/types';
-import { IMAGE_CONSTANTS, MESSAGE_CONSTANTS, ERROR_CODES } from '@/constants';
-import { compressImage, uploadImage, validateImage } from '@/services/image.service';
-import { setTyping, clearTyping } from '@/services/typing.service';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { View, StyleSheet, Alert, Image, TouchableOpacity } from "react-native";
+import {
+  TextInput,
+  IconButton,
+  Text,
+  ActivityIndicator,
+} from "react-native-paper";
+import * as ImagePicker from "expo-image-picker";
+import { useTheme } from "@/contexts/ThemeContext";
+import { Message, MessageType } from "@/types";
+import { IMAGE_CONSTANTS, MESSAGE_CONSTANTS, ERROR_CODES } from "@/constants";
+import {
+  compressImage,
+  uploadImage,
+  validateImage,
+} from "@/services/image.service";
+import { setTyping, clearTyping } from "@/services/typing.service";
 import {
   detectFormality,
   adjustFormality,
   type FormalityLevel,
   type FormalityDetectionResult,
   type FormalityAdjustmentResult,
-} from '@/services/ai/agents/formality-agent';
-import type { LanguageCode } from '@/services/ai/types';
-import FormalityIndicator from './FormalityIndicator';
-import FormalityPreviewModal from './FormalityPreviewModal';
+} from "@/services/ai/agents/formality-agent";
+import type { LanguageCode } from "@/services/ai/types";
+import FormalityIndicator from "./FormalityIndicator";
+import FormalityPreviewModal from "./FormalityPreviewModal";
 
 interface MessageInputProps {
-  onSendMessage: (content: string, type: MessageType, imageUri?: string, caption?: string) => Promise<void>;
+  onSendMessage: (
+    content: string,
+    type: MessageType,
+    imageUri?: string,
+    caption?: string,
+  ) => Promise<void>;
   chatId?: string; // For image uploads and typing indicators
   currentUserId?: string; // For typing indicators
   disabled?: boolean;
@@ -51,11 +65,11 @@ export default function MessageInput({
   disabled = false,
   placeholder = "Type a message...",
   enableFormality = true,
-  language = 'en',
+  language = "en",
   onTextInserted,
 }: MessageInputProps) {
   const { colors } = useTheme();
-  const [messageText, setMessageText] = useState('');
+  const [messageText, setMessageText] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -70,10 +84,12 @@ export default function MessageInput({
   }, [onTextInserted]);
 
   // Formality state
-  const [formalityDetection, setFormalityDetection] = useState<FormalityDetectionResult | null>(null);
+  const [formalityDetection, setFormalityDetection] =
+    useState<FormalityDetectionResult | null>(null);
   const [isDetectingFormality, setIsDetectingFormality] = useState(false);
   const [isAdjustingFormality, setIsAdjustingFormality] = useState(false);
-  const [adjustmentResult, setAdjustmentResult] = useState<FormalityAdjustmentResult | null>(null);
+  const [adjustmentResult, setAdjustmentResult] =
+    useState<FormalityAdjustmentResult | null>(null);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
   // Refs for typing indicator management
@@ -113,58 +129,67 @@ export default function MessageInput({
   }, [chatId, currentUserId]);
 
   // Detect formality of text
-  const detectFormalityLevel = useCallback(async (text: string) => {
-    if (!enableFormality || !text || text.trim().length < 10) {
-      setFormalityDetection(null);
-      return;
-    }
+  const detectFormalityLevel = useCallback(
+    async (text: string) => {
+      if (!enableFormality || !text || text.trim().length < 10) {
+        setFormalityDetection(null);
+        return;
+      }
 
-    setIsDetectingFormality(true);
-    try {
-      const result = await detectFormality(text, language);
-      setFormalityDetection(result);
-    } catch (error) {
-      // Silently fail - formality detection is non-critical
-      setFormalityDetection(null);
-    } finally {
-      setIsDetectingFormality(false);
-    }
-  }, [enableFormality, language]);
+      setIsDetectingFormality(true);
+      try {
+        const result = await detectFormality(text, language);
+        setFormalityDetection(result);
+      } catch (error) {
+        // Silently fail - formality detection is non-critical
+        setFormalityDetection(null);
+      } finally {
+        setIsDetectingFormality(false);
+      }
+    },
+    [enableFormality, language],
+  );
 
   // Handle formality adjustment
-  const handleFormalityAdjustment = useCallback(async (targetLevel: FormalityLevel) => {
-    if (!messageText || messageText.trim().length < 10) {
-      return;
-    }
+  const handleFormalityAdjustment = useCallback(
+    async (targetLevel: FormalityLevel) => {
+      if (!messageText || messageText.trim().length < 10) {
+        return;
+      }
 
-    setIsAdjustingFormality(true);
-    try {
-      const result = await adjustFormality(
-        messageText,
-        targetLevel,
-        language,
-        formalityDetection?.level
-      );
-      setAdjustmentResult(result);
-      setShowPreviewModal(true);
-    } catch (error) {
-      Alert.alert(
-        'Adjustment Failed',
-        'Failed to adjust formality. Please try again.',
-        [{ text: 'OK' }]
-      );
-    } finally {
-      setIsAdjustingFormality(false);
-    }
-  }, [messageText, language, formalityDetection]);
+      setIsAdjustingFormality(true);
+      try {
+        const result = await adjustFormality(
+          messageText,
+          targetLevel,
+          language,
+          formalityDetection?.level,
+        );
+        setAdjustmentResult(result);
+        setShowPreviewModal(true);
+      } catch (error) {
+        Alert.alert(
+          "Adjustment Failed",
+          "Failed to adjust formality. Please try again.",
+          [{ text: "OK" }],
+        );
+      } finally {
+        setIsAdjustingFormality(false);
+      }
+    },
+    [messageText, language, formalityDetection],
+  );
 
   // Make text more formal
   const handleMakeFormal = useCallback(async () => {
     const targetLevel: FormalityLevel =
-      formalityDetection?.level === 'very-informal' ? 'informal' :
-      formalityDetection?.level === 'informal' ? 'neutral' :
-      formalityDetection?.level === 'neutral' ? 'formal' :
-      'very-formal';
+      formalityDetection?.level === "very-informal"
+        ? "informal"
+        : formalityDetection?.level === "informal"
+          ? "neutral"
+          : formalityDetection?.level === "neutral"
+            ? "formal"
+            : "very-formal";
 
     await handleFormalityAdjustment(targetLevel);
   }, [formalityDetection, handleFormalityAdjustment]);
@@ -172,22 +197,28 @@ export default function MessageInput({
   // Make text more casual
   const handleMakeCasual = useCallback(async () => {
     const targetLevel: FormalityLevel =
-      formalityDetection?.level === 'very-formal' ? 'formal' :
-      formalityDetection?.level === 'formal' ? 'neutral' :
-      formalityDetection?.level === 'neutral' ? 'informal' :
-      'very-informal';
+      formalityDetection?.level === "very-formal"
+        ? "formal"
+        : formalityDetection?.level === "formal"
+          ? "neutral"
+          : formalityDetection?.level === "neutral"
+            ? "informal"
+            : "very-informal";
 
     await handleFormalityAdjustment(targetLevel);
   }, [formalityDetection, handleFormalityAdjustment]);
 
   // Accept adjusted text
-  const handleAcceptAdjustment = useCallback((adjustedText: string) => {
-    setMessageText(adjustedText);
-    setShowPreviewModal(false);
-    setAdjustmentResult(null);
-    // Re-detect formality of adjusted text
-    detectFormalityLevel(adjustedText);
-  }, [detectFormalityLevel]);
+  const handleAcceptAdjustment = useCallback(
+    (adjustedText: string) => {
+      setMessageText(adjustedText);
+      setShowPreviewModal(false);
+      setAdjustmentResult(null);
+      // Re-detect formality of adjusted text
+      detectFormalityLevel(adjustedText);
+    },
+    [detectFormalityLevel],
+  );
 
   // Reject adjusted text
   const handleRejectAdjustment = useCallback(() => {
@@ -196,50 +227,62 @@ export default function MessageInput({
   }, []);
 
   // Handle text change with immediate typing indicator and debounced formality detection
-  const handleTextChange = useCallback((text: string) => {
-    setMessageText(text);
+  const handleTextChange = useCallback(
+    (text: string) => {
+      setMessageText(text);
 
-    // Clear existing formality timeout
-    if (formalityTimeoutRef.current) {
-      clearTimeout(formalityTimeoutRef.current);
-    }
-
-    if (text.trim().length > 0) {
-      // Show typing indicator immediately (with throttling for updates)
-      const now = Date.now();
-      const timeSinceLastUpdate = now - lastTypingUpdateRef.current;
-
-      if (!isTypingRef.current || timeSinceLastUpdate >= TYPING_UPDATE_THROTTLE_MS) {
-        // Set typing indicator immediately on first keystroke or every 2 seconds
-        setTypingIndicator();
-        lastTypingUpdateRef.current = now;
+      // Clear existing formality timeout
+      if (formalityTimeoutRef.current) {
+        clearTimeout(formalityTimeoutRef.current);
       }
 
-      // Reset the auto-clear timeout every time user types
-      if (autoClearTimeoutRef.current) {
-        clearTimeout(autoClearTimeoutRef.current);
-      }
-      autoClearTimeoutRef.current = setTimeout(() => {
+      if (text.trim().length > 0) {
+        // Show typing indicator immediately (with throttling for updates)
+        const now = Date.now();
+        const timeSinceLastUpdate = now - lastTypingUpdateRef.current;
+
+        if (
+          !isTypingRef.current ||
+          timeSinceLastUpdate >= TYPING_UPDATE_THROTTLE_MS
+        ) {
+          // Set typing indicator immediately on first keystroke or every 2 seconds
+          setTypingIndicator();
+          lastTypingUpdateRef.current = now;
+        }
+
+        // Reset the auto-clear timeout every time user types
+        if (autoClearTimeoutRef.current) {
+          clearTimeout(autoClearTimeoutRef.current);
+        }
+        autoClearTimeoutRef.current = setTimeout(() => {
+          clearTypingIndicator();
+          lastTypingUpdateRef.current = 0;
+        }, AUTO_CLEAR_TYPING_MS);
+
+        // Debounce formality detection (longer delay - only trigger after user pauses)
+        if (enableFormality && !selectedImage) {
+          formalityTimeoutRef.current = setTimeout(() => {
+            detectFormalityLevel(text);
+          }, FORMALITY_DEBOUNCE_MS);
+        }
+      } else {
+        // Empty input - clear typing and formality immediately
+        if (autoClearTimeoutRef.current) {
+          clearTimeout(autoClearTimeoutRef.current);
+        }
         clearTypingIndicator();
+        setFormalityDetection(null);
         lastTypingUpdateRef.current = 0;
-      }, AUTO_CLEAR_TYPING_MS);
-
-      // Debounce formality detection (longer delay - only trigger after user pauses)
-      if (enableFormality && !selectedImage) {
-        formalityTimeoutRef.current = setTimeout(() => {
-          detectFormalityLevel(text);
-        }, FORMALITY_DEBOUNCE_MS);
       }
-    } else {
-      // Empty input - clear typing and formality immediately
-      if (autoClearTimeoutRef.current) {
-        clearTimeout(autoClearTimeoutRef.current);
-      }
-      clearTypingIndicator();
-      setFormalityDetection(null);
-      lastTypingUpdateRef.current = 0;
-    }
-  }, [setTypingIndicator, clearTypingIndicator, detectFormalityLevel, enableFormality, selectedImage]);
+    },
+    [
+      setTypingIndicator,
+      clearTypingIndicator,
+      detectFormalityLevel,
+      enableFormality,
+      selectedImage,
+    ],
+  );
 
   // Cleanup on unmount
   useEffect(() => {
@@ -265,12 +308,13 @@ export default function MessageInput({
   // Request permissions for image picker
   const requestPermissions = async () => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'Camera roll permissions are needed to select images.',
-          [{ text: 'OK' }]
+          "Permission Required",
+          "Camera roll permissions are needed to select images.",
+          [{ text: "OK" }],
         );
         return false;
       }
@@ -288,7 +332,6 @@ export default function MessageInput({
         return;
       }
 
-
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false, // Set to false to avoid editing issues
@@ -305,9 +348,9 @@ export default function MessageInput({
         const isValid = await validateImage(asset);
         if (!isValid) {
           Alert.alert(
-            'Invalid Image',
-            `Image must be ${IMAGE_CONSTANTS.SUPPORTED_FORMATS.join(' or ')} and under ${IMAGE_CONSTANTS.MAX_SIZE / 1024 / 1024}MB.`,
-            [{ text: 'OK' }]
+            "Invalid Image",
+            `Image must be ${IMAGE_CONSTANTS.SUPPORTED_FORMATS.join(" or ")} and under ${IMAGE_CONSTANTS.MAX_SIZE / 1024 / 1024}MB.`,
+            [{ text: "OK" }],
           );
           return;
         }
@@ -316,19 +359,16 @@ export default function MessageInput({
         const compressed = await compressImage(asset.uri);
 
         // Generate preview thumbnail
-        const { generateThumbnail } = await import('@/services/image.service');
+        const { generateThumbnail } = await import("@/services/image.service");
         const previewUri = await generateThumbnail(compressed.uri, 150);
 
         setSelectedImage(compressed.uri);
         setImagePreview(previewUri);
-
       }
     } catch (error) {
-      Alert.alert(
-        'Error',
-        'Failed to select image. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert("Error", "Failed to select image. Please try again.", [
+        { text: "OK" },
+      ]);
     }
   };
 
@@ -350,27 +390,22 @@ export default function MessageInput({
         const caption = messageText.trim() || undefined;
 
         // Create message with local image URI (upload will happen in background)
-        await onSendMessage(selectedImage, 'image', undefined, caption);
+        await onSendMessage(selectedImage, "image", undefined, caption);
 
         // Clear image state immediately (upload happens in background)
         setSelectedImage(null);
         setImagePreview(null);
-
       } else {
         // Send text message immediately
-        await onSendMessage(messageText.trim(), 'text');
+        await onSendMessage(messageText.trim(), "text");
       }
 
       // Clear text input
-      setMessageText('');
-
-
+      setMessageText("");
     } catch (error) {
-      Alert.alert(
-        'Send Failed',
-        'Failed to send message. Please try again.',
-        [{ text: 'OK' }]
-      );
+      Alert.alert("Send Failed", "Failed to send message. Please try again.", [
+        { text: "OK" },
+      ]);
     } finally {
       setSending(false);
     }
@@ -383,16 +418,23 @@ export default function MessageInput({
   };
 
   // Check if send button should be enabled
-  const canSend = (messageText.trim() || selectedImage) && !sending && !disabled;
+  const canSend =
+    (messageText.trim() || selectedImage) && !sending && !disabled;
 
   // Show formality indicator when typing text (not for captions)
-  const showFormalityIndicator = enableFormality &&
+  const showFormalityIndicator =
+    enableFormality &&
     !selectedImage &&
     messageText.trim().length >= 10 &&
     (!!formalityDetection || isDetectingFormality);
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.surface, borderTopColor: colors.border },
+      ]}
+    >
       {/* Formality Indicator */}
       <FormalityIndicator
         currentLevel={formalityDetection?.level}
@@ -415,7 +457,12 @@ export default function MessageInput({
 
       {/* Image preview */}
       {imagePreview && (
-        <View style={[styles.imagePreviewContainer, { backgroundColor: colors.surfaceElevated }]}>
+        <View
+          style={[
+            styles.imagePreviewContainer,
+            { backgroundColor: colors.surfaceElevated },
+          ]}
+        >
           <Image source={{ uri: imagePreview }} style={styles.imagePreview} />
           <TouchableOpacity
             style={styles.clearImageButton}
@@ -444,12 +491,16 @@ export default function MessageInput({
         <TextInput
           style={[styles.input, { backgroundColor: colors.inputBackground }]}
           mode="outlined"
-          placeholder={selectedImage ? "Add a caption (optional)..." : placeholder}
+          placeholder={
+            selectedImage ? "Add a caption (optional)..." : placeholder
+          }
           placeholderTextColor={colors.textSecondary}
           value={messageText}
           onChangeText={handleTextChange}
           multiline
-          maxLength={selectedImage ? CAPTION_MAX_LENGTH : MESSAGE_CONSTANTS.MAX_LENGTH}
+          maxLength={
+            selectedImage ? CAPTION_MAX_LENGTH : MESSAGE_CONSTANTS.MAX_LENGTH
+          }
           disabled={disabled || sending}
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
@@ -468,58 +519,73 @@ export default function MessageInput({
           disabled={!canSend}
           style={[
             styles.sendButton,
-            { backgroundColor: canSend ? colors.primary : colors.border }
+            { backgroundColor: canSend ? colors.primary : colors.border },
           ]}
         />
       </View>
 
       {/* Character count */}
       {selectedImage && messageText.length > 0 && (
-        <Text style={[
-          styles.characterCount,
-          { color: messageText.length >= CAPTION_MAX_LENGTH ? colors.error : colors.textSecondary }
-        ]}>
+        <Text
+          style={[
+            styles.characterCount,
+            {
+              color:
+                messageText.length >= CAPTION_MAX_LENGTH
+                  ? colors.error
+                  : colors.textSecondary,
+            },
+          ]}
+        >
           Caption: {messageText.length}/{CAPTION_MAX_LENGTH}
         </Text>
       )}
-      {!selectedImage && messageText.length > MESSAGE_CONSTANTS.MAX_LENGTH * 0.8 && (
-        <Text style={[
-          styles.characterCount,
-          { color: messageText.length >= MESSAGE_CONSTANTS.MAX_LENGTH ? colors.error : colors.textSecondary }
-        ]}>
-          {messageText.length}/{MESSAGE_CONSTANTS.MAX_LENGTH}
-        </Text>
-      )}
+      {!selectedImage &&
+        messageText.length > MESSAGE_CONSTANTS.MAX_LENGTH * 0.8 && (
+          <Text
+            style={[
+              styles.characterCount,
+              {
+                color:
+                  messageText.length >= MESSAGE_CONSTANTS.MAX_LENGTH
+                    ? colors.error
+                    : colors.textSecondary,
+              },
+            ]}
+          >
+            {messageText.length}/{MESSAGE_CONSTANTS.MAX_LENGTH}
+          </Text>
+        )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderTopWidth: 1,
-    borderTopColor: '#E0E0E0',
+    borderTopColor: "#E0E0E0",
   },
   imagePreviewContainer: {
-    position: 'relative',
+    position: "relative",
     padding: 8,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   imagePreview: {
-    width: '100%',
+    width: "100%",
     height: 150,
     borderRadius: 8,
   },
   clearImageButton: {
-    position: 'absolute',
+    position: "absolute",
     top: 4,
     right: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
     borderRadius: 12,
   },
   inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     padding: 8,
   },
   imageButton: {
@@ -531,21 +597,20 @@ const styles = StyleSheet.create({
     maxHeight: 120,
   },
   sendButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
     marginLeft: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: '#CCCCCC',
+    backgroundColor: "#CCCCCC",
   },
   characterCount: {
     fontSize: 12,
-    color: '#666',
-    textAlign: 'right',
+    color: "#666",
+    textAlign: "right",
     paddingHorizontal: 16,
     paddingBottom: 8,
   },
   characterCountWarning: {
-    color: '#FF6B6B',
+    color: "#FF6B6B",
   },
 });
-

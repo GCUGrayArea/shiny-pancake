@@ -3,12 +3,12 @@
  * Provides foundation for creating specialized AI agents
  */
 
-import type { SwarmAgent, FunctionTool, CompletionOptions } from '../types';
-import { callCompletion, callStream } from '../ai-client';
-import { getSystemPrompt } from '../prompts/system-prompts';
-import { messageToolHandlers } from '../tools/message-tools';
-import { userToolHandlers } from '../tools/user-tools';
-import { logAIError, parseAIError } from '../error-handler';
+import type { SwarmAgent, FunctionTool, CompletionOptions } from "../types";
+import { callCompletion, callStream } from "../ai-client";
+import { getSystemPrompt } from "../prompts/system-prompts";
+import { messageToolHandlers } from "../tools/message-tools";
+import { userToolHandlers } from "../tools/user-tools";
+import { logAIError, parseAIError } from "../error-handler";
 
 /**
  * All available tool handlers combined
@@ -25,14 +25,14 @@ export function createAgent(
   name: string,
   agentType: string,
   description: string,
-  tools?: FunctionTool[]
+  tools?: FunctionTool[],
 ): SwarmAgent {
   return {
     name,
     description,
     instructions: getSystemPrompt(agentType),
     tools,
-    model: 'gpt-4-turbo', // Can be overridden per call
+    model: "gpt-4-turbo", // Can be overridden per call
   };
 }
 
@@ -44,16 +44,16 @@ export function createAgent(
 export async function executeAgent(
   agent: SwarmAgent,
   userMessage: string,
-  options: CompletionOptions = {}
+  options: CompletionOptions = {},
 ): Promise<string> {
   try {
     const messages = [
       {
-        role: 'system' as const,
+        role: "system" as const,
         content: agent.instructions,
       },
       {
-        role: 'user' as const,
+        role: "user" as const,
         content: userMessage,
       },
     ];
@@ -83,16 +83,16 @@ export async function executeAgent(
 export async function* executeAgentStream(
   agent: SwarmAgent,
   userMessage: string,
-  options: CompletionOptions = {}
+  options: CompletionOptions = {},
 ): AsyncGenerator<string> {
   try {
     const messages = [
       {
-        role: 'system' as const,
+        role: "system" as const,
         content: agent.instructions,
       },
       {
-        role: 'user' as const,
+        role: "user" as const,
         content: userMessage,
       },
     ];
@@ -113,10 +113,7 @@ export async function* executeAgentStream(
 /**
  * Execute a function/tool by name
  */
-export async function executeTool(
-  toolName: string,
-  args: any
-): Promise<any> {
+export async function executeTool(toolName: string, args: any): Promise<any> {
   const handler = allToolHandlers[toolName];
 
   if (!handler) {
@@ -134,72 +131,72 @@ export async function executeTool(
  * Translation agent
  */
 export const translationAgent = createAgent(
-  'translator',
-  'translation',
-  'Translates text between languages naturally and accurately'
+  "translator",
+  "translation",
+  "Translates text between languages naturally and accurately",
 );
 
 /**
  * Language detection agent
  */
 export const languageDetectionAgent = createAgent(
-  'language-detector',
-  'language-detection',
-  'Detects the language of text messages'
+  "language-detector",
+  "language-detection",
+  "Detects the language of text messages",
 );
 
 /**
  * Cultural context agent
  */
 export const culturalContextAgent = createAgent(
-  'cultural-expert',
-  'cultural-context',
-  'Identifies and explains cultural references in messages'
+  "cultural-expert",
+  "cultural-context",
+  "Identifies and explains cultural references in messages",
 );
 
 /**
  * Formality analysis agent
  */
 export const formalityAnalysisAgent = createAgent(
-  'formality-analyzer',
-  'formality-analysis',
-  'Analyzes the formality level of text'
+  "formality-analyzer",
+  "formality-analysis",
+  "Analyzes the formality level of text",
 );
 
 /**
  * Formality adjustment agent
  */
 export const formalityAdjustmentAgent = createAgent(
-  'formality-adjuster',
-  'formality-adjustment',
-  'Adjusts text to different formality levels'
+  "formality-adjuster",
+  "formality-adjustment",
+  "Adjusts text to different formality levels",
 );
 
 /**
  * Slang and idiom explanation agent
  */
 export const slangIdiomAgent = createAgent(
-  'slang-expert',
-  'slang-idiom',
-  'Explains slang and idiomatic expressions'
+  "slang-expert",
+  "slang-idiom",
+  "Explains slang and idiomatic expressions",
 );
 
 /**
  * Smart reply generation agent
  */
 export const smartReplyAgent = createAgent(
-  'reply-generator',
-  'smart-reply',
-  'Generates contextually appropriate reply suggestions'
+  "reply-generator",
+  "smart-reply",
+  "Generates contextually appropriate reply suggestions",
 );
 
 /**
  * User style analysis agent
  */
 export const userStyleAgent = createAgent(
-  'style-analyzer',
-  'user-style',
-  'Analyzes user communication style and patterns'
+  "style-analyzer",
+  "user-style",
+  "Analyzes user communication style and patterns",
 );
 
 /**
@@ -208,13 +205,13 @@ export const userStyleAgent = createAgent(
 export function getAgent(agentName: string): SwarmAgent | null {
   const agents: Record<string, SwarmAgent> = {
     translator: translationAgent,
-    'language-detector': languageDetectionAgent,
-    'cultural-expert': culturalContextAgent,
-    'formality-analyzer': formalityAnalysisAgent,
-    'formality-adjuster': formalityAdjustmentAgent,
-    'slang-expert': slangIdiomAgent,
-    'reply-generator': smartReplyAgent,
-    'style-analyzer': userStyleAgent,
+    "language-detector": languageDetectionAgent,
+    "cultural-expert": culturalContextAgent,
+    "formality-analyzer": formalityAnalysisAgent,
+    "formality-adjuster": formalityAdjustmentAgent,
+    "slang-expert": slangIdiomAgent,
+    "reply-generator": smartReplyAgent,
+    "style-analyzer": userStyleAgent,
   };
 
   return agents[agentName] || null;

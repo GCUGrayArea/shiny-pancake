@@ -3,8 +3,8 @@
  * Handles database initialization, schema creation, and migrations
  */
 
-import * as SQLite from 'expo-sqlite';
-import { DATABASE_CONSTANTS } from '../constants';
+import * as SQLite from "expo-sqlite";
+import { DATABASE_CONSTANTS } from "../constants";
 
 const { DB_NAME, DB_VERSION } = DATABASE_CONSTANTS;
 
@@ -33,7 +33,7 @@ export async function initDatabase(): Promise<DbResult<void>> {
     db = await SQLite.openDatabaseAsync(DB_NAME);
 
     // Enable foreign key constraints
-    await db.execAsync('PRAGMA foreign_keys = ON;');
+    await db.execAsync("PRAGMA foreign_keys = ON;");
 
     // Create schema
     await createSchema();
@@ -61,7 +61,7 @@ export function getDatabase(): SQLite.SQLiteDatabase {
   }
 
   if (!db) {
-    throw new Error('Database not initialized. Call initDatabase() first.');
+    throw new Error("Database not initialized. Call initDatabase() first.");
   }
   return db;
 }
@@ -70,7 +70,9 @@ export function getDatabase(): SQLite.SQLiteDatabase {
  * Set test database override (for integration tests)
  * @param testDb - Database instance to use for testing
  */
-export function setTestDatabaseOverride(testDb: SQLite.SQLiteDatabase | null): void {
+export function setTestDatabaseOverride(
+  testDb: SQLite.SQLiteDatabase | null,
+): void {
   testDbOverride = testDb;
 }
 
@@ -85,7 +87,7 @@ export function clearTestDatabaseOverride(): void {
  * Create database schema
  */
 async function createSchema(): Promise<void> {
-  if (!db) throw new Error('Database not initialized');
+  if (!db) throw new Error("Database not initialized");
 
   await db.execAsync(`
     -- Users table
@@ -250,7 +252,7 @@ async function createSchema(): Promise<void> {
  * Initialize version tracking for migrations
  */
 async function initVersioning(): Promise<void> {
-  if (!db) throw new Error('Database not initialized');
+  if (!db) throw new Error("Database not initialized");
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS database_version (
@@ -261,14 +263,14 @@ async function initVersioning(): Promise<void> {
   `);
 
   const result = await db.getFirstAsync<{ version: number }>(
-    'SELECT version FROM database_version WHERE id = 1'
+    "SELECT version FROM database_version WHERE id = 1",
   );
 
   if (!result) {
     // First time setup
     await db.runAsync(
-      'INSERT INTO database_version (id, version, updated_at) VALUES (?, ?, ?)',
-      [1, DB_VERSION, Date.now()]
+      "INSERT INTO database_version (id, version, updated_at) VALUES (?, ?, ?)",
+      [1, DB_VERSION, Date.now()],
     );
   }
 
@@ -281,72 +283,120 @@ async function initVersioning(): Promise<void> {
  * Simple migration system: tries to add columns if they don't exist
  */
 async function runMigrations(): Promise<void> {
-  if (!db) throw new Error('Database not initialized');
+  if (!db) throw new Error("Database not initialized");
 
   try {
     // Add caption column to messages table if it doesn't exist
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE messages ADD COLUMN caption TEXT;
-    `).catch(() => {
-      // Column already exists, ignore error
-    });
+    `,
+      )
+      .catch(() => {
+        // Column already exists, ignore error
+      });
 
     // Add caption column to chats table if it doesn't exist
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE chats ADD COLUMN lastMessageCaption TEXT;
-    `).catch(() => {
-      // Column already exists, ignore error
-    });
+    `,
+      )
+      .catch(() => {
+        // Column already exists, ignore error
+      });
 
     // Add translation fields to messages table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE messages ADD COLUMN detectedLanguage TEXT;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE messages ADD COLUMN translatedText TEXT;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE messages ADD COLUMN translationTargetLang TEXT;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     // Add translation preferences to users table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN autoTranslateEnabled INTEGER DEFAULT 0;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'en';
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     // Add profile picture URL to users table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN profilePictureUrl TEXT;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     // Add cultural hints preference to users table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN culturalHintsEnabled INTEGER DEFAULT 0;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     // Add slang explanations preference to users table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN slangExplanationsEnabled INTEGER DEFAULT 0;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     // Add smart replies preference to users table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN smartRepliesEnabled INTEGER DEFAULT 1;
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
 
     // Add theme mode preference to users table
-    await db.execAsync(`
+    await db
+      .execAsync(
+        `
       ALTER TABLE users ADD COLUMN themeMode TEXT DEFAULT 'auto';
-    `).catch(() => {});
+    `,
+      )
+      .catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now
-    console.warn('Migration warning:', error);
+    console.warn("Migration warning:", error);
   }
 }
 
@@ -355,7 +405,7 @@ async function runMigrations(): Promise<void> {
  */
 export async function executeQuery<T = any>(
   sql: string,
-  params: any[] = []
+  params: any[] = [],
 ): Promise<DbResult<T[]>> {
   try {
     const database = getDatabase();
@@ -374,7 +424,7 @@ export async function executeQuery<T = any>(
  */
 export async function executeQueryFirst<T = any>(
   sql: string,
-  params: any[] = []
+  params: any[] = [],
 ): Promise<DbResult<T | null>> {
   try {
     const database = getDatabase();
@@ -393,7 +443,7 @@ export async function executeQueryFirst<T = any>(
  */
 export async function executeUpdate(
   sql: string,
-  params: any[] = []
+  params: any[] = [],
 ): Promise<DbResult<SQLite.SQLiteRunResult>> {
   try {
     const database = getDatabase();
@@ -417,11 +467,11 @@ let transactionQueue: Promise<any> = Promise.resolve();
  * Uses a queue to ensure transactions don't overlap
  */
 export async function executeTransaction(
-  queries: Array<{ sql: string; params?: any[] }>
+  queries: Array<{ sql: string; params?: any[] }>,
 ): Promise<DbResult<void>> {
   // Chain this transaction after the previous one
   const previousTransaction = transactionQueue;
-  
+
   let resolveTransaction: (value?: any) => void;
   transactionQueue = new Promise((resolve) => {
     resolveTransaction = resolve;
@@ -430,7 +480,7 @@ export async function executeTransaction(
   try {
     // Wait for previous transaction to complete
     await previousTransaction;
-    
+
     const database = getDatabase();
 
     await database.withTransactionAsync(async () => {
@@ -476,7 +526,7 @@ export async function getDatabaseVersion(): Promise<DbResult<number>> {
   try {
     const database = getDatabase();
     const result = await database.getFirstAsync<{ version: number }>(
-      'SELECT version FROM database_version WHERE id = 1'
+      "SELECT version FROM database_version WHERE id = 1",
     );
     return { success: true, data: result?.version ?? 0 };
   } catch (error) {
@@ -486,7 +536,6 @@ export async function getDatabaseVersion(): Promise<DbResult<number>> {
     };
   }
 }
-
 
 /**
  * Clear all data from the database (for debugging/testing)

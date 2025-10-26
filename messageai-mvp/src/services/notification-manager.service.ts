@@ -4,10 +4,10 @@
  * Works with NotificationContext to determine when to show notifications
  */
 
-import type { Message, Chat, User } from '../types';
-import * as NotificationService from './notification.service';
-import * as LocalChatService from './local-chat.service';
-import * as LocalUserService from './local-user.service';
+import type { Message, Chat, User } from "../types";
+import * as NotificationService from "./notification.service";
+import * as LocalChatService from "./local-chat.service";
+import * as LocalUserService from "./local-user.service";
 
 // Track which chat the user is currently viewing (to suppress notifications)
 let currentViewingChatId: string | null = null;
@@ -29,7 +29,7 @@ export function setCurrentViewingChat(chatId: string | null): void {
  */
 export function setCurrentUser(userId: string | null): void {
   currentUserId = userId;
-  
+
   if (userId) {
     // Record when user logged in (with 5 second buffer for clock skew)
     loginTimestamp = Date.now() - 5000;
@@ -81,10 +81,9 @@ export async function handleNewMessage(message: Message): Promise<void> {
       message,
       chat,
       sender,
-      currentUserId || ''
+      currentUserId || "",
     );
-  } catch (error) {
-  }
+  } catch (error) {}
 }
 
 /**
@@ -94,5 +93,3 @@ export async function clearNotifications(): Promise<void> {
   await NotificationService.clearAllNotifications();
   await NotificationService.setBadgeCount(0);
 }
-
-

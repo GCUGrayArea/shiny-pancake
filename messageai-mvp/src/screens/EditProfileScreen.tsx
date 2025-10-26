@@ -3,24 +3,42 @@
  * Allows users to update their profile picture and display name
  */
 
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Image, Pressable } from 'react-native';
-import { Text, TextInput, Button, ActivityIndicator, Menu, Divider } from 'react-native-paper';
-import * as ImagePicker from 'expo-image-picker';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { uploadProfilePicture, removeProfilePicture, updateUserInFirebase } from '@/services/firebase-user.service';
-import { updateUser } from '@/services/local-user.service';
-import { clearAllData } from '@/services/database.service';
-import Avatar from '@/components/Avatar';
-import { useNavigation } from '@react-navigation/native';
-import type { NavigationProp } from '@react-navigation/native';
+import React, { useState } from "react";
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  Alert,
+  Image,
+  Pressable,
+} from "react-native";
+import {
+  Text,
+  TextInput,
+  Button,
+  ActivityIndicator,
+  Menu,
+  Divider,
+} from "react-native-paper";
+import * as ImagePicker from "expo-image-picker";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import {
+  uploadProfilePicture,
+  removeProfilePicture,
+  updateUserInFirebase,
+} from "@/services/firebase-user.service";
+import { updateUser } from "@/services/local-user.service";
+import { clearAllData } from "@/services/database.service";
+import Avatar from "@/components/Avatar";
+import { useNavigation } from "@react-navigation/native";
+import type { NavigationProp } from "@react-navigation/native";
 
 export default function EditProfileScreen() {
   const { user, refreshUser, signOut } = useAuth();
   const { themeMode, setThemeMode, isDark, colors } = useTheme();
   const navigation = useNavigation<NavigationProp<any>>();
-  const [displayName, setDisplayName] = useState(user?.displayName || '');
+  const [displayName, setDisplayName] = useState(user?.displayName || "");
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -34,13 +52,14 @@ export default function EditProfileScreen() {
   const pickImage = async () => {
     try {
       // Request permissions
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
 
-      if (status !== 'granted') {
+      if (status !== "granted") {
         Alert.alert(
-          'Permission Required',
-          'Please grant access to your photo library to upload a profile picture.',
-          [{ text: 'OK' }]
+          "Permission Required",
+          "Please grant access to your photo library to upload a profile picture.",
+          [{ text: "OK" }],
         );
         return;
       }
@@ -57,8 +76,8 @@ export default function EditProfileScreen() {
         setSelectedImageUri(result.assets[0].uri);
       }
     } catch (error) {
-      console.error('Error picking image:', error);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image. Please try again.");
     }
   };
 
@@ -76,7 +95,7 @@ export default function EditProfileScreen() {
       const result = await uploadProfilePicture(
         user.uid,
         selectedImageUri,
-        (progress) => setUploadProgress(progress)
+        (progress) => setUploadProgress(progress),
       );
 
       if (result.success) {
@@ -91,13 +110,16 @@ export default function EditProfileScreen() {
         // Clear selected image
         setSelectedImageUri(null);
 
-        Alert.alert('Success', 'Profile picture updated successfully!');
+        Alert.alert("Success", "Profile picture updated successfully!");
       } else {
         throw new Error(result.error);
       }
     } catch (error) {
-      console.error('Error uploading profile picture:', error);
-      Alert.alert('Error', 'Failed to upload profile picture. Please try again.');
+      console.error("Error uploading profile picture:", error);
+      Alert.alert(
+        "Error",
+        "Failed to upload profile picture. Please try again.",
+      );
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -109,13 +131,13 @@ export default function EditProfileScreen() {
    */
   const handleRemovePhoto = () => {
     Alert.alert(
-      'Remove Photo',
-      'Are you sure you want to remove your profile picture?',
+      "Remove Photo",
+      "Are you sure you want to remove your profile picture?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Remove',
-          style: 'destructive',
+          text: "Remove",
+          style: "destructive",
           onPress: async () => {
             if (!user) return;
 
@@ -133,19 +155,22 @@ export default function EditProfileScreen() {
                 // Refresh user context
                 await refreshUser();
 
-                Alert.alert('Success', 'Profile picture removed successfully!');
+                Alert.alert("Success", "Profile picture removed successfully!");
               } else {
                 throw new Error(result.error);
               }
             } catch (error) {
-              console.error('Error removing profile picture:', error);
-              Alert.alert('Error', 'Failed to remove profile picture. Please try again.');
+              console.error("Error removing profile picture:", error);
+              Alert.alert(
+                "Error",
+                "Failed to remove profile picture. Please try again.",
+              );
             } finally {
               setUploading(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -154,7 +179,7 @@ export default function EditProfileScreen() {
    */
   const handleSaveDisplayName = async () => {
     if (!user || !displayName.trim()) {
-      Alert.alert('Error', 'Please enter a valid display name.');
+      Alert.alert("Error", "Please enter a valid display name.");
       return;
     }
 
@@ -179,10 +204,10 @@ export default function EditProfileScreen() {
       // Refresh user context
       await refreshUser();
 
-      Alert.alert('Success', 'Display name updated successfully!');
+      Alert.alert("Success", "Display name updated successfully!");
     } catch (error) {
-      console.error('Error updating display name:', error);
-      Alert.alert('Error', 'Failed to update display name. Please try again.');
+      console.error("Error updating display name:", error);
+      Alert.alert("Error", "Failed to update display name. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -191,7 +216,7 @@ export default function EditProfileScreen() {
   /**
    * Handle theme mode change
    */
-  const handleThemeChange = async (mode: 'light' | 'dark' | 'auto') => {
+  const handleThemeChange = async (mode: "light" | "dark" | "auto") => {
     if (!user) return;
 
     try {
@@ -204,8 +229,11 @@ export default function EditProfileScreen() {
       await updateUser(user.uid, { themeMode: mode });
       await refreshUser();
     } catch (error) {
-      console.error('Failed to save theme preference:', error);
-      Alert.alert('Error', 'Failed to save theme preference. Please try again.');
+      console.error("Failed to save theme preference:", error);
+      Alert.alert(
+        "Error",
+        "Failed to save theme preference. Please try again.",
+      );
     } finally {
       setSaving(false);
     }
@@ -216,10 +244,14 @@ export default function EditProfileScreen() {
    */
   const getThemeModeName = (mode: string): string => {
     switch (mode) {
-      case 'light': return 'Light';
-      case 'dark': return 'Dark';
-      case 'auto': return 'Auto (System)';
-      default: return mode;
+      case "light":
+        return "Light";
+      case "dark":
+        return "Dark";
+      case "auto":
+        return "Auto (System)";
+      default:
+        return mode;
     }
   };
 
@@ -228,13 +260,13 @@ export default function EditProfileScreen() {
    */
   const handleLogout = () => {
     Alert.alert(
-      'Log Out',
-      'Are you sure you want to log out? This will clear all local data from this device.',
+      "Log Out",
+      "Are you sure you want to log out? This will clear all local data from this device.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Log Out',
-          style: 'destructive',
+          text: "Log Out",
+          style: "destructive",
           onPress: async () => {
             try {
               setLoggingOut(true);
@@ -247,13 +279,13 @@ export default function EditProfileScreen() {
 
               // Navigation to login screen is handled by AuthContext
             } catch (error) {
-              console.error('Error during logout:', error);
-              Alert.alert('Error', 'Failed to log out. Please try again.');
+              console.error("Error during logout:", error);
+              Alert.alert("Error", "Failed to log out. Please try again.");
               setLoggingOut(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -268,14 +300,23 @@ export default function EditProfileScreen() {
   const currentPhotoUrl = selectedImageUri || user.profilePictureUrl;
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
-      <Text variant="headlineSmall" style={[styles.title, { color: colors.text }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      contentContainerStyle={styles.content}
+    >
+      <Text
+        variant="headlineSmall"
+        style={[styles.title, { color: colors.text }]}
+      >
         Edit Profile
       </Text>
 
       {/* Profile Picture Section */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Profile Picture
         </Text>
 
@@ -302,7 +343,7 @@ export default function EditProfileScreen() {
             style={styles.button}
             textColor={colors.primary}
           >
-            {selectedImageUri ? 'Change Photo' : 'Upload Photo'}
+            {selectedImageUri ? "Change Photo" : "Upload Photo"}
           </Button>
 
           {user.profilePictureUrl && !selectedImageUri && (
@@ -327,7 +368,7 @@ export default function EditProfileScreen() {
                 buttonColor={colors.primary}
                 textColor="#FFFFFF"
               >
-                {uploading ? 'Uploading...' : 'Save Photo'}
+                {uploading ? "Uploading..." : "Save Photo"}
               </Button>
               <Button
                 mode="text"
@@ -344,7 +385,10 @@ export default function EditProfileScreen() {
 
         {uploading && uploadProgress > 0 && (
           <View style={styles.progressContainer}>
-            <Text variant="bodySmall" style={[styles.progressText, { color: colors.textSecondary }]}>
+            <Text
+              variant="bodySmall"
+              style={[styles.progressText, { color: colors.textSecondary }]}
+            >
               Uploading: {Math.round(uploadProgress * 100)}%
             </Text>
             <ActivityIndicator size="small" color={colors.primary} />
@@ -354,7 +398,10 @@ export default function EditProfileScreen() {
 
       {/* Display Name Section */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Display Name
         </Text>
 
@@ -375,33 +422,49 @@ export default function EditProfileScreen() {
         <Button
           mode="contained"
           onPress={handleSaveDisplayName}
-          disabled={uploading || saving || displayName.trim() === user.displayName}
+          disabled={
+            uploading || saving || displayName.trim() === user.displayName
+          }
           style={styles.button}
           buttonColor={colors.primary}
           textColor="#FFFFFF"
         >
-          {saving ? 'Saving...' : 'Save Display Name'}
+          {saving ? "Saving..." : "Save Display Name"}
         </Button>
       </View>
 
       {/* Account Info Section (Read-only) */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Account Information
         </Text>
 
         <View style={styles.infoRow}>
-          <Text variant="bodySmall" style={[styles.infoLabel, { color: colors.textSecondary }]}>
+          <Text
+            variant="bodySmall"
+            style={[styles.infoLabel, { color: colors.textSecondary }]}
+          >
             Email:
           </Text>
-          <Text variant="bodyMedium" style={{ color: colors.text }}>{user.email}</Text>
+          <Text variant="bodyMedium" style={{ color: colors.text }}>
+            {user.email}
+          </Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Text variant="bodySmall" style={[styles.infoLabel, { color: colors.textSecondary }]}>
+          <Text
+            variant="bodySmall"
+            style={[styles.infoLabel, { color: colors.textSecondary }]}
+          >
             User ID:
           </Text>
-          <Text variant="bodySmall" style={[styles.infoValue, { color: colors.textSecondary }]}>
+          <Text
+            variant="bodySmall"
+            style={[styles.infoValue, { color: colors.textSecondary }]}
+          >
             {user.uid}
           </Text>
         </View>
@@ -409,11 +472,17 @@ export default function EditProfileScreen() {
 
       {/* Theme Section */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Appearance
         </Text>
 
-        <Text variant="bodySmall" style={[styles.infoLabel, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.infoLabel, { color: colors.textSecondary }]}
+        >
           Theme
         </Text>
 
@@ -424,37 +493,56 @@ export default function EditProfileScreen() {
             <Pressable
               onPress={() => setThemeMenuVisible(true)}
               disabled={uploading || saving}
-              style={[styles.themeButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                styles.themeButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
             >
               <View>
-                <Text variant="bodyLarge" style={{ color: colors.text }}>{getThemeModeName(themeMode)}</Text>
-                <Text variant="bodySmall" style={[styles.themeSubtext, { color: colors.textSecondary }]}>
-                  {isDark ? 'Dark mode is active' : 'Light mode is active'}
+                <Text variant="bodyLarge" style={{ color: colors.text }}>
+                  {getThemeModeName(themeMode)}
+                </Text>
+                <Text
+                  variant="bodySmall"
+                  style={[styles.themeSubtext, { color: colors.textSecondary }]}
+                >
+                  {isDark ? "Dark mode is active" : "Light mode is active"}
                 </Text>
               </View>
-              <Text variant="bodySmall" style={[styles.chevron, { color: colors.textSecondary }]}>▼</Text>
+              <Text
+                variant="bodySmall"
+                style={[styles.chevron, { color: colors.textSecondary }]}
+              >
+                ▼
+              </Text>
             </Pressable>
           }
         >
           <Menu.Item
-            onPress={() => handleThemeChange('light')}
+            onPress={() => handleThemeChange("light")}
             title="Light"
-            titleStyle={themeMode === 'light' ? styles.selectedTheme : undefined}
+            titleStyle={
+              themeMode === "light" ? styles.selectedTheme : undefined
+            }
           />
           <Menu.Item
-            onPress={() => handleThemeChange('dark')}
+            onPress={() => handleThemeChange("dark")}
             title="Dark"
-            titleStyle={themeMode === 'dark' ? styles.selectedTheme : undefined}
+            titleStyle={themeMode === "dark" ? styles.selectedTheme : undefined}
           />
           <Menu.Item
-            onPress={() => handleThemeChange('auto')}
+            onPress={() => handleThemeChange("auto")}
             title="Auto (System)"
-            titleStyle={themeMode === 'auto' ? styles.selectedTheme : undefined}
+            titleStyle={themeMode === "auto" ? styles.selectedTheme : undefined}
           />
         </Menu>
 
-        <Text variant="bodySmall" style={[styles.themeDescription, { color: colors.textSecondary }]}>
-          Choose how MessageAI appears. Auto mode follows your device's system settings.
+        <Text
+          variant="bodySmall"
+          style={[styles.themeDescription, { color: colors.textSecondary }]}
+        >
+          Choose how MessageAI appears. Auto mode follows your device's system
+          settings.
         </Text>
       </View>
 
@@ -467,7 +555,7 @@ export default function EditProfileScreen() {
           textColor={colors.error}
           style={[styles.button, { borderColor: colors.error, borderWidth: 1 }]}
         >
-          {loggingOut ? 'Logging Out...' : 'Log Out'}
+          {loggingOut ? "Logging Out..." : "Log Out"}
         </Button>
       </View>
     </ScrollView>
@@ -477,31 +565,31 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
   },
   content: {
     padding: 20,
   },
   title: {
     marginBottom: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   section: {
     marginBottom: 32,
   },
   sectionTitle: {
     marginBottom: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   avatarContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 16,
   },
   previewImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#E0E0E0',
+    backgroundColor: "#E0E0E0",
   },
   buttonGroup: {
     gap: 8,
@@ -510,14 +598,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   progressContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     marginTop: 12,
     gap: 8,
   },
   progressText: {
-    color: '#666666',
+    color: "#666666",
   },
   input: {
     marginBottom: 8,
@@ -526,42 +614,42 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   infoLabel: {
-    color: '#666666',
+    color: "#666666",
     marginBottom: 4,
   },
   infoValue: {
-    color: '#999999',
+    color: "#999999",
   },
   logoutButton: {
-    borderColor: '#d32f2f',
+    borderColor: "#d32f2f",
     borderWidth: 1,
   },
   themeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
     marginTop: 8,
   },
   themeSubtext: {
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   chevron: {
-    color: '#666',
+    color: "#666",
     marginLeft: 8,
   },
   themeDescription: {
-    color: '#666',
+    color: "#666",
     marginTop: 12,
     lineHeight: 20,
   },
   selectedTheme: {
-    fontWeight: 'bold',
-    color: '#6200ee',
+    fontWeight: "bold",
+    color: "#6200ee",
   },
 });

@@ -3,39 +3,46 @@
  * Configure AI features including auto-translation
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Text, Switch, ActivityIndicator, Divider, Menu, Button } from 'react-native-paper';
-import { useAuth } from '@/contexts/AuthContext';
-import { useTheme } from '@/contexts/ThemeContext';
-import { updateUserInFirebase } from '@/services/firebase-user.service';
-import { updateUser } from '@/services/local-user.service';
+import React, { useState, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Pressable } from "react-native";
+import {
+  Text,
+  Switch,
+  ActivityIndicator,
+  Divider,
+  Menu,
+  Button,
+} from "react-native-paper";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { updateUserInFirebase } from "@/services/firebase-user.service";
+import { updateUser } from "@/services/local-user.service";
 
 // Language options for the picker
 const LANGUAGE_OPTIONS = [
-  { code: 'en', name: 'English' },
-  { code: 'es', name: 'Spanish (Español)' },
-  { code: 'fr', name: 'French (Français)' },
-  { code: 'de', name: 'German (Deutsch)' },
-  { code: 'it', name: 'Italian (Italiano)' },
-  { code: 'pt', name: 'Portuguese (Português)' },
-  { code: 'ru', name: 'Russian (Русский)' },
-  { code: 'zh', name: 'Chinese (中文)' },
-  { code: 'ja', name: 'Japanese (日本語)' },
-  { code: 'ko', name: 'Korean (한국어)' },
-  { code: 'ar', name: 'Arabic (العربية)' },
-  { code: 'hi', name: 'Hindi (हिन्दी)' },
-  { code: 'nl', name: 'Dutch (Nederlands)' },
-  { code: 'pl', name: 'Polish (Polski)' },
-  { code: 'sv', name: 'Swedish (Svenska)' },
-  { code: 'tr', name: 'Turkish (Türkçe)' },
+  { code: "en", name: "English" },
+  { code: "es", name: "Spanish (Español)" },
+  { code: "fr", name: "French (Français)" },
+  { code: "de", name: "German (Deutsch)" },
+  { code: "it", name: "Italian (Italiano)" },
+  { code: "pt", name: "Portuguese (Português)" },
+  { code: "ru", name: "Russian (Русский)" },
+  { code: "zh", name: "Chinese (中文)" },
+  { code: "ja", name: "Japanese (日本語)" },
+  { code: "ko", name: "Korean (한국어)" },
+  { code: "ar", name: "Arabic (العربية)" },
+  { code: "hi", name: "Hindi (हिन्दी)" },
+  { code: "nl", name: "Dutch (Nederlands)" },
+  { code: "pl", name: "Polish (Polski)" },
+  { code: "sv", name: "Swedish (Svenska)" },
+  { code: "tr", name: "Turkish (Türkçe)" },
 ];
 
 export default function AISettingsScreen() {
   const { user, refreshUser } = useAuth();
   const { colors } = useTheme();
   const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
-  const [preferredLanguage, setPreferredLanguage] = useState('en');
+  const [preferredLanguage, setPreferredLanguage] = useState("en");
   const [languageHelpEnabled, setLanguageHelpEnabled] = useState(false);
   const [smartRepliesEnabled, setSmartRepliesEnabled] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -47,10 +54,11 @@ export default function AISettingsScreen() {
     if (user) {
       // Use culturalHintsEnabled as the master toggle for language help
       // (slangExplanationsEnabled is deprecated but kept for backwards compat)
-      const languageHelp = user.culturalHintsEnabled || user.slangExplanationsEnabled || false;
+      const languageHelp =
+        user.culturalHintsEnabled || user.slangExplanationsEnabled || false;
 
       setAutoTranslateEnabled(user.autoTranslateEnabled || false);
-      setPreferredLanguage(user.preferredLanguage || 'en');
+      setPreferredLanguage(user.preferredLanguage || "en");
       setLanguageHelpEnabled(languageHelp);
       setSmartRepliesEnabled(user.smartRepliesEnabled !== false); // Default to true
       setLoading(false);
@@ -64,7 +72,7 @@ export default function AISettingsScreen() {
     newAutoTranslate: boolean,
     newLanguage: string,
     newLanguageHelp: boolean,
-    newSmartReplies?: boolean
+    newSmartReplies?: boolean,
   ) => {
     if (!user) return;
 
@@ -92,7 +100,7 @@ export default function AISettingsScreen() {
       // Refresh user in context
       await refreshUser();
     } catch (error) {
-      console.error('Failed to save AI settings:', error);
+      console.error("Failed to save AI settings:", error);
     } finally {
       setSaving(false);
     }
@@ -131,32 +139,50 @@ export default function AISettingsScreen() {
   const handleSmartRepliesToggle = async () => {
     const newValue = !smartRepliesEnabled;
     setSmartRepliesEnabled(newValue);
-    await saveSettings(autoTranslateEnabled, preferredLanguage, languageHelpEnabled, newValue);
+    await saveSettings(
+      autoTranslateEnabled,
+      preferredLanguage,
+      languageHelpEnabled,
+      newValue,
+    );
   };
 
   /**
    * Get language name from code
    */
   const getLanguageName = (code: string): string => {
-    const lang = LANGUAGE_OPTIONS.find(l => l.code === code);
+    const lang = LANGUAGE_OPTIONS.find((l) => l.code === code);
     return lang ? lang.name : code;
   };
 
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Translation Settings
         </Text>
-        <Text variant="bodySmall" style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.sectionDescription, { color: colors.textSecondary }]}
+        >
           Automatically translate messages to your preferred language
         </Text>
       </View>
@@ -165,8 +191,13 @@ export default function AISettingsScreen() {
 
       <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge" style={{ color: colors.text }}>Auto-translate Messages</Text>
-          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>
+            Auto-translate Messages
+          </Text>
+          <Text
+            variant="bodySmall"
+            style={[styles.settingDescription, { color: colors.textSecondary }]}
+          >
             Automatically translate incoming messages
           </Text>
         </View>
@@ -181,8 +212,13 @@ export default function AISettingsScreen() {
 
       <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge" style={{ color: colors.text }}>Preferred Language</Text>
-          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>
+            Preferred Language
+          </Text>
+          <Text
+            variant="bodySmall"
+            style={[styles.settingDescription, { color: colors.textSecondary }]}
+          >
             Messages will be translated to this language
           </Text>
         </View>
@@ -196,15 +232,25 @@ export default function AISettingsScreen() {
             <Pressable
               onPress={() => setMenuVisible(true)}
               disabled={saving}
-              style={[styles.languageButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[
+                styles.languageButton,
+                { backgroundColor: colors.surface, borderColor: colors.border },
+              ]}
             >
-              <Text variant="bodyMedium" style={{ color: colors.text }}>{getLanguageName(preferredLanguage)}</Text>
-              <Text variant="bodySmall" style={[styles.chevron, { color: colors.textSecondary }]}>▼</Text>
+              <Text variant="bodyMedium" style={{ color: colors.text }}>
+                {getLanguageName(preferredLanguage)}
+              </Text>
+              <Text
+                variant="bodySmall"
+                style={[styles.chevron, { color: colors.textSecondary }]}
+              >
+                ▼
+              </Text>
             </Pressable>
           }
         >
           <ScrollView style={styles.menuScroll}>
-            {LANGUAGE_OPTIONS.map(lang => (
+            {LANGUAGE_OPTIONS.map((lang) => (
               <Menu.Item
                 key={lang.code}
                 onPress={() => handleLanguageChange(lang.code)}
@@ -223,10 +269,16 @@ export default function AISettingsScreen() {
       <Divider style={{ backgroundColor: colors.border }} />
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Language Help
         </Text>
-        <Text variant="bodySmall" style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.sectionDescription, { color: colors.textSecondary }]}
+        >
           Understand cultural references, slang, and informal language
         </Text>
       </View>
@@ -235,8 +287,13 @@ export default function AISettingsScreen() {
 
       <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge" style={{ color: colors.text }}>Language Help</Text>
-          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>
+            Language Help
+          </Text>
+          <Text
+            variant="bodySmall"
+            style={[styles.settingDescription, { color: colors.textSecondary }]}
+          >
             Explain cultural references, slang, idioms, and informal expressions
           </Text>
         </View>
@@ -250,10 +307,16 @@ export default function AISettingsScreen() {
       <Divider style={{ backgroundColor: colors.border }} />
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           Smart Replies
         </Text>
-        <Text variant="bodySmall" style={[styles.sectionDescription, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.sectionDescription, { color: colors.textSecondary }]}
+        >
           Get AI-powered reply suggestions that match your texting style
         </Text>
       </View>
@@ -262,8 +325,13 @@ export default function AISettingsScreen() {
 
       <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge" style={{ color: colors.text }}>Smart Reply Suggestions</Text>
-          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>
+            Smart Reply Suggestions
+          </Text>
+          <Text
+            variant="bodySmall"
+            style={[styles.settingDescription, { color: colors.textSecondary }]}
+          >
             Show contextual reply suggestions above your keyboard
           </Text>
         </View>
@@ -277,19 +345,31 @@ export default function AISettingsScreen() {
       <Divider style={{ backgroundColor: colors.border }} />
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+        <Text
+          variant="titleMedium"
+          style={[styles.sectionTitle, { color: colors.text }]}
+        >
           How it Works
         </Text>
-        <Text variant="bodySmall" style={[styles.helpText, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.helpText, { color: colors.textSecondary }]}
+        >
           When auto-translate is enabled, messages in other languages will be
           automatically translated to your preferred language. You can always
           view the original message by tapping "Show Original".
         </Text>
-        <Text variant="bodySmall" style={[styles.helpText, { color: colors.textSecondary }]}>
-          Translation is powered by AI and works best for common languages.
-          The original message is always preserved.
+        <Text
+          variant="bodySmall"
+          style={[styles.helpText, { color: colors.textSecondary }]}
+        >
+          Translation is powered by AI and works best for common languages. The
+          original message is always preserved.
         </Text>
-        <Text variant="bodySmall" style={[styles.helpText, { color: colors.textSecondary }]}>
+        <Text
+          variant="bodySmall"
+          style={[styles.helpText, { color: colors.textSecondary }]}
+        >
           When cultural hints are enabled, you can long-press any message and
           select "Analyze Cultural Context" to get explanations of holidays,
           idioms, customs, and other cultural references.
@@ -299,7 +379,10 @@ export default function AISettingsScreen() {
       {saving && (
         <View style={styles.savingIndicator}>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text variant="bodySmall" style={[styles.savingText, { color: colors.textSecondary }]}>
+          <Text
+            variant="bodySmall"
+            style={[styles.savingText, { color: colors.textSecondary }]}
+          >
             Saving...
           </Text>
         </View>
@@ -311,29 +394,29 @@ export default function AISettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#fff",
   },
   section: {
     padding: 16,
   },
   sectionTitle: {
     marginBottom: 4,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   sectionDescription: {
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
     minHeight: 72,
   },
@@ -342,7 +425,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   settingDescription: {
-    color: '#666',
+    color: "#666",
     marginTop: 4,
   },
   menuContainer: {
@@ -350,39 +433,39 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   languageButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
+    borderColor: "#ddd",
   },
   chevron: {
-    color: '#666',
+    color: "#666",
     marginLeft: 8,
   },
   menuScroll: {
     maxHeight: 300,
   },
   selectedLanguage: {
-    fontWeight: 'bold',
-    color: '#6200ee',
+    fontWeight: "bold",
+    color: "#6200ee",
   },
   helpText: {
-    color: '#666',
+    color: "#666",
     marginTop: 8,
     lineHeight: 20,
   },
   savingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 16,
     gap: 8,
   },
   savingText: {
-    color: '#666',
+    color: "#666",
   },
 });

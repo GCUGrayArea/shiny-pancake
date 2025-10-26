@@ -3,8 +3,8 @@
  * Manages storage, retrieval, and tracking of slang/idiom explanations
  */
 
-import { getDatabase } from './database.service';
-import { SlangItem } from './ai/types';
+import { getDatabase } from "./database.service";
+import { SlangItem } from "./ai/types";
 
 /**
  * In-memory cache for slang items
@@ -42,8 +42,8 @@ export async function saveSlangItems(items: SlangItem[]): Promise<void> {
         item.startIndex,
         item.endIndex,
         item.known ? 1 : 0,
-        item.timestamp || Date.now()
-      ]
+        item.timestamp || Date.now(),
+      ],
     );
   }
 
@@ -68,10 +68,10 @@ export async function getSlangItems(messageId: string): Promise<SlangItem[]> {
   const db = getDatabase();
   const rows = await db.getAllAsync<any>(
     `SELECT * FROM slang_items WHERE messageId = ? ORDER BY startIndex ASC`,
-    [messageId]
+    [messageId],
   );
 
-  const items: SlangItem[] = rows.map(row => ({
+  const items: SlangItem[] = rows.map((row) => ({
     id: row.id,
     messageId: row.messageId,
     phrase: row.phrase,
@@ -85,7 +85,7 @@ export async function getSlangItems(messageId: string): Promise<SlangItem[]> {
     startIndex: row.startIndex,
     endIndex: row.endIndex,
     known: row.known === 1,
-    timestamp: row.timestamp
+    timestamp: row.timestamp,
   }));
 
   // Update cache
@@ -103,14 +103,11 @@ export async function getSlangItems(messageId: string): Promise<SlangItem[]> {
  */
 export async function markSlangAsKnown(itemId: string): Promise<void> {
   const db = getDatabase();
-  await db.runAsync(
-    `UPDATE slang_items SET known = 1 WHERE id = ?`,
-    [itemId]
-  );
+  await db.runAsync(`UPDATE slang_items SET known = 1 WHERE id = ?`, [itemId]);
 
   // Update cache
   for (const [messageId, items] of slangCache.entries()) {
-    const item = items.find(i => i.id === itemId);
+    const item = items.find((i) => i.id === itemId);
     if (item) {
       item.known = true;
       slangCache.set(messageId, items);
@@ -126,7 +123,9 @@ export async function markSlangAsKnown(itemId: string): Promise<void> {
  * @param onlyUnknown - If true, only return items not marked as known
  * @returns Array of all slang items
  */
-export async function getAllSlangItems(onlyUnknown: boolean = false): Promise<SlangItem[]> {
+export async function getAllSlangItems(
+  onlyUnknown: boolean = false,
+): Promise<SlangItem[]> {
   const db = getDatabase();
 
   const query = onlyUnknown
@@ -135,7 +134,7 @@ export async function getAllSlangItems(onlyUnknown: boolean = false): Promise<Sl
 
   const rows = await db.getAllAsync<any>(query);
 
-  return rows.map(row => ({
+  return rows.map((row) => ({
     id: row.id,
     messageId: row.messageId,
     phrase: row.phrase,
@@ -149,7 +148,7 @@ export async function getAllSlangItems(onlyUnknown: boolean = false): Promise<Sl
     startIndex: row.startIndex,
     endIndex: row.endIndex,
     known: row.known === 1,
-    timestamp: row.timestamp
+    timestamp: row.timestamp,
   }));
 }
 
@@ -160,7 +159,7 @@ export async function getAllSlangItems(onlyUnknown: boolean = false): Promise<Sl
  * @returns Map of messageId to slang items array
  */
 export async function getSlangItemsBatch(
-  messageIds: string[]
+  messageIds: string[],
 ): Promise<Map<string, SlangItem[]>> {
   const results = new Map<string, SlangItem[]>();
 
@@ -177,12 +176,12 @@ export async function getSlangItemsBatch(
   // Query database for uncached messages
   if (uncachedIds.length > 0) {
     const db = getDatabase();
-    const placeholders = uncachedIds.map(() => '?').join(',');
+    const placeholders = uncachedIds.map(() => "?").join(",");
     const rows = await db.getAllAsync<any>(
       `SELECT * FROM slang_items
        WHERE messageId IN (${placeholders})
        ORDER BY messageId, startIndex ASC`,
-      uncachedIds
+      uncachedIds,
     );
 
     // Group by messageId
@@ -202,7 +201,7 @@ export async function getSlangItemsBatch(
         startIndex: row.startIndex,
         endIndex: row.endIndex,
         known: row.known === 1,
-        timestamp: row.timestamp
+        timestamp: row.timestamp,
       };
 
       if (!groupedItems.has(row.messageId)) {
@@ -235,10 +234,7 @@ export async function getSlangItemsBatch(
  */
 export async function deleteSlangItems(messageId: string): Promise<void> {
   const db = getDatabase();
-  await db.runAsync(
-    `DELETE FROM slang_items WHERE messageId = ?`,
-    [messageId]
-  );
+  await db.runAsync(`DELETE FROM slang_items WHERE messageId = ?`, [messageId]);
 
   // Remove from cache
   slangCache.delete(messageId);
@@ -261,7 +257,7 @@ export async function getUnknownSlangCount(messageId: string): Promise<number> {
   const db = getDatabase();
   const result = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM slang_items WHERE messageId = ? AND known = 0`,
-    [messageId]
+    [messageId],
   );
   return result?.count || 0;
 }
@@ -276,7 +272,7 @@ export async function isSlangKnown(phrase: string): Promise<boolean> {
   const db = getDatabase();
   const result = await db.getFirstAsync<{ count: number }>(
     `SELECT COUNT(*) as count FROM slang_items WHERE phrase = ? AND known = 1 LIMIT 1`,
-    [phrase]
+    [phrase],
   );
   return (result?.count || 0) > 0;
 }

@@ -4,10 +4,15 @@
  * Implements per-conversation style analysis with SQLite + in-memory caching
  */
 
-import { UserStyleProfile, FormalityLevel, LanguageCode } from './ai/types';
-import { getDatabase, executeQuery, executeQueryFirst, executeUpdate } from './database.service';
-import { getMessagesByChat } from './local-message.service';
-import { Message } from '../types';
+import { UserStyleProfile, FormalityLevel, LanguageCode } from "./ai/types";
+import {
+  getDatabase,
+  executeQuery,
+  executeQueryFirst,
+  executeUpdate,
+} from "./database.service";
+import { getMessagesByChat } from "./local-message.service";
+import { Message } from "../types";
 
 // In-memory cache for style profiles (TTL: 24 hours)
 interface CacheEntry {
@@ -68,7 +73,7 @@ function storeInCache(profile: UserStyleProfile): void {
 export async function buildUserProfile(
   userId: string,
   chatId: string,
-  messageLimit: number = 100
+  messageLimit: number = 100,
 ): Promise<UserStyleProfile> {
   // Check cache first
   const cached = getFromCache(userId, chatId);
@@ -79,11 +84,11 @@ export async function buildUserProfile(
   // Fetch user's messages from this conversation
   const result = await getMessagesByChat(chatId, messageLimit);
   if (!result.success || !result.data) {
-    throw new Error('Failed to fetch messages for style analysis');
+    throw new Error("Failed to fetch messages for style analysis");
   }
 
   // Filter to only this user's messages
-  const userMessages = result.data.filter(msg => msg.senderId === userId);
+  const userMessages = result.data.filter((msg) => msg.senderId === userId);
 
   if (userMessages.length === 0) {
     // Return default profile for users with no message history
@@ -103,23 +108,26 @@ export async function buildUserProfile(
 /**
  * Create a default profile for users with no message history
  */
-function createDefaultProfile(userId: string, chatId: string): UserStyleProfile {
+function createDefaultProfile(
+  userId: string,
+  chatId: string,
+): UserStyleProfile {
   return {
     userId,
     chatId,
     commonPhrases: [],
     averageMessageLength: 10,
-    formalityPreference: 'neutral' as FormalityLevel,
+    formalityPreference: "neutral" as FormalityLevel,
     emojiUsage: {
       frequency: 0,
       favorites: [],
     },
     languageMixing: {
-      primary: 'en' as LanguageCode,
+      primary: "en" as LanguageCode,
       secondary: [],
       switchingPatterns: [],
     },
-    conversationStyle: 'balanced',
+    conversationStyle: "balanced",
     punctuationStyle: {
       usesPeriods: true,
       usesExclamation: false,
@@ -135,12 +143,16 @@ function createDefaultProfile(userId: string, chatId: string): UserStyleProfile 
 /**
  * Analyze user messages to extract style patterns
  */
-function analyzeMessages(userId: string, chatId: string, messages: Message[]): UserStyleProfile {
+function analyzeMessages(
+  userId: string,
+  chatId: string,
+  messages: Message[],
+): UserStyleProfile {
   const totalMessages = messages.length;
 
   // Calculate average message length
   const totalWords = messages.reduce((sum, msg) => {
-    if (msg.type === 'text') {
+    if (msg.type === "text") {
       return sum + msg.content.split(/\s+/).length;
     }
     return sum;
@@ -148,15 +160,16 @@ function analyzeMessages(userId: string, chatId: string, messages: Message[]): U
   const averageMessageLength = totalWords / totalMessages;
 
   // Analyze emoji usage
-  const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
+  const emojiRegex =
+    /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu;
   let totalEmojis = 0;
   const emojiCounts = new Map<string, number>();
 
-  messages.forEach(msg => {
-    if (msg.type === 'text') {
+  messages.forEach((msg) => {
+    if (msg.type === "text") {
       const emojis = msg.content.match(emojiRegex) || [];
       totalEmojis += emojis.length;
-      emojis.forEach(emoji => {
+      emojis.forEach((emoji) => {
         emojiCounts.set(emoji, (emojiCounts.get(emoji) || 0) + 1);
       });
     }
@@ -173,24 +186,24 @@ function analyzeMessages(userId: string, chatId: string, messages: Message[]): U
   let usesExclamation = 0;
   let usesQuestions = 0;
 
-  messages.forEach(msg => {
-    if (msg.type === 'text') {
-      if (msg.content.includes('.')) usesPeriods++;
-      if (msg.content.includes('!')) usesExclamation++;
-      if (msg.content.includes('?')) usesQuestions++;
+  messages.forEach((msg) => {
+    if (msg.type === "text") {
+      if (msg.content.includes(".")) usesPeriods++;
+      if (msg.content.includes("!")) usesExclamation++;
+      if (msg.content.includes("?")) usesQuestions++;
     }
   });
 
   // Determine conversation style based on message length
-  let conversationStyle: 'terse' | 'detailed' | 'balanced' = 'balanced';
+  let conversationStyle: "terse" | "detailed" | "balanced" = "balanced";
   if (averageMessageLength < 5) {
-    conversationStyle = 'terse';
+    conversationStyle = "terse";
   } else if (averageMessageLength > 20) {
-    conversationStyle = 'detailed';
+    conversationStyle = "detailed";
   }
 
   // Detect primary language (simplified - assumes English by default)
-  const primaryLanguage: LanguageCode = 'en';
+  const primaryLanguage: LanguageCode = "en";
 
   // Build profile
   return {
@@ -198,7 +211,7 @@ function analyzeMessages(userId: string, chatId: string, messages: Message[]): U
     chatId,
     commonPhrases: [], // Could be enhanced with NLP phrase extraction
     averageMessageLength: Math.round(averageMessageLength * 10) / 10,
-    formalityPreference: 'neutral' as FormalityLevel, // Could be enhanced with formality detection
+    formalityPreference: "neutral" as FormalityLevel, // Could be enhanced with formality detection
     emojiUsage: {
       frequency: Math.round(emojiFrequency * 10) / 10,
       favorites,
@@ -224,7 +237,9 @@ function analyzeMessages(userId: string, chatId: string, messages: Message[]): U
 /**
  * Save user style profile to database
  */
-export async function saveUserProfile(profile: UserStyleProfile): Promise<void> {
+export async function saveUserProfile(
+  profile: UserStyleProfile,
+): Promise<void> {
   const id = `${profile.userId}_${profile.chatId}`;
 
   await executeUpdate(
@@ -255,7 +270,7 @@ export async function saveUserProfile(profile: UserStyleProfile): Promise<void> 
       JSON.stringify(profile.closingStyle),
       profile.lastUpdated,
       profile.messageCount,
-    ]
+    ],
   );
 }
 
@@ -264,7 +279,7 @@ export async function saveUserProfile(profile: UserStyleProfile): Promise<void> 
  */
 export async function loadUserProfile(
   userId: string,
-  chatId: string
+  chatId: string,
 ): Promise<UserStyleProfile | null> {
   // Check cache first
   const cached = getFromCache(userId, chatId);
@@ -275,8 +290,8 @@ export async function loadUserProfile(
   const id = `${userId}_${chatId}`;
 
   const result = await executeQueryFirst<any>(
-    'SELECT * FROM user_style_profiles WHERE id = ?',
-    [id]
+    "SELECT * FROM user_style_profiles WHERE id = ?",
+    [id],
   );
 
   if (!result.success || !result.data) {
@@ -288,17 +303,17 @@ export async function loadUserProfile(
   const profile: UserStyleProfile = {
     userId: row.userId,
     chatId: row.chatId,
-    commonPhrases: JSON.parse(row.commonPhrases || '[]'),
+    commonPhrases: JSON.parse(row.commonPhrases || "[]"),
     averageMessageLength: row.averageMessageLength,
     formalityPreference: row.formalityPreference as FormalityLevel,
     emojiUsage: {
       frequency: row.emojiFrequency,
-      favorites: JSON.parse(row.emojiFavorites || '[]'),
+      favorites: JSON.parse(row.emojiFavorites || "[]"),
     },
     languageMixing: {
       primary: row.primaryLanguage as LanguageCode,
-      secondary: JSON.parse(row.secondaryLanguages || '[]'),
-      switchingPatterns: JSON.parse(row.switchingPatterns || '[]'),
+      secondary: JSON.parse(row.secondaryLanguages || "[]"),
+      switchingPatterns: JSON.parse(row.switchingPatterns || "[]"),
     },
     conversationStyle: row.conversationStyle,
     punctuationStyle: {
@@ -306,8 +321,8 @@ export async function loadUserProfile(
       usesExclamation: row.usesExclamation === 1,
       usesQuestions: row.usesQuestions === 1,
     },
-    greetingStyle: JSON.parse(row.greetingStyle || '[]'),
-    closingStyle: JSON.parse(row.closingStyle || '[]'),
+    greetingStyle: JSON.parse(row.greetingStyle || "[]"),
+    closingStyle: JSON.parse(row.closingStyle || "[]"),
     lastUpdated: row.lastUpdated,
     messageCount: row.messageCount,
   };

@@ -4,11 +4,14 @@
  * Allows user to accept or reject the formality adjustment
  */
 
-import React from 'react';
-import { View, StyleSheet, ScrollView, Modal } from 'react-native';
-import { Text, Button, Card, Divider } from 'react-native-paper';
-import type { FormalityAdjustmentResult } from '@/services/ai/types';
-import { getFormalityLabel, getFormalityEmoji } from '@/services/ai/agents/formality-agent';
+import React from "react";
+import { View, StyleSheet, ScrollView, Modal } from "react-native";
+import { Text, Button, Card, Divider } from "react-native-paper";
+import type { FormalityAdjustmentResult } from "@/services/ai/types";
+import {
+  getFormalityLabel,
+  getFormalityEmoji,
+} from "@/services/ai/agents/formality-agent";
 
 interface FormalityPreviewModalProps {
   /** Whether the modal is visible */
@@ -34,7 +37,8 @@ export default function FormalityPreviewModal({
     return null;
   }
 
-  const { originalText, adjustedText, changes, fromLevel, toLevel } = adjustmentResult;
+  const { originalText, adjustedText, changes, fromLevel, toLevel } =
+    adjustmentResult;
 
   const fromEmoji = getFormalityEmoji(fromLevel);
   const toEmoji = getFormalityEmoji(toLevel);
@@ -133,14 +137,14 @@ export default function FormalityPreviewModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
   },
   modalContainer: {
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    height: '50%',
+    height: "50%",
     minHeight: 400,
     paddingTop: 16,
   },
@@ -148,24 +152,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: "#e0e0e0",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: '#212121',
+    fontWeight: "600",
+    color: "#212121",
     marginBottom: 12,
   },
   levelIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     gap: 12,
   },
   levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 18,
@@ -176,12 +180,12 @@ const styles = StyleSheet.create({
   },
   levelText: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#424242',
+    fontWeight: "500",
+    color: "#424242",
   },
   arrow: {
     fontSize: 22,
-    color: '#757575',
+    color: "#757575",
   },
   scrollContent: {
     flex: 1,
@@ -193,64 +197,64 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   adjustedCard: {
-    backgroundColor: '#e8f5e9',
+    backgroundColor: "#e8f5e9",
     borderLeftWidth: 4,
-    borderLeftColor: '#4caf50',
+    borderLeftColor: "#4caf50",
   },
   sectionLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#757575',
-    textTransform: 'uppercase',
+    fontWeight: "600",
+    color: "#757575",
+    textTransform: "uppercase",
     marginBottom: 10,
   },
   originalText: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#424242',
+    color: "#424242",
   },
   adjustedText: {
     fontSize: 16,
     lineHeight: 24,
-    color: '#1b5e20',
-    fontWeight: '500',
+    color: "#1b5e20",
+    fontWeight: "500",
   },
   changesContainer: {
     marginTop: 10,
     padding: 18,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     borderRadius: 10,
   },
   changesTitle: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#424242',
+    fontWeight: "600",
+    color: "#424242",
     marginBottom: 10,
   },
   changeItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     marginBottom: 8,
   },
   changeBullet: {
     fontSize: 16,
-    color: '#757575',
+    color: "#757575",
     marginRight: 10,
     marginTop: 2,
   },
   changeText: {
     fontSize: 14,
     lineHeight: 20,
-    color: '#616161',
+    color: "#616161",
     flex: 1,
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: "#e0e0e0",
     gap: 12,
   },
   rejectButton: {
@@ -258,6 +262,6 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     flex: 1,
-    backgroundColor: '#4caf50',
+    backgroundColor: "#4caf50",
   },
 });

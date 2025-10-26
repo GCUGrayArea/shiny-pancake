@@ -3,15 +3,15 @@
  * Manages per-chat and global unread message counts
  */
 
-import { getFirebaseDatabase } from './firebase';
-import { ref, get, set, increment, onValue, off } from 'firebase/database';
+import { getFirebaseDatabase } from "./firebase";
+import { ref, get, set, increment, onValue, off } from "firebase/database";
 
 /**
  * Get unread count for a specific chat
  */
 export async function getChatUnreadCount(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<number> {
   try {
     const database = getFirebaseDatabase();
@@ -19,7 +19,7 @@ export async function getChatUnreadCount(
     const snapshot = await get(unreadRef);
     return snapshot.val() || 0;
   } catch (error) {
-    console.error('Error getting chat unread count:', error);
+    console.error("Error getting chat unread count:", error);
     return 0;
   }
 }
@@ -30,7 +30,7 @@ export async function getChatUnreadCount(
 export async function getTotalUnreadCount(userId: string): Promise<number> {
   try {
     const database = getFirebaseDatabase();
-    const chatsRef = ref(database, '/chats');
+    const chatsRef = ref(database, "/chats");
     const snapshot = await get(chatsRef);
 
     if (!snapshot.exists()) {
@@ -52,7 +52,7 @@ export async function getTotalUnreadCount(userId: string): Promise<number> {
 
     return total;
   } catch (error) {
-    console.error('Error getting total unread count:', error);
+    console.error("Error getting total unread count:", error);
     return 0;
   }
 }
@@ -62,14 +62,14 @@ export async function getTotalUnreadCount(userId: string): Promise<number> {
  */
 export async function markChatAsRead(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   try {
     const database = getFirebaseDatabase();
     const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
     await set(unreadRef, 0);
   } catch (error) {
-    console.error('Error marking chat as read:', error);
+    console.error("Error marking chat as read:", error);
   }
 }
 
@@ -79,14 +79,14 @@ export async function markChatAsRead(
  */
 export async function incrementUnreadCount(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<void> {
   try {
     const database = getFirebaseDatabase();
     const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
     await set(unreadRef, increment(1));
   } catch (error) {
-    console.error('Error incrementing unread count:', error);
+    console.error("Error incrementing unread count:", error);
   }
 }
 
@@ -97,7 +97,7 @@ export async function incrementUnreadCount(
 export function subscribeToChatUnreadCount(
   chatId: string,
   userId: string,
-  callback: (count: number) => void
+  callback: (count: number) => void,
 ): () => void {
   const database = getFirebaseDatabase();
   const unreadRef = ref(database, `/chats/${chatId}/unreadCount/${userId}`);
@@ -109,7 +109,7 @@ export function subscribeToChatUnreadCount(
 
   // Return unsubscribe function
   return () => {
-    off(unreadRef, 'value', listener);
+    off(unreadRef, "value", listener);
   };
 }
 
@@ -119,10 +119,10 @@ export function subscribeToChatUnreadCount(
  */
 export function subscribeToTotalUnreadCount(
   userId: string,
-  callback: (count: number) => void
+  callback: (count: number) => void,
 ): () => void {
   const database = getFirebaseDatabase();
-  const chatsRef = ref(database, '/chats');
+  const chatsRef = ref(database, "/chats");
 
   const listener = onValue(chatsRef, (snapshot) => {
     let total = 0;
@@ -145,7 +145,7 @@ export function subscribeToTotalUnreadCount(
 
   // Return unsubscribe function
   return () => {
-    off(chatsRef, 'value', listener);
+    off(chatsRef, "value", listener);
   };
 }
 
@@ -154,11 +154,11 @@ export function subscribeToTotalUnreadCount(
  * Returns a map of chatId -> unread count
  */
 export async function getAllChatUnreadCounts(
-  userId: string
+  userId: string,
 ): Promise<Map<string, number>> {
   try {
     const database = getFirebaseDatabase();
-    const chatsRef = ref(database, '/chats');
+    const chatsRef = ref(database, "/chats");
     const snapshot = await get(chatsRef);
 
     const counts = new Map<string, number>();
@@ -180,7 +180,7 @@ export async function getAllChatUnreadCounts(
 
     return counts;
   } catch (error) {
-    console.error('Error getting all chat unread counts:', error);
+    console.error("Error getting all chat unread counts:", error);
     return new Map();
   }
 }

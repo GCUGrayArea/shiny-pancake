@@ -7,23 +7,23 @@
  * Language codes following ISO 639-1 standard
  */
 export type LanguageCode =
-  | 'en' // English
-  | 'es' // Spanish
-  | 'fr' // French
-  | 'de' // German
-  | 'it' // Italian
-  | 'pt' // Portuguese
-  | 'ru' // Russian
-  | 'zh' // Chinese
-  | 'ja' // Japanese
-  | 'ko' // Korean
-  | 'ar' // Arabic
-  | 'hi' // Hindi
-  | 'nl' // Dutch
-  | 'pl' // Polish
-  | 'sv' // Swedish
-  | 'tr' // Turkish
-  | 'unknown'; // Unable to detect
+  | "en" // English
+  | "es" // Spanish
+  | "fr" // French
+  | "de" // German
+  | "it" // Italian
+  | "pt" // Portuguese
+  | "ru" // Russian
+  | "zh" // Chinese
+  | "ja" // Japanese
+  | "ko" // Korean
+  | "ar" // Arabic
+  | "hi" // Hindi
+  | "nl" // Dutch
+  | "pl" // Polish
+  | "sv" // Swedish
+  | "tr" // Turkish
+  | "unknown"; // Unable to detect
 
 /**
  * OpenAI API configuration
@@ -58,7 +58,10 @@ export interface CompletionOptions {
   /** Function calling tools */
   tools?: FunctionTool[];
   /** Tool choice strategy */
-  toolChoice?: 'auto' | 'none' | { type: 'function'; function: { name: string } };
+  toolChoice?:
+    | "auto"
+    | "none"
+    | { type: "function"; function: { name: string } };
 }
 
 /**
@@ -66,7 +69,7 @@ export interface CompletionOptions {
  */
 export interface ChatMessage {
   /** Role of the message sender */
-  role: 'system' | 'user' | 'assistant' | 'function';
+  role: "system" | "user" | "assistant" | "function";
   /** Message content */
   content: string;
   /** Function call name (if role is function) */
@@ -78,7 +81,7 @@ export interface ChatMessage {
  */
 export interface FunctionTool {
   /** Tool type */
-  type: 'function';
+  type: "function";
   /** Function definition */
   function: {
     /** Function name */
@@ -87,7 +90,7 @@ export interface FunctionTool {
     description: string;
     /** Parameter schema (JSON Schema) */
     parameters: {
-      type: 'object';
+      type: "object";
       properties: Record<string, any>;
       required?: string[];
     };
@@ -112,7 +115,7 @@ export interface RAGContext {
     /** Timestamp */
     timestamp: number;
     /** Message type */
-    type: 'text' | 'image';
+    type: "text" | "image";
   }>;
   /** Total number of messages in context */
   messageCount: number;
@@ -140,13 +143,13 @@ export interface SwarmAgent {
  * AI error types
  */
 export type AIErrorType =
-  | 'api_error'       // OpenAI API error
-  | 'timeout'         // Request timeout
-  | 'rate_limit'      // Rate limit exceeded
-  | 'invalid_request' // Invalid request parameters
-  | 'auth_error'      // Authentication error
-  | 'network_error'   // Network connectivity error
-  | 'unknown';        // Unknown error
+  | "api_error" // OpenAI API error
+  | "timeout" // Request timeout
+  | "rate_limit" // Rate limit exceeded
+  | "invalid_request" // Invalid request parameters
+  | "auth_error" // Authentication error
+  | "network_error" // Network connectivity error
+  | "unknown"; // Unknown error
 
 /**
  * AI operation error
@@ -218,11 +221,11 @@ export interface LanguageDetectionResult {
  * Cultural context hint category
  */
 export type ContextHintCategory =
-  | 'holiday'      // Holidays and festivals
-  | 'idiom'        // Idioms and expressions
-  | 'custom'       // Cultural customs and traditions
-  | 'historical'   // Historical references
-  | 'norm';        // Cultural norms (greetings, formality, etc.)
+  | "holiday" // Holidays and festivals
+  | "idiom" // Idioms and expressions
+  | "custom" // Cultural customs and traditions
+  | "historical" // Historical references
+  | "norm"; // Cultural norms (greetings, formality, etc.)
 
 /**
  * Cultural context hint
@@ -254,11 +257,11 @@ export interface ContextHint {
  * Formality levels from very informal to very formal
  */
 export type FormalityLevel =
-  | 'very-informal'
-  | 'informal'
-  | 'neutral'
-  | 'formal'
-  | 'very-formal';
+  | "very-informal"
+  | "informal"
+  | "neutral"
+  | "formal"
+  | "very-formal";
 
 /**
  * Formality detection result
@@ -292,10 +295,10 @@ export interface FormalityAdjustmentResult {
  * Slang or idiom item category
  */
 export type SlangCategory =
-  | 'slang'           // Informal vocabulary
-  | 'idiom'           // Figurative expressions
-  | 'colloquialism'   // Regional phrases
-  | 'internet-slang'; // Online/text abbreviations (LOL, FOMO, etc.)
+  | "slang" // Informal vocabulary
+  | "idiom" // Figurative expressions
+  | "colloquialism" // Regional phrases
+  | "internet-slang"; // Online/text abbreviations (LOL, FOMO, etc.)
 
 /**
  * Slang or idiom detection item
@@ -335,11 +338,11 @@ export interface SlangItem {
  * Reply type for smart suggestions
  */
 export type ReplyType =
-  | 'agree'         // Agreement/affirmation
-  | 'question'      // Follow-up question
-  | 'continue'      // Continue conversation
-  | 'polite-close'  // Polite conversation closer
-  | 'enthusiasm';   // Enthusiastic response
+  | "agree" // Agreement/affirmation
+  | "question" // Follow-up question
+  | "continue" // Continue conversation
+  | "polite-close" // Polite conversation closer
+  | "enthusiasm"; // Enthusiastic response
 
 /**
  * Smart reply suggestion
@@ -386,7 +389,7 @@ export interface UserStyleProfile {
     switchingPatterns: string[];
   };
   /** Conversation style */
-  conversationStyle: 'terse' | 'detailed' | 'balanced';
+  conversationStyle: "terse" | "detailed" | "balanced";
   /** Punctuation style patterns */
   punctuationStyle: {
     /** Uses periods at end of messages */
