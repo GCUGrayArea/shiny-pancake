@@ -30,6 +30,58 @@ MessageAI is a production-quality, AI-enhanced cross-platform messaging applicat
 
 ### High-Level Architecture Diagram
 
+```mermaid
+graph TB
+    subgraph Mobile["Mobile Application (React Native + Expo)"]
+        UI[UI Layer<br/>Screens & Components]
+        Context[Context Layer<br/>Auth, Network, Notifications]
+        Services[Service Layer<br/>Firebase, AI, Local DB, Sync]
+        SQLite[(SQLite<br/>Local Database)]
+
+        UI --> Context
+        UI --> Services
+        Context --> Services
+        Services --> SQLite
+    end
+
+    subgraph Firebase["Firebase Backend"]
+        RTDB[(Realtime<br/>Database)]
+        Auth[Authentication]
+        Storage[Cloud<br/>Storage]
+        Functions[Cloud<br/>Functions]
+    end
+
+    subgraph OpenAI["OpenAI Platform (GPT-4)"]
+        LangAgent[Language<br/>Detection]
+        TransAgent[Translation<br/>Agent]
+        CultureAgent[Cultural<br/>Context Agent]
+        FormalAgent[Formality<br/>Agent]
+        SlangAgent[Slang/Idiom<br/>Agent]
+        SmartAgent[Smart Reply<br/>Agent]
+    end
+
+    Services -->|Real-time Sync| RTDB
+    Services -->|Authenticate| Auth
+    Services -->|Upload Images| Storage
+    Services -->|Push Notifications| Functions
+
+    Services -->|AI Requests| LangAgent
+    Services -->|AI Requests| TransAgent
+    Services -->|AI Requests| CultureAgent
+    Services -->|AI Requests| FormalAgent
+    Services -->|AI Requests| SlangAgent
+    Services -->|AI Requests| SmartAgent
+
+    Functions -.->|Trigger| Mobile
+    RTDB -.->|Real-time Updates| Services
+
+    style Mobile fill:#e3f2fd
+    style Firebase fill:#fff3e0
+    style OpenAI fill:#f3e5f5
+```
+
+### ASCII Architecture Diagram (for reference)
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Mobile Application                        │
@@ -83,6 +135,74 @@ MessageAI is a production-quality, AI-enhanced cross-platform messaging applicat
 ```
 
 ### Data Flow Patterns
+
+#### Complete Data Flow Diagram (SQLite ↔️ Firebase ↔️ OpenAI)
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as UI Layer
+    participant Service as Service Layer
+    participant SQLite as Local SQLite
+    participant Firebase as Firebase RTDB
+    participant OpenAI as OpenAI GPT-4
+
+    Note over User,OpenAI: Message Send Flow
+    User->>UI: Type & Send Message
+    UI->>Service: sendMessage()
+    Service->>SQLite: Save (status: sending)
+    Service->>UI: Optimistic Update
+    Service->>Firebase: Push to /messages/{chatId}
+    Firebase-->>Service: Confirmation
+    Service->>SQLite: Update (status: sent)
+    Service->>UI: Update Status
+
+    Note over User,OpenAI: Message Receive Flow (with AI Processing)
+    Firebase->>Service: Real-time Update (new message)
+    Service->>SQLite: Save Message
+    Service->>Service: Check User Preferences
+
+    alt Auto-Translate Enabled
+        Service->>SQLite: Fetch Context (last 10 msgs)
+        Service->>OpenAI: Detect Language
+        OpenAI-->>Service: Language Code
+        Service->>OpenAI: Translate Message
+        OpenAI-->>Service: Translated Text
+        Service->>SQLite: Save Translation
+    end
+
+    alt Cultural Hints Enabled
+        Service->>OpenAI: Analyze Cultural Context
+        OpenAI-->>Service: Cultural Hints
+        Service->>SQLite: Save Hints
+    end
+
+    Service->>UI: Update Conversation View
+    UI->>User: Display Message + AI Features
+
+    Note over User,OpenAI: Offline Queue Flow
+    User->>UI: Send Message (Offline)
+    UI->>Service: sendMessage()
+    Service->>SQLite: Queue Message
+    Service->>UI: Show "Queued"
+    Note over Service: Network Reconnects
+    Service->>Firebase: Sync Queued Messages
+    Firebase-->>Service: Confirmation
+    Service->>SQLite: Clear Queue
+    Service->>UI: Update Status
+
+    Note over User,OpenAI: Smart Reply Generation
+    User->>UI: View Message
+    UI->>Service: Generate Smart Replies
+    Service->>SQLite: Fetch Conversation (50 msgs)
+    Service->>SQLite: Get User Style Profile
+    Service->>OpenAI: Context + Style → Agent 1-4
+    OpenAI-->>Service: 3 Reply Options
+    Service->>SQLite: Cache Replies
+    Service->>UI: Display Reply Chips
+    User->>UI: Tap Reply
+    UI->>Service: Send Selected Reply
+```
 
 #### 1. Message Send Flow
 
@@ -181,6 +301,42 @@ OpenAI API Call (with caching check)
 ## Component Architecture
 
 ### Screen Hierarchy
+
+```mermaid
+graph TD
+    App[App.tsx]
+    App --> AuthCtx[AuthContext Provider]
+    AuthCtx --> NetCtx[NetworkContext Provider]
+    NetCtx --> NotifCtx[NotificationContext Provider]
+    NotifCtx --> Navigator[AppNavigator]
+
+    Navigator --> AuthStack[Auth Stack<br/>Not Authenticated]
+    Navigator --> MainStack[Main Stack<br/>Authenticated]
+
+    AuthStack --> Login[LoginScreen]
+    AuthStack --> Signup[SignUpScreen]
+
+    MainStack --> MainScreen[MainScreen<br/>Tab Navigator]
+    MainStack --> Conversation[ConversationScreen]
+    MainStack --> NewChat[NewChatScreen]
+    MainStack --> CreateGroup[CreateGroupScreen]
+    MainStack --> GroupInfo[GroupInfoScreen]
+    MainStack --> EditProfile[EditProfileScreen]
+    MainStack --> AISettings[AISettingsScreen]
+
+    MainScreen --> ChatList[ChatListScreen]
+    MainScreen --> Profile[ProfileScreen<br/>future]
+
+    style App fill:#e3f2fd
+    style AuthCtx fill:#fff3e0
+    style NetCtx fill:#fff3e0
+    style NotifCtx fill:#fff3e0
+    style Navigator fill:#c8e6c9
+    style AuthStack fill:#ffccbc
+    style MainStack fill:#c5cae9
+```
+
+#### ASCII Component Tree (for reference)
 
 ```
 App (App.tsx)
@@ -534,6 +690,84 @@ CREATE TABLE IF NOT EXISTS slang_glossary (
 The AI system is built on **OpenAI GPT-4** with a custom **agent orchestration** layer. Each AI feature is implemented as a specialized agent with specific prompts, tools, and caching strategies.
 
 ### AI Agent Architecture
+
+```mermaid
+graph TB
+    subgraph Client["AI Client Layer (ai-client.ts)"]
+        APIWrapper[OpenAI API Wrapper<br/>- Request/Response<br/>- Retry Logic<br/>- Streaming Support]
+    end
+
+    subgraph Cache["Request Batcher & Cache (request-batcher.ts)"]
+        Dedup[Request Deduplication]
+        Batch[Request Batching]
+        LRU[LRU Cache<br/>100 entries, 1hr TTL]
+    end
+
+    subgraph RAG["RAG Service Layer (rag.service.ts)"]
+        ContextRetrieval[Context Retrieval<br/>Last N messages from SQLite]
+        Formatting[Message Formatting<br/>Convert to LLM format]
+        TokenMgmt[Token Management<br/>~4 chars/token estimate]
+    end
+
+    subgraph Tools["Function Calling Tools"]
+        MsgTools[message-tools.ts<br/>- get_message_history<br/>- get_chat_context]
+        UserTools[user-tools.ts<br/>- get_user_preferences<br/>- detect_language]
+    end
+
+    subgraph Agents["Specialized AI Agents"]
+        LangAgent[Language Detection<br/>language-detection.service.ts]
+        TransAgent[Translation Agent<br/>translation-agent.ts<br/>Formatting Preservation]
+        CultureAgent[Cultural Context Agent<br/>cultural-context-agent.ts<br/>Holiday, Idiom, Custom Detection]
+        FormalAgent[Formality Agent<br/>formality-agent.ts<br/>Multi-step Analysis]
+        SlangAgent[Slang/Idiom Agent<br/>slang-idiom-agent.ts<br/>Explanation Generation]
+        SmartAgent[Smart Reply Agent<br/>smart-reply-agent.ts<br/>4-Agent Workflow]
+    end
+
+    subgraph SmartWorkflow["Smart Reply Multi-Agent Workflow"]
+        Agent1[Agent 1<br/>Context Understanding]
+        Agent2[Agent 2<br/>Reply Generation]
+        Agent3[Agent 3<br/>Style Matching]
+        Agent4[Agent 4<br/>Quality Filter]
+
+        Agent1 --> Agent2 --> Agent3 --> Agent4
+    end
+
+    APIWrapper --> Dedup
+    Dedup --> Batch
+    Batch --> LRU
+
+    LRU --> ContextRetrieval
+    ContextRetrieval --> Formatting
+    Formatting --> TokenMgmt
+
+    TokenMgmt --> MsgTools
+    TokenMgmt --> UserTools
+
+    MsgTools -.-> LangAgent
+    MsgTools -.-> TransAgent
+    MsgTools -.-> CultureAgent
+    MsgTools -.-> FormalAgent
+    MsgTools -.-> SlangAgent
+    MsgTools -.-> SmartAgent
+
+    UserTools -.-> LangAgent
+    UserTools -.-> TransAgent
+    UserTools -.-> CultureAgent
+    UserTools -.-> FormalAgent
+    UserTools -.-> SlangAgent
+    UserTools -.-> SmartAgent
+
+    SmartAgent --> SmartWorkflow
+
+    style Client fill:#e3f2fd
+    style Cache fill:#fff3e0
+    style RAG fill:#c8e6c9
+    style Tools fill:#ffccbc
+    style Agents fill:#f3e5f5
+    style SmartWorkflow fill:#ede7f6
+```
+
+#### ASCII AI Architecture (for reference)
 
 ```
 ┌──────────────────────────────────────────────────────────┐
