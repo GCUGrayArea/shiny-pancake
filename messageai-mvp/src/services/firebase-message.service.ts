@@ -121,6 +121,17 @@ export async function sendMessageToFirebase(
       metadata: message.metadata || null,
     });
 
+    // Update chat's lastMessage field so chat list shows preview
+    const chatRef = ref(db, `chats/${message.chatId}/lastMessage`);
+    await set(chatRef, {
+      id: messageId,
+      senderId: message.senderId,
+      type: message.type,
+      content: messageContent,
+      timestamp: message.timestamp,
+      caption: message.caption || null,
+    });
+
     return { success: true, data: messageId };
   } catch (error) {
     return {

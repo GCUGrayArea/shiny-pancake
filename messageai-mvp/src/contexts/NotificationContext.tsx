@@ -20,6 +20,7 @@ interface NotificationContextValue {
   setCurrentChatId: (chatId: string | null) => void;
   totalUnreadCount: number;
   getChatUnreadCount: (chatId: string) => number;
+  onNotificationReceived: (callback: () => void) => () => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
@@ -46,26 +47,36 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
   const notificationListener = useRef<Subscription>();
   const responseListener = useRef<Subscription>();
   const lastNotificationResponse = useRef<Notifications.NotificationResponse | null>(null);
+  const notificationCallbacks = useRef<Set<() => void>>(new Set());
 
   /**
    * Request notification permissions
    */
-  const requestPermission = async (): Promise<boolean> => {
+  const requestPermission = React.useCallback(async (): Promise<boolean> => {
     const granted = await NotificationService.requestNotificationPermissions();
     setHasPermission(granted);
     return granted;
-  };
+  }, []);
 
   /**
    * Handle notification received while app is in foreground
    */
   const handleNotificationReceived = (notification: Notifications.Notification) => {
     const data = notification.request.content.data as NotificationData;
-    
+
     // Don't show notification if user is already viewing this chat
     if (data.chatId && data.chatId === currentChatId) {
       return;
     }
+
+    // Notify all subscribers that a foreground notification was received
+    notificationCallbacks.current.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.error('Error in notification callback:', error);
+      }
+    });
   };
 
   /**
@@ -122,9 +133,9 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
   /**
    * Get unread count for a specific chat
    */
-  const getChatUnreadCount = (chatId: string): number => {
+  const getChatUnreadCount = React.useCallback((chatId: string): number => {
     return chatUnreadCounts.get(chatId) || 0;
-  };
+  }, [chatUnreadCounts]);
 
   /**
    * Initialize notification system
@@ -233,14 +244,28 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
     };
   }, [user?.uid]);
 
-  const value: NotificationContextValue = {
+  /**
+   * Subscribe to foreground notification events
+   * Returns unsubscribe function
+   */
+  const onNotificationReceived = React.useCallback((callback: () => void): (() => void) => {
+    notificationCallbacks.current.add(callback);
+
+    // Return unsubscribe function
+    return () => {
+      notificationCallbacks.current.delete(callback);
+    };
+  }, []);
+
+  const value: NotificationContextValue = React.useMemo(() => ({
     hasPermission,
     requestPermission,
     currentChatId,
     setCurrentChatId,
     totalUnreadCount,
     getChatUnreadCount,
-  };
+    onNotificationReceived,
+  }), [hasPermission, requestPermission, currentChatId, setCurrentChatId, totalUnreadCount, getChatUnreadCount, onNotificationReceived]);
 
   return (
     <NotificationContext.Provider value={value}>

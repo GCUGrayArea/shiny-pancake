@@ -78,6 +78,10 @@ export default function MessageInput({
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const autoClearTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef<boolean>(false);
+  const lastTypingUpdateRef = useRef<number>(0);
+
+  // Throttle duration for typing updates (send update every 2s while actively typing)
+  const TYPING_UPDATE_THROTTLE_MS = 2000;
 
   // Refs for formality detection management
   const formalityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -189,33 +193,36 @@ export default function MessageInput({
     setAdjustmentResult(null);
   }, []);
 
-  // Handle text change with debounced typing indicator and formality detection
+  // Handle text change with immediate typing indicator and debounced formality detection
   const handleTextChange = useCallback((text: string) => {
     setMessageText(text);
 
-    // Clear existing timeouts
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    if (autoClearTimeoutRef.current) {
-      clearTimeout(autoClearTimeoutRef.current);
-    }
+    // Clear existing formality timeout
     if (formalityTimeoutRef.current) {
       clearTimeout(formalityTimeoutRef.current);
     }
 
     if (text.trim().length > 0) {
-      // Debounce typing indicator
-      typingTimeoutRef.current = setTimeout(() => {
+      // Show typing indicator immediately (with throttling for updates)
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastTypingUpdateRef.current;
+
+      if (!isTypingRef.current || timeSinceLastUpdate >= TYPING_UPDATE_THROTTLE_MS) {
+        // Set typing indicator immediately on first keystroke or every 2 seconds
         setTypingIndicator();
+        lastTypingUpdateRef.current = now;
+      }
 
-        // Set up auto-clear
-        autoClearTimeoutRef.current = setTimeout(() => {
-          clearTypingIndicator();
-        }, AUTO_CLEAR_TYPING_MS);
-      }, TYPING_DEBOUNCE_MS);
+      // Reset the auto-clear timeout every time user types
+      if (autoClearTimeoutRef.current) {
+        clearTimeout(autoClearTimeoutRef.current);
+      }
+      autoClearTimeoutRef.current = setTimeout(() => {
+        clearTypingIndicator();
+        lastTypingUpdateRef.current = 0;
+      }, AUTO_CLEAR_TYPING_MS);
 
-      // Debounce formality detection (longer delay)
+      // Debounce formality detection (longer delay - only trigger after user pauses)
       if (enableFormality && !selectedImage) {
         formalityTimeoutRef.current = setTimeout(() => {
           detectFormalityLevel(text);
@@ -223,8 +230,12 @@ export default function MessageInput({
       }
     } else {
       // Empty input - clear typing and formality immediately
+      if (autoClearTimeoutRef.current) {
+        clearTimeout(autoClearTimeoutRef.current);
+      }
       clearTypingIndicator();
       setFormalityDetection(null);
+      lastTypingUpdateRef.current = 0;
     }
   }, [setTypingIndicator, clearTypingIndicator, detectFormalityLevel, enableFormality, selectedImage]);
 

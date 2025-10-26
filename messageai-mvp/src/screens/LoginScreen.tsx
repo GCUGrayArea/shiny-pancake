@@ -19,7 +19,7 @@ type FormValues = z.infer<typeof schema>;
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn, error } = useAuth();
+  const { signIn, error, loading: authLoading } = useAuth();
   const [submitting, setSubmitting] = useState(false);
 
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
@@ -32,10 +32,15 @@ export default function LoginScreen({ navigation }: Props) {
     setSubmitting(true);
     try {
       await signIn(values.email.trim(), values.password);
-    } finally {
+      // Don't clear submitting here - let it stay true until authLoading becomes false
+    } catch (err) {
+      // Only clear submitting on error, since we won't be navigating away
       setSubmitting(false);
     }
   };
+
+  // The loading state should combine local submitting state and auth context loading
+  const isLoading = submitting || authLoading;
 
   return (
     <View style={{ flex: 1, padding: 16, justifyContent: 'center', gap: 12 }}>
@@ -77,8 +82,8 @@ export default function LoginScreen({ navigation }: Props) {
 
       {error && <Text style={{ color: 'red' }}>{error}</Text>}
 
-      <Button mode="contained" loading={submitting} disabled={submitting} onPress={handleSubmit(onSubmit)}>
-        Sign In
+      <Button mode="contained" loading={isLoading} disabled={isLoading} onPress={handleSubmit(onSubmit)}>
+        {isLoading ? 'Signing In...' : 'Sign In'}
       </Button>
 
       <Button onPress={() => navigation.navigate('SignUp')}>Create account</Button>

@@ -11,6 +11,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotifications } from '@/contexts/NotificationContext';
 import { Chat, User } from '@/types';
 import { getRelativeTime } from '@/utils/time.utils';
 import { getAllChats } from '@/services/local-chat.service';
@@ -31,7 +32,9 @@ export default function ChatListScreen() {
   const [userDataMap, setUserDataMap] = useState<Map<string, User>>(new Map());
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { onNotificationReceived } = useNotifications();
   const navigation = useNavigation<ChatListNavigationProp>();
+  const refreshCallbackRef = React.useRef<(() => Promise<void>) | null>(null);
 
   // Add AI Settings and Profile buttons to header
   useLayoutEffect(() => {
@@ -164,23 +167,121 @@ export default function ChatListScreen() {
     setRefreshing(false);
   }, [loadChats]);
 
+  // Initial load on mount - after this, Firebase subscription handles all updates
   useEffect(() => {
-    // Only load once when component mounts or user changes
-    if (!hasLoadedOnce || !user) {
+    if (!hasLoadedOnce && user) {
       loadChats();
     }
-  }, [user?.uid]); // Only depend on user ID, not the whole user object or loadChats
+  }, [user?.uid, hasLoadedOnce, loadChats]);
 
-  // Refresh chat list when screen comes into focus
-  // This ensures the list updates after receiving notifications or returning from other screens
-  useFocusEffect(
-    useCallback(() => {
-      if (hasLoadedOnce) {
-        // Only refresh if we've loaded at least once
-        loadChats();
+  // Subscribe to real-time Firebase chat updates for live refresh
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Import the Firebase chat service
+    const setupSubscription = async () => {
+      const { subscribeToUserChats } = await import('@/services/firebase-chat.service');
+
+      // Define the refresh function that updates state from Firebase data
+      const refreshFromFirebase = async (firebaseChats: Chat[]) => {
+        // Use Firebase data directly (source of truth) instead of querying local DB
+        // This prevents race conditions where local sync hasn't completed yet
+
+        // Sort by last message timestamp (most recent first)
+        const sortedChats = firebaseChats.sort((a, b) => {
+          const aTime = a.lastMessage?.timestamp ?? a.createdAt;
+          const bTime = b.lastMessage?.timestamp ?? b.createdAt;
+          return bTime - aTime;
+        });
+
+        setChats(sortedChats);
+
+        // Load user names for 1:1 chats
+        const userIdsToLoad = new Set<string>();
+        for (const chat of sortedChats) {
+          if (chat.type === '1:1') {
+            const participantIds = Array.isArray(chat.participantIds)
+              ? chat.participantIds
+              : Object.keys(chat.participantIds || {});
+            const otherUserId = participantIds.find(id => id !== user.uid);
+            if (otherUserId) {
+              userIdsToLoad.add(otherUserId);
+            }
+          }
+        }
+
+        if (userIdsToLoad.size > 0) {
+          const newUserNames = new Map<string, string>();
+          const newUserData = new Map<string, User>();
+
+          // Try to load from local database first
+          const usersResult = await getUsers(Array.from(userIdsToLoad));
+          if (usersResult.success && usersResult.data) {
+            for (const u of usersResult.data) {
+              newUserNames.set(u.uid, u.displayName);
+              newUserData.set(u.uid, u);
+            }
+          }
+
+          // For any users not found locally, fetch from Firebase
+          const missingUserIds = Array.from(userIdsToLoad).filter(
+            uid => !newUserNames.has(uid)
+          );
+
+          for (const uid of missingUserIds) {
+            try {
+              const userResult = await getUserFromFirebase(uid);
+              if (userResult.success && userResult.data) {
+                newUserNames.set(uid, userResult.data.displayName);
+                newUserData.set(uid, userResult.data);
+              }
+            } catch (error) {
+              // Silently fail for individual users
+            }
+          }
+
+          setUserNames(newUserNames);
+          setUserDataMap(newUserData);
+        }
+      };
+
+      // Store refresh function in ref so notification handler can call it
+      refreshCallbackRef.current = async () => {
+        // Force re-fetch from Firebase when notification received
+        const { getUserChatsFromFirebase } = await import('@/services/firebase-chat.service');
+        const result = await getUserChatsFromFirebase(user.uid);
+        if (result.success && result.data) {
+          await refreshFromFirebase(result.data);
+        }
+      };
+
+      // Subscribe to Firebase chat updates
+      const unsubscribe = subscribeToUserChats(user.uid, refreshFromFirebase);
+
+      return unsubscribe;
+    };
+
+    const subscriptionPromise = setupSubscription();
+
+    return () => {
+      subscriptionPromise.then(unsub => unsub?.());
+      refreshCallbackRef.current = null;
+    };
+  }, [user?.uid]);
+
+  // Listen to foreground notifications and force refresh
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    const unsubscribe = onNotificationReceived(() => {
+      // Notification received - force refresh the chat list
+      if (refreshCallbackRef.current) {
+        refreshCallbackRef.current();
       }
-    }, [hasLoadedOnce, loadChats])
-  );
+    });
+
+    return unsubscribe;
+  }, [user?.uid, onNotificationReceived]);
 
   // Handle opening a chat
   const handleOpenChat = useCallback(async (chat: Chat) => {

@@ -110,27 +110,30 @@ export default function LanguageHelpModal({
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      <TouchableWithoutFeedback onPress={onClose}>
-        <View style={styles.overlay}>
-          <Pressable style={[styles.modalContainer, { height: modalHeight }]}>
-            {/* Header */}
-            <View style={styles.header}>
-              <Text style={styles.title}>Language Help</Text>
-              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-                <MaterialCommunityIcons name="close" size={24} color="#666" />
-              </TouchableOpacity>
-            </View>
+      {/* Outer container with backdrop */}
+      <Pressable style={styles.overlay} onPress={onClose}>
+        {/* Modal container - stop propagation to prevent close */}
+        <Pressable
+          style={[styles.modalContainer, { height: modalHeight }]}
+          onPress={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <View style={styles.header}>
+            <Text style={styles.title}>Language Help</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <MaterialCommunityIcons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
 
-            {/* Content */}
-            <ScrollView
-              style={styles.content}
-              showsVerticalScrollIndicator={true}
-              indicatorStyle="black"
-              scrollEventThrottle={16}
-              directionalLockEnabled={false}
-              alwaysBounceVertical={true}
-              bounces={true}
-            >
+          {/* Content */}
+          <ScrollView
+            style={styles.content}
+            showsVerticalScrollIndicator={true}
+            indicatorStyle="black"
+            scrollEventThrottle={16}
+            nestedScrollEnabled={true}
+            bounces={true}
+          >
                 {loading && (
                   <View style={styles.centerContent}>
                     <MaterialCommunityIcons name="loading" size={32} color="#2196F3" />
@@ -261,17 +264,16 @@ export default function LanguageHelpModal({
                     )}
                   </>
                 )}
-              </ScrollView>
+          </ScrollView>
 
-              {/* Footer */}
-              <View style={styles.footer}>
-                <TouchableOpacity style={styles.closeButtonBottom} onPress={onClose}>
-                  <Text style={styles.closeButtonText}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </Pressable>
-        </View>
-      </TouchableWithoutFeedback>
+          {/* Footer */}
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.closeButtonBottom} onPress={onClose}>
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 }
