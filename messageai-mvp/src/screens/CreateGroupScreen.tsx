@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MainStackParamList } from '@/navigation/AppNavigator';
 import { createChatInFirebase } from '@/services/firebase-chat.service';
 import { generateGroupName, validateGroupCreation } from '@/utils/group.utils';
@@ -35,6 +36,7 @@ export default function CreateGroupScreen() {
   const [userHasEdited, setUserHasEdited] = useState(false);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const navigation = useNavigation<CreateGroupScreenNavigationProp>();
   const route = useRoute<CreateGroupScreenRouteProp>();
 
@@ -159,7 +161,7 @@ export default function CreateGroupScreen() {
     const isCurrentUser = item.uid === user?.uid;
 
     return (
-      <View style={styles.participantItem}>
+      <View style={[styles.participantItem, { backgroundColor: colors.surfaceElevated }]}>
         <Avatar
           userId={item.uid}
           displayName={item.displayName}
@@ -167,11 +169,11 @@ export default function CreateGroupScreen() {
           showOnlineStatus={true}
         />
         <View style={styles.participantInfo}>
-          <Text variant="bodyLarge" style={styles.participantName}>
+          <Text variant="bodyLarge" style={[styles.participantName, { color: colors.text }]}>
             {item.displayName}
             {isCurrentUser && ' (You)'}
           </Text>
-          <Text variant="bodySmall" style={styles.participantEmail}>
+          <Text variant="bodySmall" style={[styles.participantEmail, { color: colors.textSecondary }]}>
             {item.email}
           </Text>
         </View>
@@ -180,6 +182,7 @@ export default function CreateGroupScreen() {
             mode="outlined"
             onPress={() => handleRemoveParticipant(item.uid)}
             style={styles.removeChip}
+            textStyle={{ color: colors.error }}
           >
             Remove
           </Chip>
@@ -199,12 +202,12 @@ export default function CreateGroupScreen() {
   const suggestedName = participants.length > 0 ? generateGroupName(participants) : '';
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <Text variant="headlineSmall" style={[styles.title, { color: colors.text }]}>
           Create Group
         </Text>
-        <Text variant="bodyMedium" style={styles.subtitle}>
+        <Text variant="bodyMedium" style={[styles.subtitle, { color: colors.textSecondary }]}>
           Add a name for your group chat (optional)
         </Text>
       </View>
@@ -221,16 +224,20 @@ export default function CreateGroupScreen() {
             }
           }}
           placeholder={suggestedName || "Enter group name (optional)"}
+          placeholderTextColor={colors.textSecondary}
           maxLength={50}
-          style={styles.nameInput}
+          style={[styles.nameInput, { backgroundColor: colors.inputBackground }]}
+          textColor={colors.text}
+          outlineColor={colors.inputBorder}
+          activeOutlineColor={colors.primary}
         />
 
-        <Text variant="bodySmall" style={styles.participantCount}>
+        <Text variant="bodySmall" style={[styles.participantCount, { color: colors.textSecondary }]}>
           {participants.length} participants
         </Text>
 
         <View style={styles.participantsSection}>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
+          <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
             Participants
           </Text>
           <FlatList
@@ -247,6 +254,7 @@ export default function CreateGroupScreen() {
           onPress={handleCreateGroup}
           loading={loading}
           disabled={!canCreateGroup}
+          buttonColor={canCreateGroup ? colors.primary : colors.border}
           style={[styles.createButton, { marginBottom: insets.bottom }]}
         >
           {loading ? 'Creating Group...' : 'Create Group'}

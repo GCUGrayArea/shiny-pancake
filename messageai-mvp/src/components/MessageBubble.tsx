@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, Text as RNText, TouchableOpacity, Image, Modal, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Message } from '@/types';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { computeMessageStatus, getDeliveryCount, getReadCount } from '@/utils/message-status.utils';
@@ -53,6 +54,7 @@ function MessageBubble({
   onTranslationUpdate,
   languageHelpEnabled = false,
 }: MessageBubbleProps) {
+  const { colors } = useTheme();
   const [imagePreviewVisible, setImagePreviewVisible] = useState(false);
   const [showOriginal, setShowOriginal] = useState(false);
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
@@ -425,7 +427,7 @@ function MessageBubble({
               profilePictureUrl={senderProfilePictureUrl}
               size="small"
             />
-            <Text variant="bodySmall" style={styles.senderName}>
+            <Text variant="bodySmall" style={[styles.senderName, { color: colors.textSecondary }]}>
               {senderName}
             </Text>
           </View>
@@ -437,7 +439,9 @@ function MessageBubble({
           delayLongPress={500}
           style={[
             styles.bubble,
-            isOwnMessage ? styles.ownBubble : styles.otherBubble,
+            isOwnMessage
+              ? { backgroundColor: colors.messageBubbleSent, borderBottomRightRadius: 4 }
+              : { backgroundColor: colors.messageBubbleReceived, borderBottomLeftRadius: 4 },
           ]}
         >
           {/* Message content */}
@@ -461,7 +465,7 @@ function MessageBubble({
                   <RNText
                     style={[
                       styles.messageText,
-                      isOwnMessage ? styles.ownMessageText : styles.otherMessageText,
+                      { color: isOwnMessage ? colors.messageBubbleSentText : colors.messageBubbleReceivedText },
                     ]}
                   >
                     {showOriginal || !message.translatedText
@@ -469,12 +473,12 @@ function MessageBubble({
                       : message.translatedText}
                   </RNText>
                   {message.translatedText && (
-                    <View style={styles.translationInfo}>
+                    <View style={[styles.translationInfo, { borderTopColor: isOwnMessage ? 'rgba(255, 255, 255, 0.2)' : colors.border }]}>
                       <Text
                         variant="bodySmall"
                         style={[
                           styles.translationLabel,
-                          isOwnMessage ? styles.ownTranslationLabel : styles.otherTranslationLabel,
+                          { color: isOwnMessage ? colors.messageBubbleSentText : colors.textSecondary },
                         ]}
                       >
                         {showOriginal
@@ -489,7 +493,7 @@ function MessageBubble({
                           variant="bodySmall"
                           style={[
                             styles.translationToggle,
-                            isOwnMessage ? styles.ownTranslationToggle : styles.otherTranslationToggle,
+                            { color: isOwnMessage ? colors.messageBubbleSentText : colors.primary },
                           ]}
                         >
                           {showOriginal ? 'Show Translation' : 'Show Original'}
@@ -508,8 +512,8 @@ function MessageBubble({
               >
                 {/* Loading placeholder */}
                 {messageImageLoading && (
-                  <View style={[styles.imageLoadingPlaceholder, isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage]}>
-                    <MaterialCommunityIcons name="image" size={40} color="#999" />
+                  <View style={[styles.imageLoadingPlaceholder, { backgroundColor: colors.surface }]}>
+                    <MaterialCommunityIcons name="image" size={40} color={colors.textTertiary} />
                   </View>
                 )}
                 <Image
@@ -531,7 +535,7 @@ function MessageBubble({
                 <RNText
                   style={[
                     styles.captionText,
-                    isOwnMessage ? styles.ownCaptionText : styles.otherCaptionText,
+                    { color: isOwnMessage ? colors.messageBubbleSentText : colors.messageBubbleReceivedText },
                   ]}
                   selectable
                 >
@@ -546,7 +550,7 @@ function MessageBubble({
             <RNText
               style={[
                 styles.timestamp,
-                isOwnMessage ? styles.ownTimestamp : styles.otherTimestamp,
+                { color: isOwnMessage ? 'rgba(255, 255, 255, 0.8)' : colors.textSecondary },
               ]}
             >
               {formatTime(message.timestamp)}

@@ -12,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Chat, User } from '@/types';
 import { getRelativeTime } from '@/utils/time.utils';
 import { getAllChats } from '@/services/local-chat.service';
@@ -33,6 +34,7 @@ export default function ChatListScreen() {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { onNotificationReceived } = useNotifications();
+  const { colors } = useTheme();
   const navigation = useNavigation<ChatListNavigationProp>();
   const refreshCallbackRef = React.useRef<(() => Promise<void>) | null>(null);
 
@@ -45,18 +47,18 @@ export default function ChatListScreen() {
             onPress={() => navigation.navigate('EditProfile')}
             style={{ padding: 4 }}
           >
-            <MaterialCommunityIcons name="account-circle" size={24} color="#6200ee" />
+            <MaterialCommunityIcons name="account-circle" size={24} color={colors.primary} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation.navigate('AISettings')}
             style={{ padding: 4 }}
           >
-            <MaterialCommunityIcons name="robot" size={24} color="#6200ee" />
+            <MaterialCommunityIcons name="robot" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, colors]);
 
   // Load chats from local database
   const loadChats = useCallback(async () => {
@@ -422,7 +424,8 @@ export default function ChatListScreen() {
       <Pressable
         style={({ pressed }) => [
           styles.chatItem,
-          pressed && styles.chatItemPressed
+          { backgroundColor: colors.surface, borderBottomColor: colors.border },
+          pressed && { backgroundColor: colors.surfaceElevated }
         ]}
         onPress={() => handleOpenChat(chat)}
       >
@@ -448,22 +451,22 @@ export default function ChatListScreen() {
 
         <View style={styles.chatContent}>
           <View style={styles.chatNameRow}>
-            <Text variant="titleMedium" style={styles.chatName}>
+            <Text variant="titleMedium" style={[styles.chatName, { color: colors.text }]}>
               {chatDisplayName}
             </Text>
             {chat.type === 'group' && (
-              <Text variant="bodySmall" style={styles.groupIndicator}>
+              <Text variant="bodySmall" style={[styles.groupIndicator, { backgroundColor: colors.primaryLight, color: colors.primary }]}>
                 Group
               </Text>
             )}
           </View>
 
-          <Text variant="bodyMedium" style={styles.lastMessage}>
+          <Text variant="bodyMedium" style={[styles.lastMessage, { color: colors.textSecondary }]}>
             {preview}
           </Text>
 
           <View style={styles.chatMeta}>
-            <Text variant="bodySmall" style={styles.timestamp}>
+            <Text variant="bodySmall" style={[styles.timestamp, { color: colors.textTertiary }]}>
               {relativeTime}
             </Text>
 
@@ -472,7 +475,7 @@ export default function ChatListScreen() {
                 variant="bodySmall"
                 style={[
                   styles.onlineStatus,
-                  { color: '#4CAF50' } // Assume online for now - will be replaced with real presence
+                  { color: colors.success }
                 ]}
               >
                 Online
@@ -480,7 +483,7 @@ export default function ChatListScreen() {
             )}
 
             {chat.type === 'group' && (
-              <Text variant="bodySmall" style={styles.participantCount}>
+              <Text variant="bodySmall" style={[styles.participantCount, { color: colors.textSecondary }]}>
                 {(Array.isArray(chat.participantIds)
                   ? chat.participantIds.length
                   : Object.keys(chat.participantIds || {}).length) || 0} members
@@ -507,10 +510,10 @@ export default function ChatListScreen() {
   const renderEmpty = () => {
     return (
       <View style={styles.emptyContainer}>
-        <Text variant="headlineSmall" style={styles.emptyTitle}>
+        <Text variant="headlineSmall" style={[styles.emptyTitle, { color: colors.text }]}>
           No chats yet
         </Text>
-        <Text variant="bodyLarge" style={styles.emptySubtitle}>
+        <Text variant="bodyLarge" style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
           Start a conversation to see your chats here
         </Text>
       </View>
@@ -519,15 +522,15 @@ export default function ChatListScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator animating size="large" />
-        <Text style={styles.loadingText}>Loading chats...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator animating size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading chats...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <FlatList
         data={chats}
         renderItem={renderChatItem}
@@ -541,7 +544,8 @@ export default function ChatListScreen() {
 
       <FAB
         icon="plus"
-        style={[styles.fab, { bottom: insets.bottom + 16 }]}
+        color="#FFFFFF"
+        style={[styles.fab, { bottom: insets.bottom + 16, backgroundColor: colors.primary }]}
         onPress={() => {
           navigation.navigate('NewChat' as never);
         }}

@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { User } from '@/types';
 import UserListItem from '@/components/UserListItem';
 import { getAllUsersFromFirebase, searchUsers } from '@/services/firebase-user.service';
@@ -34,6 +35,7 @@ export default function NewChatScreen() {
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const navigation = useNavigation<NewChatScreenNavigationProp>();
 
   // Load all users and chat participants from Firebase
@@ -284,11 +286,12 @@ export default function NewChatScreen() {
 
     if (isMultiSelectMode) {
       return (
-        <View style={styles.multiSelectItem}>
+        <View style={[styles.multiSelectItem, { backgroundColor: colors.surfaceElevated }]}>
           <Checkbox
             status={isSelected ? 'checked' : 'unchecked'}
             onPress={() => !isCurrentUser && handleUserSelect(item)}
             disabled={isCurrentUser}
+            color={colors.primary}
           />
           <UserListItem
             user={item}
@@ -298,7 +301,7 @@ export default function NewChatScreen() {
             loading={creatingChat === item.uid}
           />
           {isCurrentUser && (
-            <Text variant="bodySmall" style={styles.cannotSelectText}>
+            <Text variant="bodySmall" style={[styles.cannotSelectText, { color: colors.textSecondary }]}>
               Cannot select yourself
             </Text>
           )}
@@ -319,18 +322,18 @@ export default function NewChatScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator animating size="large" />
-        <Text style={styles.loadingText}>Loading users...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator animating size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading users...</Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingBottom: insets.bottom }]}>
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <View style={styles.headerTop}>
-          <Text variant="headlineSmall" style={styles.title}>
+          <Text variant="headlineSmall" style={[styles.title, { color: colors.text }]}>
             Start New Chat
           </Text>
           <Button
@@ -338,11 +341,13 @@ export default function NewChatScreen() {
             onPress={toggleMultiSelect}
             style={styles.modeToggle}
             compact
+            buttonColor={isMultiSelectMode ? colors.primary : undefined}
+            textColor={isMultiSelectMode ? '#FFFFFF' : colors.primary}
           >
             {isMultiSelectMode ? "Cancel Group" : "Create Group"}
           </Button>
         </View>
-        <Text variant="bodyMedium" style={styles.subtitle}>
+        <Text variant="bodyMedium" style={[styles.subtitle, { color: colors.textSecondary }]}>
           {isMultiSelectMode
             ? `Select ${selectedUsers.length} users to create a group chat${selectedUsers.length >= 2 ? ' - then tap "Create Group" below' : ''}`
             : "Search existing chats by name/email, or tap 'Create Group' to start a group chat"
@@ -353,11 +358,11 @@ export default function NewChatScreen() {
       {isMultiSelectMode && (
         <View style={[
           styles.createGroupBar,
-          selectedUsers.length >= 2 && styles.createGroupBarReady
+          { backgroundColor: selectedUsers.length >= 2 ? colors.success : colors.primaryLight, borderBottomColor: selectedUsers.length >= 2 ? colors.success : colors.primary }
         ]}>
           <Text variant="bodyMedium" style={[
             styles.selectedCount,
-            selectedUsers.length >= 2 && styles.selectedCountReady
+            { color: selectedUsers.length >= 2 ? '#FFFFFF' : colors.primary, fontWeight: selectedUsers.length >= 2 ? 'bold' : 'normal' }
           ]}>
             {selectedUsers.length >= 2
               ? `✅ ${selectedUsers.length} selected - ready to create!`
@@ -368,10 +373,8 @@ export default function NewChatScreen() {
             mode="contained"
             onPress={handleCreateGroup}
             disabled={selectedUsers.length < 2}
-            style={[
-              styles.createButton,
-              selectedUsers.length < 2 && styles.disabledButton
-            ]}
+            buttonColor={selectedUsers.length >= 2 ? colors.primary : colors.border}
+            style={styles.createButton}
           >
             {selectedUsers.length >= 2 ? 'Create Group' : 'Select Users'}
           </Button>
@@ -384,12 +387,16 @@ export default function NewChatScreen() {
             ? "Email search mode - press Enter to search"
             : "Search users by name or email..."
         }
+        placeholderTextColor={colors.textSecondary}
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={[
           styles.searchBar,
-          isSearchingEmail && styles.emailSearchMode
+          { backgroundColor: colors.surface },
+          isSearchingEmail && { borderColor: colors.primary, borderWidth: 2 }
         ]}
+        iconColor={colors.primary}
+        inputStyle={{ color: colors.text }}
         onSubmitEditing={async () => {
           if (searchQuery.trim() && searchQuery.includes('@')) {
 
@@ -452,9 +459,9 @@ export default function NewChatScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text variant="bodyLarge" style={styles.emptyText}>
-              {searchQuery 
-                ? 'No users found. Try typing an email and pressing Enter.' 
+            <Text variant="bodyLarge" style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {searchQuery
+                ? 'No users found. Try typing an email and pressing Enter.'
                 : 'No existing chats. Search for a user by email to start a new chat.'}
             </Text>
           </View>

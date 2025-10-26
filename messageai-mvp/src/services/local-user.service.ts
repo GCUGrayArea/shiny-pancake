@@ -14,8 +14,8 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
     const sql = `
       INSERT OR REPLACE INTO users (
         uid, email, displayName, createdAt, lastSeen, isOnline, fcmToken,
-        autoTranslateEnabled, preferredLanguage, profilePictureUrl, culturalHintsEnabled, slangExplanationsEnabled, smartRepliesEnabled
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        autoTranslateEnabled, preferredLanguage, profilePictureUrl, culturalHintsEnabled, slangExplanationsEnabled, smartRepliesEnabled, themeMode
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -32,6 +32,7 @@ export async function saveUser(user: User): Promise<DbResult<void>> {
       user.culturalHintsEnabled ? 1 : 0,
       user.slangExplanationsEnabled ? 1 : 0,
       user.smartRepliesEnabled !== false ? 1 : 0, // Default to enabled
+      user.themeMode ?? 'auto', // Default to auto
     ];
 
     const result = await executeUpdate(sql, params);
@@ -267,5 +268,6 @@ function mapRowToUser(row: any): User {
     culturalHintsEnabled: row.culturalHintsEnabled === 1,
     slangExplanationsEnabled: row.slangExplanationsEnabled === 1,
     smartRepliesEnabled: row.smartRepliesEnabled !== 0, // Default to true
+    themeMode: (row.themeMode as 'light' | 'dark' | 'auto') ?? 'auto',
   };
 }

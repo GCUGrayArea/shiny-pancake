@@ -9,6 +9,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, Alert, Image, TouchableOpacity } from 'react-native';
 import { TextInput, IconButton, Text, ActivityIndicator } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Message, MessageType } from '@/types';
 import { IMAGE_CONSTANTS, MESSAGE_CONSTANTS, ERROR_CODES } from '@/constants';
 import { compressImage, uploadImage, validateImage } from '@/services/image.service';
@@ -53,6 +54,7 @@ export default function MessageInput({
   language = 'en',
   onTextInserted,
 }: MessageInputProps) {
+  const { colors } = useTheme();
   const [messageText, setMessageText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -390,7 +392,7 @@ export default function MessageInput({
     (!!formalityDetection || isDetectingFormality);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.surface, borderTopColor: colors.border }]}>
       {/* Formality Indicator */}
       <FormalityIndicator
         currentLevel={formalityDetection?.level}
@@ -413,7 +415,7 @@ export default function MessageInput({
 
       {/* Image preview */}
       {imagePreview && (
-        <View style={styles.imagePreviewContainer}>
+        <View style={[styles.imagePreviewContainer, { backgroundColor: colors.surfaceElevated }]}>
           <Image source={{ uri: imagePreview }} style={styles.imagePreview} />
           <TouchableOpacity
             style={styles.clearImageButton}
@@ -430,6 +432,7 @@ export default function MessageInput({
         <IconButton
           icon="image"
           size={24}
+          iconColor={colors.primary}
           onPress={() => {
             handleImagePick();
           }}
@@ -439,9 +442,10 @@ export default function MessageInput({
 
         {/* Text input */}
         <TextInput
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.inputBackground }]}
           mode="outlined"
           placeholder={selectedImage ? "Add a caption (optional)..." : placeholder}
+          placeholderTextColor={colors.textSecondary}
           value={messageText}
           onChangeText={handleTextChange}
           multiline
@@ -450,17 +454,21 @@ export default function MessageInput({
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
           numberOfLines={5}
+          textColor={colors.text}
+          outlineColor={colors.inputBorder}
+          activeOutlineColor={colors.primary}
         />
 
         {/* Send button */}
         <IconButton
           icon="send"
           size={24}
+          iconColor="#FFFFFF"
           onPress={handleSend}
           disabled={!canSend}
           style={[
             styles.sendButton,
-            !canSend && styles.sendButtonDisabled
+            { backgroundColor: canSend ? colors.primary : colors.border }
           ]}
         />
       </View>
@@ -469,7 +477,7 @@ export default function MessageInput({
       {selectedImage && messageText.length > 0 && (
         <Text style={[
           styles.characterCount,
-          messageText.length >= CAPTION_MAX_LENGTH && styles.characterCountWarning
+          { color: messageText.length >= CAPTION_MAX_LENGTH ? colors.error : colors.textSecondary }
         ]}>
           Caption: {messageText.length}/{CAPTION_MAX_LENGTH}
         </Text>
@@ -477,7 +485,7 @@ export default function MessageInput({
       {!selectedImage && messageText.length > MESSAGE_CONSTANTS.MAX_LENGTH * 0.8 && (
         <Text style={[
           styles.characterCount,
-          messageText.length >= MESSAGE_CONSTANTS.MAX_LENGTH && styles.characterCountWarning
+          { color: messageText.length >= MESSAGE_CONSTANTS.MAX_LENGTH ? colors.error : colors.textSecondary }
         ]}>
           {messageText.length}/{MESSAGE_CONSTANTS.MAX_LENGTH}
         </Text>

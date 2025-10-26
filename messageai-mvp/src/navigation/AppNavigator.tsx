@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { NavigationContainer, type NavigationContainerRef } from '@react-navigation/native';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { NavigationContainer, type NavigationContainerRef, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { setNotificationNavigationHandler } from '@/contexts/NotificationContext';
 import LoginScreen from '@/screens/LoginScreen';
 import SignUpScreen from '@/screens/SignUpScreen';
@@ -104,14 +105,29 @@ function MainStackNavigator() {
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { isDark, colors } = useTheme();
   const navigationRef = useRef<NavigationContainerRef<MainStackParamList>>(null);
+
+  // Create custom navigation theme based on current theme
+  const navigationTheme = useMemo(() => ({
+    dark: isDark,
+    colors: {
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.primary,
+    },
+    fonts: DefaultTheme.fonts, // Use default fonts
+  }), [isDark, colors]);
 
   // Set up notification navigation handler
   useEffect(() => {
     setNotificationNavigationHandler((chatId: string, data?: any) => {
       if (navigationRef.current?.isReady()) {
         // Pass notification data for better UX (sender name, etc.)
-        navigationRef.current.navigate('Conversation', { 
+        navigationRef.current.navigate('Conversation', {
           chatId,
           otherUserName: data?.senderName,
         });
@@ -124,7 +140,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef as any}>
+    <NavigationContainer ref={navigationRef as any} theme={navigationTheme}>
       {user ? <MainStackNavigator /> : <AuthStackNavigator />}
     </NavigationContainer>
   );

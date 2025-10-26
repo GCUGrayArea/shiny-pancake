@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MainStackParamList } from '@/navigation/AppNavigator';
 import { findOrCreateOneOnOneChat, getChatFromFirebase } from '@/services/firebase-chat.service';
 import { getMessagesFromFirebase, markMessageDelivered, markMessageRead, subscribeToMessages, subscribeToMessageUpdates } from '@/services/firebase-message.service';
@@ -44,6 +45,7 @@ export default function ConversationScreen() {
   const navigation = useNavigation<ConversationScreenNavigationProp>();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const { isOnline, triggerQueueProcessing } = useNetwork();
   
   const { chatId: initialChatId, otherUserId, otherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName } = route.params;
@@ -188,7 +190,7 @@ export default function ConversationScreen() {
               profilePictureUrl={profilePictureUrl}
               size="small"
             />
-            <Text style={styles.headerTitleText}>
+            <Text style={[styles.headerTitleText, { color: colors.text }]}>
               {displayName}
             </Text>
           </View>
@@ -197,6 +199,7 @@ export default function ConversationScreen() {
       headerRight: isGroup ? () => (
         <IconButton
           icon="information-outline"
+          iconColor={colors.primary}
           onPress={() => {
             if (chatId) {
               navigation.navigate('GroupInfo', {
@@ -208,7 +211,7 @@ export default function ConversationScreen() {
         />
       ) : undefined,
     });
-  }, [navigation, otherUserId, otherUserName, loadedOtherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName, chatId]);
+  }, [navigation, otherUserId, otherUserName, loadedOtherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName, chatId, colors]);
 
   // Load messages when chat ID is available
   useEffect(() => {
@@ -886,25 +889,25 @@ export default function ConversationScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { paddingBottom: insets.bottom }]}
+      style={[styles.container, { paddingBottom: insets.bottom, backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       keyboardVerticalOffset={100}
     >
-      <View style={styles.messagesContainer}>
+      <View style={[styles.messagesContainer, { backgroundColor: colors.background }]}>
         {creatingChat ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator animating size="large" />
-            <Text style={styles.loadingText}>Creating chat...</Text>
+            <ActivityIndicator animating size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Creating chat...</Text>
           </View>
         ) : loadingMessages ? (
           <View style={styles.centerContainer}>
-            <ActivityIndicator animating size="large" />
-            <Text style={styles.loadingText}>Loading messages...</Text>
+            <ActivityIndicator animating size="large" color={colors.primary} />
+            <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading messages...</Text>
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.centerContainer}>
-            <Text style={styles.emptyText}>
-              {chatId 
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+              {chatId
                 ? 'No messages yet. Start the conversation!'
                 : `Send a message to start chatting with ${otherUserName}`
               }
@@ -933,17 +936,17 @@ export default function ConversationScreen() {
             updateCellsBatchingPeriod={50}
             ListHeaderComponent={
               loadingOlderMessages ? (
-                <View style={styles.loadingOlderContainer}>
-                  <ActivityIndicator size="small" />
-                  <Text style={styles.loadingOlderText}>Loading older messages...</Text>
+                <View style={[styles.loadingOlderContainer, { backgroundColor: colors.surface }]}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.loadingOlderText, { color: colors.textSecondary }]}>Loading older messages...</Text>
                 </View>
               ) : hasMoreMessages ? (
-                <View style={styles.loadMoreContainer}>
-                  <Text style={styles.loadMoreText}>Scroll up to load older messages</Text>
+                <View style={[styles.loadMoreContainer, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.loadMoreText, { color: colors.textTertiary }]}>Scroll up to load older messages</Text>
                 </View>
               ) : messages.length > 50 ? (
-                <View style={styles.noMoreContainer}>
-                  <Text style={styles.noMoreText}>No older messages</Text>
+                <View style={[styles.noMoreContainer, { backgroundColor: colors.surface }]}>
+                  <Text style={[styles.noMoreText, { color: colors.textSecondary }]}>No older messages</Text>
                 </View>
               ) : null
             }

@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text, ActivityIndicator } from 'react-native-paper';
+import { useTheme } from '@/contexts/ThemeContext';
 import Avatar from './Avatar';
 import { User } from '@/types';
 
@@ -35,6 +36,8 @@ export default function UserListItem({
   loading = false,
   style,
 }: UserListItemProps) {
+  const { colors } = useTheme();
+
   const handlePress = () => {
     onPress?.(user);
   };
@@ -57,21 +60,21 @@ export default function UserListItem({
         />
 
         <View style={styles.content}>
-          <Text variant="bodyLarge" style={[styles.displayName, loading && styles.disabledText]}>
+          <Text variant="bodyLarge" style={[styles.displayName, { color: colors.text }, loading && styles.disabledText]}>
             {user.displayName}
           </Text>
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" />
-              <Text variant="bodyMedium" style={styles.loadingText}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text variant="bodyMedium" style={[styles.loadingText, { color: colors.textSecondary }]}>
                 Starting chat...
               </Text>
             </View>
           ) : (
             <>
               {subtitle && (
-                <Text variant="bodyMedium" style={styles.subtitle}>
+                <Text variant="bodyMedium" style={[styles.subtitle, { color: colors.textSecondary }]}>
                   {subtitle}
                 </Text>
               )}
@@ -81,7 +84,7 @@ export default function UserListItem({
                   variant="bodySmall"
                   style={[
                     styles.statusText,
-                    { color: user.isOnline ? '#4CAF50' : '#9E9E9E' },
+                    { color: user.isOnline ? colors.success : colors.textTertiary },
                   ]}
                 >
                   {user.isOnline ? 'Online' : 'Offline'}

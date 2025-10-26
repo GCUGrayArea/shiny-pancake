@@ -35,6 +35,8 @@ export interface User {
   slangExplanationsEnabled?: boolean;
   /** Enable smart reply suggestions (defaults to true) */
   smartRepliesEnabled?: boolean;
+  /** Theme mode preference: 'light', 'dark', or 'auto' (follows system) */
+  themeMode?: 'light' | 'dark' | 'auto';
 }
 
 /**

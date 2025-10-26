@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
 import { Text, Switch, ActivityIndicator, Divider, Menu, Button } from 'react-native-paper';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { updateUserInFirebase } from '@/services/firebase-user.service';
 import { updateUser } from '@/services/local-user.service';
 
@@ -32,6 +33,7 @@ const LANGUAGE_OPTIONS = [
 
 export default function AISettingsScreen() {
   const { user, refreshUser } = useAuth();
+  const { colors } = useTheme();
   const [autoTranslateEnabled, setAutoTranslateEnabled] = useState(false);
   const [preferredLanguage, setPreferredLanguage] = useState('en');
   const [languageHelpEnabled, setLanguageHelpEnabled] = useState(false);
@@ -142,29 +144,29 @@ export default function AISettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" />
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           Translation Settings
         </Text>
-        <Text variant="bodySmall" style={styles.sectionDescription}>
+        <Text variant="bodySmall" style={[styles.sectionDescription, { color: colors.textSecondary }]}>
           Automatically translate messages to your preferred language
         </Text>
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
-      <View style={styles.settingRow}>
+      <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge">Auto-translate Messages</Text>
-          <Text variant="bodySmall" style={styles.settingDescription}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>Auto-translate Messages</Text>
+          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
             Automatically translate incoming messages
           </Text>
         </View>
@@ -175,12 +177,12 @@ export default function AISettingsScreen() {
         />
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
-      <View style={styles.settingRow}>
+      <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge">Preferred Language</Text>
-          <Text variant="bodySmall" style={styles.settingDescription}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>Preferred Language</Text>
+          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
             Messages will be translated to this language
           </Text>
         </View>
@@ -194,10 +196,10 @@ export default function AISettingsScreen() {
             <Pressable
               onPress={() => setMenuVisible(true)}
               disabled={saving}
-              style={styles.languageButton}
+              style={[styles.languageButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
             >
-              <Text variant="bodyMedium">{getLanguageName(preferredLanguage)}</Text>
-              <Text variant="bodySmall" style={styles.chevron}>▼</Text>
+              <Text variant="bodyMedium" style={{ color: colors.text }}>{getLanguageName(preferredLanguage)}</Text>
+              <Text variant="bodySmall" style={[styles.chevron, { color: colors.textSecondary }]}>▼</Text>
             </Pressable>
           }
         >
@@ -218,23 +220,23 @@ export default function AISettingsScreen() {
         </Menu>
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           Language Help
         </Text>
-        <Text variant="bodySmall" style={styles.sectionDescription}>
+        <Text variant="bodySmall" style={[styles.sectionDescription, { color: colors.textSecondary }]}>
           Understand cultural references, slang, and informal language
         </Text>
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
-      <View style={styles.settingRow}>
+      <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge">Language Help</Text>
-          <Text variant="bodySmall" style={styles.settingDescription}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>Language Help</Text>
+          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
             Explain cultural references, slang, idioms, and informal expressions
           </Text>
         </View>
@@ -245,23 +247,23 @@ export default function AISettingsScreen() {
         />
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           Smart Replies
         </Text>
-        <Text variant="bodySmall" style={styles.sectionDescription}>
+        <Text variant="bodySmall" style={[styles.sectionDescription, { color: colors.textSecondary }]}>
           Get AI-powered reply suggestions that match your texting style
         </Text>
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
-      <View style={styles.settingRow}>
+      <View style={[styles.settingRow, { backgroundColor: colors.surface }]}>
         <View style={styles.settingInfo}>
-          <Text variant="bodyLarge">Smart Reply Suggestions</Text>
-          <Text variant="bodySmall" style={styles.settingDescription}>
+          <Text variant="bodyLarge" style={{ color: colors.text }}>Smart Reply Suggestions</Text>
+          <Text variant="bodySmall" style={[styles.settingDescription, { color: colors.textSecondary }]}>
             Show contextual reply suggestions above your keyboard
           </Text>
         </View>
@@ -272,22 +274,22 @@ export default function AISettingsScreen() {
         />
       </View>
 
-      <Divider />
+      <Divider style={{ backgroundColor: colors.border }} />
 
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           How it Works
         </Text>
-        <Text variant="bodySmall" style={styles.helpText}>
+        <Text variant="bodySmall" style={[styles.helpText, { color: colors.textSecondary }]}>
           When auto-translate is enabled, messages in other languages will be
           automatically translated to your preferred language. You can always
           view the original message by tapping "Show Original".
         </Text>
-        <Text variant="bodySmall" style={styles.helpText}>
+        <Text variant="bodySmall" style={[styles.helpText, { color: colors.textSecondary }]}>
           Translation is powered by AI and works best for common languages.
           The original message is always preserved.
         </Text>
-        <Text variant="bodySmall" style={styles.helpText}>
+        <Text variant="bodySmall" style={[styles.helpText, { color: colors.textSecondary }]}>
           When cultural hints are enabled, you can long-press any message and
           select "Analyze Cultural Context" to get explanations of holidays,
           idioms, customs, and other cultural references.
@@ -296,8 +298,8 @@ export default function AISettingsScreen() {
 
       {saving && (
         <View style={styles.savingIndicator}>
-          <ActivityIndicator size="small" />
-          <Text variant="bodySmall" style={styles.savingText}>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text variant="bodySmall" style={[styles.savingText, { color: colors.textSecondary }]}>
             Saving...
           </Text>
         </View>

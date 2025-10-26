@@ -339,6 +339,11 @@ async function runMigrations(): Promise<void> {
     await db.execAsync(`
       ALTER TABLE users ADD COLUMN smartRepliesEnabled INTEGER DEFAULT 1;
     `).catch(() => {});
+
+    // Add theme mode preference to users table
+    await db.execAsync(`
+      ALTER TABLE users ADD COLUMN themeMode TEXT DEFAULT 'auto';
+    `).catch(() => {});
   } catch (error) {
     // Migrations are best-effort for now
     console.warn('Migration warning:', error);

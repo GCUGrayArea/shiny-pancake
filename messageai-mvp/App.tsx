@@ -2,11 +2,27 @@ import React, { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import AppNavigator from '@/navigation/AppNavigator';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { NetworkProvider } from '@/contexts/NetworkContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { initializeClient } from '@/services/ai/ai-client';
 import Constants from 'expo-constants';
+
+/**
+ * Inner app component that has access to AuthContext
+ */
+function AppContent() {
+  const { user } = useAuth();
+
+  return (
+    <ThemeProvider userThemeMode={user?.themeMode}>
+      <NotificationProvider>
+        <AppNavigator />
+      </NotificationProvider>
+    </ThemeProvider>
+  );
+}
 
 export default function App() {
   console.log('🚀 App: Component rendering');
@@ -46,9 +62,7 @@ export default function App() {
       <PaperProvider>
         <NetworkProvider>
           <AuthProvider>
-            <NotificationProvider>
-              <AppNavigator />
-            </NotificationProvider>
+            <AppContent />
           </AuthProvider>
         </NetworkProvider>
       </PaperProvider>

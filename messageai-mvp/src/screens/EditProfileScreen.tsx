@@ -5,9 +5,10 @@
 
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Alert, Image, Pressable } from 'react-native';
-import { Text, TextInput, Button, ActivityIndicator } from 'react-native-paper';
+import { Text, TextInput, Button, ActivityIndicator, Menu, Divider } from 'react-native-paper';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { uploadProfilePicture, removeProfilePicture, updateUserInFirebase } from '@/services/firebase-user.service';
 import { updateUser } from '@/services/local-user.service';
 import { clearAllData } from '@/services/database.service';
@@ -17,6 +18,7 @@ import type { NavigationProp } from '@react-navigation/native';
 
 export default function EditProfileScreen() {
   const { user, refreshUser, signOut } = useAuth();
+  const { themeMode, setThemeMode, isDark, colors } = useTheme();
   const navigation = useNavigation<NavigationProp<any>>();
   const [displayName, setDisplayName] = useState(user?.displayName || '');
   const [selectedImageUri, setSelectedImageUri] = useState<string | null>(null);
@@ -24,6 +26,7 @@ export default function EditProfileScreen() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [themeMenuVisible, setThemeMenuVisible] = useState(false);
 
   /**
    * Request permission and pick image from library
@@ -186,6 +189,41 @@ export default function EditProfileScreen() {
   };
 
   /**
+   * Handle theme mode change
+   */
+  const handleThemeChange = async (mode: 'light' | 'dark' | 'auto') => {
+    if (!user) return;
+
+    try {
+      setSaving(true);
+      setThemeMode(mode);
+      setThemeMenuVisible(false);
+
+      // Save to Firebase and local database
+      await updateUserInFirebase(user.uid, { themeMode: mode });
+      await updateUser(user.uid, { themeMode: mode });
+      await refreshUser();
+    } catch (error) {
+      console.error('Failed to save theme preference:', error);
+      Alert.alert('Error', 'Failed to save theme preference. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Get theme mode display name
+   */
+  const getThemeModeName = (mode: string): string => {
+    switch (mode) {
+      case 'light': return 'Light';
+      case 'dark': return 'Dark';
+      case 'auto': return 'Auto (System)';
+      default: return mode;
+    }
+  };
+
+  /**
    * Handle logout with confirmation
    */
   const handleLogout = () => {
@@ -221,8 +259,8 @@ export default function EditProfileScreen() {
 
   if (!user) {
     return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" />
+      <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
   }
@@ -230,14 +268,14 @@ export default function EditProfileScreen() {
   const currentPhotoUrl = selectedImageUri || user.profilePictureUrl;
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text variant="headlineSmall" style={styles.title}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.content}>
+      <Text variant="headlineSmall" style={[styles.title, { color: colors.text }]}>
         Edit Profile
       </Text>
 
       {/* Profile Picture Section */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           Profile Picture
         </Text>
 
@@ -245,7 +283,7 @@ export default function EditProfileScreen() {
           {currentPhotoUrl ? (
             <Image
               source={{ uri: currentPhotoUrl }}
-              style={styles.previewImage}
+              style={[styles.previewImage, { backgroundColor: colors.surface }]}
             />
           ) : (
             <Avatar
@@ -262,6 +300,7 @@ export default function EditProfileScreen() {
             onPress={pickImage}
             disabled={uploading || saving}
             style={styles.button}
+            textColor={colors.primary}
           >
             {selectedImageUri ? 'Change Photo' : 'Upload Photo'}
           </Button>
@@ -271,7 +310,7 @@ export default function EditProfileScreen() {
               mode="text"
               onPress={handleRemovePhoto}
               disabled={uploading || saving}
-              textColor="#d32f2f"
+              textColor={colors.error}
               style={styles.button}
             >
               Remove Photo
@@ -285,6 +324,8 @@ export default function EditProfileScreen() {
                 onPress={handleUploadPhoto}
                 disabled={uploading || saving}
                 style={styles.button}
+                buttonColor={colors.primary}
+                textColor="#FFFFFF"
               >
                 {uploading ? 'Uploading...' : 'Save Photo'}
               </Button>
@@ -293,6 +334,7 @@ export default function EditProfileScreen() {
                 onPress={() => setSelectedImageUri(null)}
                 disabled={uploading || saving}
                 style={styles.button}
+                textColor={colors.textSecondary}
               >
                 Cancel
               </Button>
@@ -302,17 +344,17 @@ export default function EditProfileScreen() {
 
         {uploading && uploadProgress > 0 && (
           <View style={styles.progressContainer}>
-            <Text variant="bodySmall" style={styles.progressText}>
+            <Text variant="bodySmall" style={[styles.progressText, { color: colors.textSecondary }]}>
               Uploading: {Math.round(uploadProgress * 100)}%
             </Text>
-            <ActivityIndicator size="small" />
+            <ActivityIndicator size="small" color={colors.primary} />
           </View>
         )}
       </View>
 
       {/* Display Name Section */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           Display Name
         </Text>
 
@@ -321,9 +363,13 @@ export default function EditProfileScreen() {
           value={displayName}
           onChangeText={setDisplayName}
           placeholder="Enter your display name"
+          placeholderTextColor={colors.textSecondary}
           disabled={uploading || saving}
-          style={styles.input}
+          style={[styles.input, { backgroundColor: colors.surface }]}
           maxLength={50}
+          textColor={colors.text}
+          outlineColor={colors.border}
+          activeOutlineColor={colors.primary}
         />
 
         <Button
@@ -331,6 +377,8 @@ export default function EditProfileScreen() {
           onPress={handleSaveDisplayName}
           disabled={uploading || saving || displayName.trim() === user.displayName}
           style={styles.button}
+          buttonColor={colors.primary}
+          textColor="#FFFFFF"
         >
           {saving ? 'Saving...' : 'Save Display Name'}
         </Button>
@@ -338,25 +386,76 @@ export default function EditProfileScreen() {
 
       {/* Account Info Section (Read-only) */}
       <View style={styles.section}>
-        <Text variant="titleMedium" style={styles.sectionTitle}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
           Account Information
         </Text>
 
         <View style={styles.infoRow}>
-          <Text variant="bodySmall" style={styles.infoLabel}>
+          <Text variant="bodySmall" style={[styles.infoLabel, { color: colors.textSecondary }]}>
             Email:
           </Text>
-          <Text variant="bodyMedium">{user.email}</Text>
+          <Text variant="bodyMedium" style={{ color: colors.text }}>{user.email}</Text>
         </View>
 
         <View style={styles.infoRow}>
-          <Text variant="bodySmall" style={styles.infoLabel}>
+          <Text variant="bodySmall" style={[styles.infoLabel, { color: colors.textSecondary }]}>
             User ID:
           </Text>
-          <Text variant="bodySmall" style={styles.infoValue}>
+          <Text variant="bodySmall" style={[styles.infoValue, { color: colors.textSecondary }]}>
             {user.uid}
           </Text>
         </View>
+      </View>
+
+      {/* Theme Section */}
+      <View style={styles.section}>
+        <Text variant="titleMedium" style={[styles.sectionTitle, { color: colors.text }]}>
+          Appearance
+        </Text>
+
+        <Text variant="bodySmall" style={[styles.infoLabel, { color: colors.textSecondary }]}>
+          Theme
+        </Text>
+
+        <Menu
+          visible={themeMenuVisible}
+          onDismiss={() => setThemeMenuVisible(false)}
+          anchor={
+            <Pressable
+              onPress={() => setThemeMenuVisible(true)}
+              disabled={uploading || saving}
+              style={[styles.themeButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            >
+              <View>
+                <Text variant="bodyLarge" style={{ color: colors.text }}>{getThemeModeName(themeMode)}</Text>
+                <Text variant="bodySmall" style={[styles.themeSubtext, { color: colors.textSecondary }]}>
+                  {isDark ? 'Dark mode is active' : 'Light mode is active'}
+                </Text>
+              </View>
+              <Text variant="bodySmall" style={[styles.chevron, { color: colors.textSecondary }]}>▼</Text>
+            </Pressable>
+          }
+        >
+          <Menu.Item
+            onPress={() => handleThemeChange('light')}
+            title="Light"
+            titleStyle={themeMode === 'light' ? styles.selectedTheme : undefined}
+          />
+          <Menu.Item
+            onPress={() => handleThemeChange('dark')}
+            title="Dark"
+            titleStyle={themeMode === 'dark' ? styles.selectedTheme : undefined}
+          />
+          <Menu.Item
+            onPress={() => handleThemeChange('auto')}
+            title="Auto (System)"
+            titleStyle={themeMode === 'auto' ? styles.selectedTheme : undefined}
+          />
+        </Menu>
+
+        <Text variant="bodySmall" style={[styles.themeDescription, { color: colors.textSecondary }]}>
+          Choose how MessageAI appears. Auto mode follows your device's system settings.
+        </Text>
       </View>
 
       {/* Logout Section */}
@@ -365,8 +464,8 @@ export default function EditProfileScreen() {
           mode="outlined"
           onPress={handleLogout}
           disabled={uploading || saving || loggingOut}
-          textColor="#d32f2f"
-          style={[styles.button, styles.logoutButton]}
+          textColor={colors.error}
+          style={[styles.button, { borderColor: colors.error, borderWidth: 1 }]}
         >
           {loggingOut ? 'Logging Out...' : 'Log Out'}
         </Button>
@@ -436,5 +535,33 @@ const styles = StyleSheet.create({
   logoutButton: {
     borderColor: '#d32f2f',
     borderWidth: 1,
+  },
+  themeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginTop: 8,
+  },
+  themeSubtext: {
+    color: '#666',
+    marginTop: 4,
+  },
+  chevron: {
+    color: '#666',
+    marginLeft: 8,
+  },
+  themeDescription: {
+    color: '#666',
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  selectedTheme: {
+    fontWeight: 'bold',
+    color: '#6200ee',
   },
 });
