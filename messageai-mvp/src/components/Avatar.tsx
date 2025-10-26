@@ -1,18 +1,25 @@
 /**
- * Avatar component for displaying user initials with presence status
+ * Avatar component for displaying user profile pictures or initials with presence status
  * Based on PRD requirements for user avatar display
  */
 
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text } from 'react-native-paper';
-import { getInitials, getAvatarColor, AVATAR_SIZES, type AvatarSize } from '@/utils/avatar.utils';
+import React, { useState } from "react";
+import { View, StyleSheet, Image } from "react-native";
+import { Text } from "react-native-paper";
+import {
+  getInitials,
+  getAvatarColor,
+  AVATAR_SIZES,
+  type AvatarSize,
+} from "@/utils/avatar.utils";
 
 export interface AvatarProps {
   /** User display name to generate initials from */
   displayName: string;
   /** User ID for consistent color generation */
   userId: string;
+  /** Optional profile picture URL */
+  profilePictureUrl?: string;
   /** Size variant */
   size?: AvatarSize;
   /** Whether to show online status indicator */
@@ -29,43 +36,107 @@ export interface AvatarProps {
 export default function Avatar({
   displayName,
   userId,
-  size = 'medium',
+  profilePictureUrl,
+  size = "medium",
   showOnlineStatus = false,
   isOnline = false,
   style,
 }: AvatarProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(!!profilePictureUrl);
+
   const initials = getInitials(displayName);
   const backgroundColor = getAvatarColor(userId);
   const avatarSize = AVATAR_SIZES[size];
-  const dotSize = size === 'small' ? 8 : size === 'medium' ? 10 : 12;
+  const dotSize = size === "small" ? 8 : size === "medium" ? 10 : 12;
+
+  // Show profile picture if available and not errored
+  const showImage = profilePictureUrl && !imageError;
 
   return (
-    <View style={[styles.container, { width: avatarSize, height: avatarSize }, style]}>
+    <View
+      style={[
+        styles.container,
+        { width: avatarSize, height: avatarSize },
+        style,
+      ]}
+    >
       <View
         style={[
           styles.avatar,
           {
             width: avatarSize,
             height: avatarSize,
-            backgroundColor,
+            backgroundColor:
+              showImage && !imageLoading ? "transparent" : backgroundColor,
             borderRadius: avatarSize / 2,
           },
         ]}
       >
-        <Text
-          style={[
-            styles.initials,
-            {
-              fontSize: avatarSize * 0.4,
-              lineHeight: avatarSize * 0.4,
-            },
-          ]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.5}
-        >
-          {initials}
-        </Text>
+        {showImage ? (
+          <>
+            {/* Show initials placeholder while loading */}
+            {imageLoading && (
+              <View
+                style={[
+                  StyleSheet.absoluteFill,
+                  { alignItems: "center", justifyContent: "center" },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.initials,
+                    {
+                      fontSize: avatarSize * 0.4,
+                      lineHeight: avatarSize * 0.4,
+                    },
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}
+                >
+                  {initials}
+                </Text>
+              </View>
+            )}
+            <Image
+              source={{ uri: profilePictureUrl }}
+              style={[
+                styles.image,
+                {
+                  width: avatarSize,
+                  height: avatarSize,
+                  borderRadius: avatarSize / 2,
+                  opacity: imageLoading ? 0 : 1,
+                },
+              ]}
+              // Performance optimizations
+              resizeMode="cover"
+              progressiveRenderingEnabled={true}
+              // React Native Image caches by default
+              onLoadEnd={() => setImageLoading(false)}
+              onError={() => {
+                setImageError(true);
+                setImageLoading(false);
+              }}
+            />
+          </>
+        ) : (
+          <Text
+            style={[
+              styles.initials,
+              {
+                fontSize: avatarSize * 0.4,
+                lineHeight: avatarSize * 0.4,
+              },
+            ]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.5}
+          >
+            {initials}
+          </Text>
+        )}
       </View>
 
       {showOnlineStatus && (
@@ -76,10 +147,10 @@ export default function Avatar({
               width: dotSize,
               height: dotSize,
               borderRadius: dotSize / 2,
-              backgroundColor: isOnline ? '#4CAF50' : '#9E9E9E',
+              backgroundColor: isOnline ? "#4CAF50" : "#9E9E9E",
               borderWidth: 2,
-              borderColor: '#FFFFFF',
-              position: 'absolute',
+              borderColor: "#FFFFFF",
+              position: "absolute",
               bottom: 0,
               right: 0,
             },
@@ -92,16 +163,20 @@ export default function Avatar({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
+    position: "relative",
   },
   avatar: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  image: {
+    resizeMode: "cover",
   },
   initials: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    textAlign: 'center',
+    color: "#FFFFFF",
+    fontWeight: "bold",
+    textAlign: "center",
   },
   statusDot: {
     // Position and styling handled dynamically

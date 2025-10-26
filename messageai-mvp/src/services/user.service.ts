@@ -1,11 +1,15 @@
-import { getFirebaseDatabase } from './firebase';
-import { ref, set, get, update, onValue, off } from 'firebase/database';
-import { User } from '@/types';
+import { getFirebaseDatabase } from "./firebase";
+import { ref, set, get, update, onValue, off } from "firebase/database";
+import { User } from "@/types";
 
-export async function createUserProfile(uid: string, email: string, displayName: string): Promise<void> {
+export async function createUserProfile(
+  uid: string,
+  email: string,
+  displayName: string,
+): Promise<void> {
   const db = getFirebaseDatabase();
   const userRef = ref(db, `users/${uid}`);
-  
+
   // Check if profile already exists
   const snapshot = await get(userRef);
 
@@ -13,7 +17,7 @@ export async function createUserProfile(uid: string, email: string, displayName:
     return; // Profile already exists, don't overwrite
   }
 
-  // Create new profile
+  // Create new profile with defaults
   const now = Date.now();
   await set(userRef, {
     uid,
@@ -22,6 +26,10 @@ export async function createUserProfile(uid: string, email: string, displayName:
     createdAt: now,
     lastSeen: now,
     isOnline: false,
+    fcmToken: null,
+    pushToken: null,
+    autoTranslateEnabled: false,
+    preferredLanguage: "en",
   });
 }
 
@@ -31,19 +39,22 @@ export async function getUserProfile(uid: string): Promise<User | null> {
   return snap.exists() ? (snap.val() as User) : null;
 }
 
-export async function updateUserProfile(uid: string, updates: Partial<User>): Promise<void> {
+export async function updateUserProfile(
+  uid: string,
+  updates: Partial<User>,
+): Promise<void> {
   const db = getFirebaseDatabase();
   await update(ref(db, `users/${uid}`), updates as Record<string, any>);
 }
 
-export function subscribeToUser(uid: string, callback: (user: User | null) => void): () => void {
+export function subscribeToUser(
+  uid: string,
+  callback: (user: User | null) => void,
+): () => void {
   const db = getFirebaseDatabase();
   const userRef = ref(db, `users/${uid}`);
   const handler = onValue(userRef, (snap) => {
     callback(snap.exists() ? (snap.val() as User) : null);
   });
-  return () => off(userRef, 'value', handler);
+  return () => off(userRef, "value", handler);
 }
-
-
-

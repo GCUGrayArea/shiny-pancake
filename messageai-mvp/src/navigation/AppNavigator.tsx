@@ -1,7 +1,8 @@
-import React, { useRef, useEffect } from 'react';
-import { NavigationContainer, type NavigationContainerRef } from '@react-navigation/native';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { NavigationContainer, type NavigationContainerRef, DefaultTheme, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { setNotificationNavigationHandler } from '@/contexts/NotificationContext';
 import LoginScreen from '@/screens/LoginScreen';
 import SignUpScreen from '@/screens/SignUpScreen';
@@ -10,6 +11,8 @@ import NewChatScreen from '@/screens/NewChatScreen';
 import ConversationScreen from '@/screens/ConversationScreen';
 import CreateGroupScreen from '@/screens/CreateGroupScreen';
 import GroupInfoScreen from '@/screens/GroupInfoScreen';
+import AISettingsScreen from '@/screens/AISettingsScreen';
+import EditProfileScreen from '@/screens/EditProfileScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 
 export type AuthStackParamList = {
@@ -34,6 +37,7 @@ export type MainStackParamList = {
     otherUserId?: string; // For 1:1 chats
     otherUserName?: string; // For 1:1 chats
     otherUserEmail?: string; // For 1:1 chats
+    profilePictureUrl?: string; // For 1:1 chats - other user's profile picture
     isGroup?: boolean; // For group chats
     groupName?: string; // For group chats
   };
@@ -41,6 +45,8 @@ export type MainStackParamList = {
     chatId: string;
     chatName: string;
   };
+  AISettings: undefined;
+  EditProfile: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -83,20 +89,45 @@ function MainStackNavigator() {
         component={GroupInfoScreen}
         options={{ title: 'Group Info' }}
       />
+      <MainStack.Screen
+        name="AISettings"
+        component={AISettingsScreen}
+        options={{ title: 'AI Settings' }}
+      />
+      <MainStack.Screen
+        name="EditProfile"
+        component={EditProfileScreen}
+        options={{ title: 'Edit Profile' }}
+      />
     </MainStack.Navigator>
   );
 }
 
 export default function AppNavigator() {
   const { user, loading } = useAuth();
+  const { isDark, colors } = useTheme();
   const navigationRef = useRef<NavigationContainerRef<MainStackParamList>>(null);
+
+  // Create custom navigation theme based on current theme
+  const navigationTheme = useMemo(() => ({
+    dark: isDark,
+    colors: {
+      primary: colors.primary,
+      background: colors.background,
+      card: colors.surface,
+      text: colors.text,
+      border: colors.border,
+      notification: colors.primary,
+    },
+    fonts: DefaultTheme.fonts, // Use default fonts
+  }), [isDark, colors]);
 
   // Set up notification navigation handler
   useEffect(() => {
     setNotificationNavigationHandler((chatId: string, data?: any) => {
       if (navigationRef.current?.isReady()) {
         // Pass notification data for better UX (sender name, etc.)
-        navigationRef.current.navigate('Conversation', { 
+        navigationRef.current.navigate('Conversation', {
           chatId,
           otherUserName: data?.senderName,
         });
@@ -109,7 +140,7 @@ export default function AppNavigator() {
   }
 
   return (
-    <NavigationContainer ref={navigationRef as any}>
+    <NavigationContainer ref={navigationRef as any} theme={navigationTheme}>
       {user ? <MainStackNavigator /> : <AuthStackNavigator />}
     </NavigationContainer>
   );

@@ -21,7 +21,22 @@ export interface User {
   isOnline: boolean;
   /** Firebase Cloud Messaging token for push notifications */
   fcmToken?: string;
-  // Future: profilePictureUrl?: string;
+  /** Expo push token for notifications (Expo Go compatibility) */
+  pushToken?: string;
+  /** Auto-translate messages to preferred language */
+  autoTranslateEnabled?: boolean;
+  /** User's preferred language for translations (ISO 639-1 code) */
+  preferredLanguage?: string;
+  /** URL to user's profile picture in Firebase Storage */
+  profilePictureUrl?: string;
+  /** Show cultural context hints for messages */
+  culturalHintsEnabled?: boolean;
+  /** Show slang and idiom explanations for messages */
+  slangExplanationsEnabled?: boolean;
+  /** Enable smart reply suggestions (defaults to true) */
+  smartRepliesEnabled?: boolean;
+  /** Theme mode preference: 'light', 'dark', or 'auto' (follows system) */
+  themeMode?: 'light' | 'dark' | 'auto';
 }
 
 /**
@@ -58,6 +73,14 @@ export interface Message {
   deliveredTo?: string[];
   /** Array of user UIDs who have read the message (for group chats) */
   readBy?: string[];
+  /** Optional caption for image messages (max 500 chars) */
+  caption?: string;
+  /** Detected language of the message content (ISO 639-1 code) */
+  detectedLanguage?: string;
+  /** Translated text if auto-translation was applied */
+  translatedText?: string;
+  /** Target language for translation (ISO 639-1 code) */
+  translationTargetLang?: string;
   /** Additional metadata for the message */
   metadata?: {
     /** Image width in pixels */
@@ -86,6 +109,8 @@ export interface LastMessage {
   timestamp: number;
   /** Type of last message */
   type: MessageType;
+  /** Optional caption for image messages */
+  caption?: string;
 }
 
 /**

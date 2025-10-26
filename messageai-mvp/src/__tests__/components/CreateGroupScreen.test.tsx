@@ -71,6 +71,7 @@ describe('CreateGroupScreen', () => {
       signUp: jest.fn(),
       signIn: jest.fn(),
       signOut: jest.fn(),
+      refreshUser: jest.fn(),
     });
   });
 

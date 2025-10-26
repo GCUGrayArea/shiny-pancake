@@ -5,7 +5,15 @@
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid",
-        ".validate": "newData.hasChildren(['uid', 'email', 'displayName', 'createdAt', 'lastSeen', 'isOnline'])"
+        ".validate": "newData.hasChildren(['uid', 'email', 'displayName', 'createdAt', 'lastSeen', 'isOnline'])",
+        "pushToken": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString()"
+        },
+        "fcmToken": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.isString()"
+        }
       }
     },
     "chats": {
@@ -19,6 +27,13 @@
         ".validate": "newData.hasChildren(['id', 'type', 'participantIds', 'createdAt'])",
         "participantIds": {
           ".validate": "newData.hasChildren()"
+        },
+        "unreadCount": {
+          "$uid": {
+            ".read": "auth != null && auth.uid == $uid",
+            ".write": "auth != null",
+            ".validate": "newData.isNumber()"
+          }
         }
       }
     },
@@ -26,16 +41,22 @@
       "$chatId": {
         ".read": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
         ".write": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
-        ".indexOn": ["timestamp"],
-        "$messageId": {
-          ".validate": "newData.hasChildren(['id', 'chatId', 'senderId', 'type', 'content', 'timestamp', 'status'])"
-        }
+        ".indexOn": ["timestamp"]
       }
     },
     "presence": {
       "$uid": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+    "typing": {
+      "$chatId": {
+        ".read": "auth != null && root.child('chats').child($chatId).child('participantIds').child(auth.uid).val() == true",
+        "$uid": {
+          ".write": "auth != null && auth.uid == $uid",
+          ".validate": "newData.hasChildren(['isTyping', 'timestamp'])"
+        }
       }
     }
   }

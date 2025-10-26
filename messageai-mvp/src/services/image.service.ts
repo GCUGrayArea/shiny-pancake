@@ -4,12 +4,17 @@
  * Max 75 lines per function
  */
 
-import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
-import { ref, uploadBytesResumable, getDownloadURL, getMetadata } from 'firebase/storage';
-import { getFirebaseStorage } from './firebase';
-import { IMAGE_CONSTANTS, ERROR_CODES } from '@/constants';
-import { ImageUploadResult } from '@/types';
+import * as ImagePicker from "expo-image-picker";
+import * as ImageManipulator from "expo-image-manipulator";
+import {
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+  getMetadata,
+} from "firebase/storage";
+import { getFirebaseStorage } from "./firebase";
+import { IMAGE_CONSTANTS, ERROR_CODES } from "@/constants";
+import { ImageUploadResult } from "@/types";
 
 const storage = getFirebaseStorage();
 
@@ -21,15 +26,14 @@ const storage = getFirebaseStorage();
  */
 export async function compressImage(
   uri: string,
-  maxSize: number = IMAGE_CONSTANTS.MAX_SIZE
+  maxSize: number = IMAGE_CONSTANTS.MAX_SIZE,
 ): Promise<{ uri: string; width: number; height: number; size: number }> {
   try {
-
     // Get original image info
     const originalInfo = await ImageManipulator.manipulateAsync(
       uri,
       [], // No operations
-      { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
+      { compress: 1, format: ImageManipulator.SaveFormat.JPEG },
     );
 
     let compressedUri = uri;
@@ -44,14 +48,13 @@ export async function compressImage(
       currentSize = 0;
     }
 
-
     // If already under limit, return as-is
     if (currentSize <= maxSize) {
       return {
         uri: compressedUri,
         width: originalInfo.width,
         height: originalInfo.height,
-        size: currentSize
+        size: currentSize,
       };
     }
 
@@ -59,15 +62,10 @@ export async function compressImage(
     let quality = IMAGE_CONSTANTS.COMPRESSION_QUALITY;
 
     while (currentSize > maxSize && quality > 0.1) {
-
-      const compressed = await ImageManipulator.manipulateAsync(
-        uri,
-        [],
-        {
-          compress: quality,
-          format: ImageManipulator.SaveFormat.JPEG
-        }
-      );
+      const compressed = await ImageManipulator.manipulateAsync(uri, [], {
+        compress: quality,
+        format: ImageManipulator.SaveFormat.JPEG,
+      });
 
       compressedUri = compressed.uri;
 
@@ -90,7 +88,6 @@ export async function compressImage(
 
     // If still too large, resize dimensions
     if (currentSize > maxSize) {
-
       const resizeFactor = Math.sqrt(maxSize / currentSize);
       const newWidth = Math.floor(originalInfo.width * resizeFactor);
       const newHeight = Math.floor(originalInfo.height * resizeFactor);
@@ -100,8 +97,8 @@ export async function compressImage(
         [{ resize: { width: newWidth, height: newHeight } }],
         {
           compress: quality,
-          format: ImageManipulator.SaveFormat.JPEG
-        }
+          format: ImageManipulator.SaveFormat.JPEG,
+        },
       );
 
       compressedUri = resized.uri;
@@ -114,14 +111,13 @@ export async function compressImage(
       } catch (sizeError) {
         currentSize = maxSize + 1;
       }
-
     }
 
     return {
       uri: compressedUri,
       width: originalInfo.width,
       height: originalInfo.height,
-      size: currentSize
+      size: currentSize,
     };
   } catch (error) {
     throw new Error(ERROR_CODES.IMAGE_UPLOAD_FAILED);
@@ -138,17 +134,16 @@ export async function compressImage(
 export async function uploadImage(
   uri: string,
   path: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
 ): Promise<ImageUploadResult> {
   try {
-
     // Ensure user is authenticated before uploading
-    const { getAuth } = await import('firebase/auth');
+    const { getAuth } = await import("firebase/auth");
     const auth = getAuth();
     const user = auth.currentUser;
 
     if (!user) {
-      throw new Error('User must be authenticated to upload images');
+      throw new Error("User must be authenticated to upload images");
     }
 
     // Fetch the image file
@@ -162,15 +157,16 @@ export async function uploadImage(
     const uploadTask = uploadBytesResumable(storageRef, blob);
 
     return new Promise((resolve, reject) => {
-
       uploadTask.on(
-        'state_changed',
+        "state_changed",
         (snapshot) => {
           const progress = snapshot.bytesTransferred / snapshot.totalBytes;
           onProgress?.(progress);
         },
         (error) => {
-          reject(new Error(`${ERROR_CODES.IMAGE_UPLOAD_FAILED}: ${error.message}`));
+          reject(
+            new Error(`${ERROR_CODES.IMAGE_UPLOAD_FAILED}: ${error.message}`),
+          );
         },
         async () => {
           try {
@@ -182,14 +178,18 @@ export async function uploadImage(
 
             resolve({
               url: downloadURL,
-              width: parseInt(metadata.customMetadata?.width || '0'),
-              height: parseInt(metadata.customMetadata?.height || '0'),
-              size: parseInt(metadata.size?.toString() || '0')
+              width: parseInt(metadata.customMetadata?.width || "0"),
+              height: parseInt(metadata.customMetadata?.height || "0"),
+              size: parseInt(metadata.size?.toString() || "0"),
             });
           } catch (urlError) {
-            reject(new Error(`${ERROR_CODES.IMAGE_UPLOAD_FAILED}: Failed to get download URL`));
+            reject(
+              new Error(
+                `${ERROR_CODES.IMAGE_UPLOAD_FAILED}: Failed to get download URL`,
+              ),
+            );
           }
-        }
+        },
       );
     });
   } catch (error) {
@@ -204,7 +204,6 @@ export async function uploadImage(
  */
 export async function downloadImage(url: string): Promise<string> {
   try {
-
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -214,7 +213,6 @@ export async function downloadImage(url: string): Promise<string> {
 
     // Create a local URI for the blob
     const localUri = URL.createObjectURL(blob);
-
 
     return localUri;
   } catch (error) {
@@ -230,16 +228,14 @@ export async function downloadImage(url: string): Promise<string> {
  */
 export async function generateThumbnail(
   uri: string,
-  maxDimension: number = 200
+  maxDimension: number = 200,
 ): Promise<string> {
   try {
-
     // Get original dimensions
-    const originalInfo = await ImageManipulator.manipulateAsync(
-      uri,
-      [],
-      { compress: 1, format: ImageManipulator.SaveFormat.JPEG }
-    );
+    const originalInfo = await ImageManipulator.manipulateAsync(uri, [], {
+      compress: 1,
+      format: ImageManipulator.SaveFormat.JPEG,
+    });
 
     // Calculate thumbnail dimensions (maintain aspect ratio)
     const aspectRatio = originalInfo.width / originalInfo.height;
@@ -260,16 +256,15 @@ export async function generateThumbnail(
         {
           resize: {
             width: Math.floor(thumbnailWidth),
-            height: Math.floor(thumbnailHeight)
-          }
-        }
+            height: Math.floor(thumbnailHeight),
+          },
+        },
       ],
       {
         compress: 0.7, // Higher compression for thumbnail
-        format: ImageManipulator.SaveFormat.JPEG
-      }
+        format: ImageManipulator.SaveFormat.JPEG,
+      },
     );
-
 
     return thumbnail.uri;
   } catch (error) {
@@ -285,15 +280,20 @@ export async function generateThumbnail(
 export async function validateImage(file: any): Promise<boolean> {
   try {
     // For URI validation, we need to check the file
-    if (typeof file === 'string') {
+    if (typeof file === "string") {
       const response = await fetch(file);
-      const contentType = response.headers.get('content-type');
+      const contentType = response.headers.get("content-type");
 
-      if (!contentType || !(IMAGE_CONSTANTS.SUPPORTED_FORMATS as readonly string[]).includes(contentType)) {
+      if (
+        !contentType ||
+        !(IMAGE_CONSTANTS.SUPPORTED_FORMATS as readonly string[]).includes(
+          contentType,
+        )
+      ) {
         return false;
       }
 
-      const contentLength = response.headers.get('content-length');
+      const contentLength = response.headers.get("content-length");
       if (contentLength && parseInt(contentLength) > IMAGE_CONSTANTS.MAX_SIZE) {
         return false;
       }
@@ -304,8 +304,10 @@ export async function validateImage(file: any): Promise<boolean> {
     // For File objects (from ImagePicker)
     if (file.type) {
       // Accept generic "image" type from ImagePicker, or check specific MIME types
-      const isGenericImage = file.type === 'image';
-      const isSpecificFormat = (IMAGE_CONSTANTS.SUPPORTED_FORMATS as readonly string[]).includes(file.type);
+      const isGenericImage = file.type === "image";
+      const isSpecificFormat = (
+        IMAGE_CONSTANTS.SUPPORTED_FORMATS as readonly string[]
+      ).includes(file.type);
 
       if (!isGenericImage && !isSpecificFormat) {
         return false;

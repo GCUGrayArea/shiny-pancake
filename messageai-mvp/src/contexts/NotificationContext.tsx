@@ -1,6 +1,7 @@
 /**
  * Notification Context
  * Manages notification lifecycle, handlers, and deep linking
+ * Supports background and killed state notifications via FCM
  */
 
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
@@ -9,12 +10,17 @@ import * as Notifications from 'expo-notifications';
 import type { Subscription } from 'expo-notifications';
 import * as NotificationService from '../services/notification.service';
 import type { NotificationData } from '../services/notification.service';
+import * as UnreadService from '../services/unread.service';
+import { useAuth } from './AuthContext';
 
 interface NotificationContextValue {
   hasPermission: boolean;
   requestPermission: () => Promise<boolean>;
   currentChatId: string | null;
   setCurrentChatId: (chatId: string | null) => void;
+  totalUnreadCount: number;
+  getChatUnreadCount: (chatId: string) => number;
+  onNotificationReceived: (callback: () => void) => () => void;
 }
 
 const NotificationContext = createContext<NotificationContextValue | undefined>(undefined);
@@ -32,31 +38,45 @@ interface NotificationProviderProps {
 }
 
 export function NotificationProvider({ children, enabled = true }: NotificationProviderProps) {
+  const { user } = useAuth();
   const [hasPermission, setHasPermission] = useState(false);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  
+  const [totalUnreadCount, setTotalUnreadCount] = useState(0);
+  const [chatUnreadCounts, setChatUnreadCounts] = useState<Map<string, number>>(new Map());
+
   const notificationListener = useRef<Subscription>();
   const responseListener = useRef<Subscription>();
+  const lastNotificationResponse = useRef<Notifications.NotificationResponse | null>(null);
+  const notificationCallbacks = useRef<Set<() => void>>(new Set());
 
   /**
    * Request notification permissions
    */
-  const requestPermission = async (): Promise<boolean> => {
+  const requestPermission = React.useCallback(async (): Promise<boolean> => {
     const granted = await NotificationService.requestNotificationPermissions();
     setHasPermission(granted);
     return granted;
-  };
+  }, []);
 
   /**
    * Handle notification received while app is in foreground
    */
   const handleNotificationReceived = (notification: Notifications.Notification) => {
     const data = notification.request.content.data as NotificationData;
-    
+
     // Don't show notification if user is already viewing this chat
     if (data.chatId && data.chatId === currentChatId) {
       return;
     }
+
+    // Notify all subscribers that a foreground notification was received
+    notificationCallbacks.current.forEach(callback => {
+      try {
+        callback();
+      } catch (error) {
+        console.error('Error in notification callback:', error);
+      }
+    });
   };
 
   /**
@@ -80,14 +100,42 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
   /**
    * Handle app state changes
    * Clear notifications when app comes to foreground
+   * Update badge count based on actual unread messages
    */
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
     if (nextAppState === 'active') {
       // Clear all notifications when app becomes active
       NotificationService.clearAllNotifications();
-      NotificationService.setBadgeCount(0);
+
+      // Update badge with actual unread count (don't just clear it)
+      if (user?.uid) {
+        UnreadService.getTotalUnreadCount(user.uid).then((count) => {
+          NotificationService.setBadgeCount(count);
+        });
+      }
     }
   };
+
+  /**
+   * Register push token with Firebase
+   */
+  const registerPushToken = async (userId: string) => {
+    try {
+      const token = await NotificationService.getPushToken();
+      if (token) {
+        await NotificationService.savePushTokenToProfile(userId, token);
+      }
+    } catch (error) {
+      console.error('Error registering push token:', error);
+    }
+  };
+
+  /**
+   * Get unread count for a specific chat
+   */
+  const getChatUnreadCount = React.useCallback((chatId: string): number => {
+    return chatUnreadCounts.get(chatId) || 0;
+  }, [chatUnreadCounts]);
 
   /**
    * Initialize notification system
@@ -111,6 +159,18 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
         await requestPermission();
       }
 
+      // Register push token if user is logged in
+      if (user?.uid && status === 'granted') {
+        await registerPushToken(user.uid);
+      }
+
+      // Check for notification that opened the app (killed state)
+      const response = await Notifications.getLastNotificationResponseAsync();
+      if (response && response !== lastNotificationResponse.current) {
+        lastNotificationResponse.current = response;
+        handleNotificationResponse(response);
+      }
+
       // Setup listeners
       notificationListener.current = Notifications.addNotificationReceivedListener(
         handleNotificationReceived
@@ -125,8 +185,12 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
 
       // Clear any existing notifications on startup
       await NotificationService.clearAllNotifications();
-      await NotificationService.setBadgeCount(0);
 
+      // Set badge to actual unread count
+      if (user?.uid) {
+        const totalUnread = await UnreadService.getTotalUnreadCount(user.uid);
+        await NotificationService.setBadgeCount(totalUnread);
+      }
 
       return () => {
         appStateSubscription.remove();
@@ -137,22 +201,71 @@ export function NotificationProvider({ children, enabled = true }: NotificationP
 
     return () => {
       cleanup.then((cleanupFn) => cleanupFn?.());
-      
+
       if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+        try {
+          Notifications.removeNotificationSubscription?.(notificationListener.current);
+        } catch (error) {
+          console.log('Notification cleanup error (can be ignored):', error);
+        }
       }
       if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+        try {
+          Notifications.removeNotificationSubscription?.(responseListener.current);
+        } catch (error) {
+          console.log('Notification cleanup error (can be ignored):', error);
+        }
       }
     };
-  }, [enabled]);
+  }, [enabled, user?.uid]);
 
-  const value: NotificationContextValue = {
+  /**
+   * Subscribe to unread count changes
+   */
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    // Subscribe to total unread count
+    const unsubscribeTotalCount = UnreadService.subscribeToTotalUnreadCount(
+      user.uid,
+      (count) => {
+        setTotalUnreadCount(count);
+        NotificationService.setBadgeCount(count);
+      }
+    );
+
+    // Load initial chat unread counts
+    UnreadService.getAllChatUnreadCounts(user.uid).then((counts) => {
+      setChatUnreadCounts(counts);
+    });
+
+    return () => {
+      unsubscribeTotalCount();
+    };
+  }, [user?.uid]);
+
+  /**
+   * Subscribe to foreground notification events
+   * Returns unsubscribe function
+   */
+  const onNotificationReceived = React.useCallback((callback: () => void): (() => void) => {
+    notificationCallbacks.current.add(callback);
+
+    // Return unsubscribe function
+    return () => {
+      notificationCallbacks.current.delete(callback);
+    };
+  }, []);
+
+  const value: NotificationContextValue = React.useMemo(() => ({
     hasPermission,
     requestPermission,
     currentChatId,
     setCurrentChatId,
-  };
+    totalUnreadCount,
+    getChatUnreadCount,
+    onNotificationReceived,
+  }), [hasPermission, requestPermission, currentChatId, setCurrentChatId, totalUnreadCount, getChatUnreadCount, onNotificationReceived]);
 
   return (
     <NotificationContext.Provider value={value}>

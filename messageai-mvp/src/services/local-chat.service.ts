@@ -3,14 +3,14 @@
  * Handles CRUD operations for chats and participants in SQLite
  */
 
-import { Chat, LastMessage } from '../types';
+import { Chat, LastMessage } from "../types";
 import {
   executeQuery,
   executeQueryFirst,
   executeUpdate,
   executeTransaction,
   DbResult,
-} from './database.service';
+} from "./database.service";
 
 /**
  * Save a chat to local database
@@ -19,16 +19,17 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
   try {
     const queries = [];
 
-    // Insert or update chat
-    const chatSql = `
-      INSERT OR REPLACE INTO chats (
-        id, type, name, createdAt, lastMessageContent,
-        lastMessageSenderId, lastMessageTimestamp, lastMessageType
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    // Use INSERT OR IGNORE + UPDATE pattern (standard SQLite upsert)
+    // This avoids DELETE + INSERT which would trigger CASCADE DELETE
 
+    // First, try to insert (will be ignored if chat exists)
     queries.push({
-      sql: chatSql,
+      sql: `
+        INSERT OR IGNORE INTO chats (
+          id, type, name, createdAt, lastMessageContent,
+          lastMessageSenderId, lastMessageTimestamp, lastMessageType, lastMessageCaption
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
       params: [
         chat.id,
         chat.type,
@@ -38,12 +39,87 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
         chat.lastMessage?.senderId ?? null,
         chat.lastMessage?.timestamp ?? null,
         chat.lastMessage?.type ?? null,
+        chat.lastMessage?.caption ?? null,
+      ],
+    });
+
+    // Then update (will only affect existing rows)
+    // IMPORTANT: Only update lastMessage if the new chat has a newer timestamp
+    queries.push({
+      sql: `
+        UPDATE chats
+        SET type = ?,
+            name = ?,
+            createdAt = ?,
+            lastMessageContent = CASE
+              WHEN ? IS NULL THEN lastMessageContent
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageContent
+            END,
+            lastMessageSenderId = CASE
+              WHEN ? IS NULL THEN lastMessageSenderId
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageSenderId
+            END,
+            lastMessageTimestamp = CASE
+              WHEN ? IS NULL THEN lastMessageTimestamp
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageTimestamp
+            END,
+            lastMessageType = CASE
+              WHEN ? IS NULL THEN lastMessageType
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageType
+            END,
+            lastMessageCaption = CASE
+              WHEN ? IS NULL THEN lastMessageCaption
+              WHEN lastMessageTimestamp IS NULL THEN ?
+              WHEN ? > lastMessageTimestamp THEN ?
+              ELSE lastMessageCaption
+            END
+        WHERE id = ?
+      `,
+      params: [
+        chat.type,
+        chat.name ?? null,
+        chat.createdAt,
+        // lastMessageContent CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.content ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.content ?? null,
+        // lastMessageSenderId CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.senderId ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.senderId ?? null,
+        // lastMessageTimestamp CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        // lastMessageType CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.type ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.type ?? null,
+        // lastMessageCaption CASE params
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.caption ?? null,
+        chat.lastMessage?.timestamp ?? null,
+        chat.lastMessage?.caption ?? null,
+        // WHERE clause
+        chat.id,
       ],
     });
 
     // Delete existing participants
     queries.push({
-      sql: 'DELETE FROM chat_participants WHERE chatId = ?',
+      sql: "DELETE FROM chat_participants WHERE chatId = ?",
       params: [chat.id],
     });
 
@@ -82,7 +158,7 @@ export async function saveChat(chat: Chat): Promise<DbResult<void>> {
  */
 export async function getChat(chatId: string): Promise<DbResult<Chat | null>> {
   try {
-    const chatSql = 'SELECT * FROM chats WHERE id = ?';
+    const chatSql = "SELECT * FROM chats WHERE id = ?";
     const chatResult = await executeQueryFirst<any>(chatSql, [chatId]);
 
     if (!chatResult.success) {
@@ -93,8 +169,11 @@ export async function getChat(chatId: string): Promise<DbResult<Chat | null>> {
       return { success: true, data: null };
     }
 
-    const participantsSql = 'SELECT userId, unreadCount FROM chat_participants WHERE chatId = ?';
-    const participantsResult = await executeQuery<any>(participantsSql, [chatId]);
+    const participantsSql =
+      "SELECT userId, unreadCount FROM chat_participants WHERE chatId = ?";
+    const participantsResult = await executeQuery<any>(participantsSql, [
+      chatId,
+    ]);
 
     if (!participantsResult.success) {
       return { success: false, error: participantsResult.error };
@@ -135,8 +214,11 @@ export async function getAllChats(userId?: string): Promise<DbResult<Chat[]>> {
     const chats: Chat[] = [];
 
     for (const row of chatsResult.data ?? []) {
-      const participantsSql = 'SELECT userId, unreadCount FROM chat_participants WHERE chatId = ?';
-      const participantsResult = await executeQuery<any>(participantsSql, [row.id]);
+      const participantsSql =
+        "SELECT userId, unreadCount FROM chat_participants WHERE chatId = ?";
+      const participantsResult = await executeQuery<any>(participantsSql, [
+        row.id,
+      ]);
 
       if (!participantsResult.success) {
         continue;
@@ -159,16 +241,19 @@ export async function getAllChats(userId?: string): Promise<DbResult<Chat[]>> {
  */
 export async function updateChatLastMessage(
   chatId: string,
-  message: LastMessage
+  message: LastMessage,
 ): Promise<DbResult<void>> {
   try {
+    // Only update if this message is newer than current lastMessage (or no lastMessage exists)
     const sql = `
       UPDATE chats
       SET lastMessageContent = ?,
           lastMessageSenderId = ?,
           lastMessageTimestamp = ?,
-          lastMessageType = ?
+          lastMessageType = ?,
+          lastMessageCaption = ?
       WHERE id = ?
+        AND (lastMessageTimestamp IS NULL OR lastMessageTimestamp <= ?)
     `;
 
     const params = [
@@ -176,7 +261,9 @@ export async function updateChatLastMessage(
       message.senderId,
       message.timestamp,
       message.type,
+      message.caption ?? null,
       chatId,
+      message.timestamp, // Compare timestamp to prevent overwriting newer messages
     ];
 
     const result = await executeUpdate(sql, params);
@@ -199,7 +286,7 @@ export async function updateChatLastMessage(
  */
 export async function deleteChat(chatId: string): Promise<DbResult<void>> {
   try {
-    const sql = 'DELETE FROM chats WHERE id = ?';
+    const sql = "DELETE FROM chats WHERE id = ?";
     const result = await executeUpdate(sql, [chatId]);
 
     if (!result.success) {
@@ -220,7 +307,7 @@ export async function deleteChat(chatId: string): Promise<DbResult<void>> {
  */
 export async function addParticipant(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<DbResult<void>> {
   try {
     const sql = `
@@ -248,10 +335,10 @@ export async function addParticipant(
  */
 export async function removeParticipant(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<DbResult<void>> {
   try {
-    const sql = 'DELETE FROM chat_participants WHERE chatId = ? AND userId = ?';
+    const sql = "DELETE FROM chat_participants WHERE chatId = ? AND userId = ?";
     const result = await executeUpdate(sql, [chatId, userId]);
 
     if (!result.success) {
@@ -272,7 +359,7 @@ export async function removeParticipant(
  */
 export async function getUnreadCount(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<DbResult<number>> {
   try {
     const sql = `
@@ -281,7 +368,10 @@ export async function getUnreadCount(
       WHERE chatId = ? AND userId = ?
     `;
 
-    const result = await executeQueryFirst<{ unreadCount: number }>(sql, [chatId, userId]);
+    const result = await executeQueryFirst<{ unreadCount: number }>(sql, [
+      chatId,
+      userId,
+    ]);
 
     if (!result.success) {
       return { success: false, error: result.error };
@@ -302,7 +392,7 @@ export async function getUnreadCount(
 export async function updateUnreadCount(
   chatId: string,
   userId: string,
-  count: number
+  count: number,
 ): Promise<DbResult<void>> {
   try {
     const sql = `
@@ -331,7 +421,7 @@ export async function updateUnreadCount(
  */
 export async function resetUnreadCount(
   chatId: string,
-  userId: string
+  userId: string,
 ): Promise<DbResult<void>> {
   return updateUnreadCount(chatId, userId, 0);
 }
@@ -365,6 +455,9 @@ function mapRowToChat(chatRow: any, participantRows: any[]): Chat {
       senderId: chatRow.lastMessageSenderId,
       timestamp: chatRow.lastMessageTimestamp,
       type: chatRow.lastMessageType,
+      ...(chatRow.lastMessageCaption && {
+        caption: chatRow.lastMessageCaption,
+      }),
     };
   }
 

@@ -4,15 +4,15 @@
  * Max 75 lines per function as per PRD requirements
  */
 
-import { Message } from '../types';
-import { DbResult } from './database.service';
+import { Message } from "../types";
+import { DbResult } from "./database.service";
 import {
   saveMessage,
   getPendingMessages,
   updateMessageStatus,
   getMessageByLocalId,
-} from './local-message.service';
-import { sendMessageToFirebase } from './firebase-message.service';
+} from "./local-message.service";
+import { sendMessageToFirebase } from "./firebase-message.service";
 
 /**
  * Retry configuration for failed messages
@@ -41,12 +41,14 @@ const BASE_DELAY = 1000;
 /**
  * Enqueue a message for sending
  */
-export async function enqueueMessage(message: Message): Promise<DbResult<void>> {
+export async function enqueueMessage(
+  message: Message,
+): Promise<DbResult<void>> {
   try {
     // Save message with 'sending' status
     const messageWithStatus: Message = {
       ...message,
-      status: 'sending',
+      status: "sending",
     };
 
     const result = await saveMessage(messageWithStatus);
@@ -91,17 +93,19 @@ export async function dequeueMessages(): Promise<DbResult<Message[]>> {
 /**
  * Process the message queue
  */
-export async function processQueue(): Promise<DbResult<{
-  sent: number;
-  failed: number;
-}>> {
+export async function processQueue(): Promise<
+  DbResult<{
+    sent: number;
+    failed: number;
+  }>
+> {
   try {
     const pendingResult = await getPendingMessages();
 
     if (!pendingResult.success || !pendingResult.data) {
       return {
         success: false,
-        error: pendingResult.error ?? 'No pending messages',
+        error: pendingResult.error ?? "No pending messages",
       };
     }
 
@@ -125,7 +129,7 @@ export async function processQueue(): Promise<DbResult<{
         const updatedMessage: Message = {
           ...message,
           id: sendResult.data,
-          status: 'sent',
+          status: "sent",
         };
         await saveMessage(updatedMessage);
 
@@ -154,7 +158,9 @@ export async function processQueue(): Promise<DbResult<{
 export async function retryFailedMessages(): Promise<DbResult<void>> {
   try {
     const result = await processQueue();
-    return result.success ? { success: true } : { success: false, error: result.error };
+    return result.success
+      ? { success: true }
+      : { success: false, error: result.error };
   } catch (error) {
     return {
       success: false,
@@ -166,18 +172,20 @@ export async function retryFailedMessages(): Promise<DbResult<void>> {
 /**
  * Mark message as sending (internal)
  */
-export async function markMessageSending(localId: string): Promise<DbResult<void>> {
+export async function markMessageSending(
+  localId: string,
+): Promise<DbResult<void>> {
   try {
     const messageResult = await getMessageByLocalId(localId);
 
     if (!messageResult.success || !messageResult.data) {
       return {
         success: false,
-        error: messageResult.error ?? 'Message not found',
+        error: messageResult.error ?? "Message not found",
       };
     }
 
-    const result = await updateMessageStatus(messageResult.data.id, 'sending');
+    const result = await updateMessageStatus(messageResult.data.id, "sending");
     return result;
   } catch (error) {
     return {
@@ -192,7 +200,7 @@ export async function markMessageSending(localId: string): Promise<DbResult<void
  */
 export async function markMessageSent(
   localId: string,
-  serverId: string
+  serverId: string,
 ): Promise<DbResult<void>> {
   try {
     const messageResult = await getMessageByLocalId(localId);
@@ -200,7 +208,7 @@ export async function markMessageSent(
     if (!messageResult.success || !messageResult.data) {
       return {
         success: false,
-        error: messageResult.error ?? 'Message not found',
+        error: messageResult.error ?? "Message not found",
       };
     }
 
@@ -208,7 +216,7 @@ export async function markMessageSent(
     const updatedMessage: Message = {
       ...messageResult.data,
       id: serverId,
-      status: 'sent',
+      status: "sent",
     };
 
     const result = await saveMessage(updatedMessage);
@@ -231,7 +239,7 @@ export async function markMessageSent(
  */
 export async function markMessageFailed(
   localId: string,
-  error: string
+  error: string,
 ): Promise<DbResult<void>> {
   try {
     await handleMessageFailure(localId);

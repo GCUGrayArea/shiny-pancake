@@ -1,5 +1,5 @@
 {
-  "name": "messageai-mvp",
+  "name": "messageai-gray",
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
@@ -21,7 +21,7 @@
     "@react-native-community/netinfo": "^11.4.1",
     "@react-navigation/native": "^7.1.18",
     "@react-navigation/native-stack": "^7.3.28",
-    "expo": "^54.0.19",
+    "expo": "54.0.20",
     "expo-device": "^8.0.9",
     "expo-image-manipulator": "^14.0.7",
     "expo-image-picker": "^17.0.8",
@@ -30,6 +30,8 @@
     "expo-sqlite": "^16.0.8",
     "expo-status-bar": "~3.0.8",
     "firebase": "^12.4.0",
+    "openai": "^6.6.0",
+    "openai-swarm": "^1.0.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.65.0",
@@ -46,12 +48,17 @@
     "@testing-library/jest-native": "^5.4.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",
+    "@types/node": "^24.9.1",
     "@types/react": "~19.1.0",
+    "@types/uuid": "^10.0.0",
     "babel-plugin-module-resolver": "^5.0.2",
     "babel-preset-expo": "^54.0.4",
+    "dotenv": "^17.2.3",
+    "firebase-admin": "^13.5.0",
     "jest": "~29.7.0",
     "jest-expo": "~54.0.13",
     "ts-jest": "^29.4.5",
+    "ts-node": "^10.9.2",
     "typescript": "~5.9.2"
   },
   "private": true

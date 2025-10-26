@@ -3,8 +3,8 @@
  * Handles database initialization, schema creation, and migrations
  */
 
-import * as SQLite from 'expo-sqlite';
-import { DATABASE_CONSTANTS } from '../constants';
+import * as SQLite from "expo-sqlite";
+import { DATABASE_CONSTANTS } from "../constants";
 
 const { DB_NAME, DB_VERSION } = DATABASE_CONSTANTS;
 
@@ -33,7 +33,7 @@ export async function initDatabase(): Promise<DbResult<void>> {
     db = await SQLite.openDatabaseAsync(DB_NAME);
 
     // Enable foreign key constraints
-    await db.execAsync('PRAGMA foreign_keys = ON;');
+    await db.execAsync("PRAGMA foreign_keys = ON;");
 
     // Create schema
     await createSchema();
@@ -61,7 +61,7 @@ export function getDatabase(): SQLite.SQLiteDatabase {
   }
 
   if (!db) {
-    throw new Error('Database not initialized. Call initDatabase() first.');
+    throw new Error("Database not initialized. Call initDatabase() first.");
   }
   return db;
 }
@@ -70,7 +70,9 @@ export function getDatabase(): SQLite.SQLiteDatabase {
  * Set test database override (for integration tests)
  * @param testDb - Database instance to use for testing
  */
-export function setTestDatabaseOverride(testDb: SQLite.SQLiteDatabase | null): void {
+export function setTestDatabaseOverride(
+  testDb: SQLite.SQLiteDatabase | null,
+): void {
   testDbOverride = testDb;
 }
 
@@ -85,7 +87,7 @@ export function clearTestDatabaseOverride(): void {
  * Create database schema
  */
 async function createSchema(): Promise<void> {
-  if (!db) throw new Error('Database not initialized');
+  if (!db) throw new Error("Database not initialized");
 
   await db.execAsync(`
     -- Users table
@@ -108,7 +110,8 @@ async function createSchema(): Promise<void> {
       lastMessageContent TEXT,
       lastMessageSenderId TEXT,
       lastMessageTimestamp INTEGER,
-      lastMessageType TEXT CHECK(lastMessageType IN ('text', 'image'))
+      lastMessageType TEXT CHECK(lastMessageType IN ('text', 'image')),
+      lastMessageCaption TEXT
     );
 
     -- Chat participants table
@@ -131,10 +134,11 @@ async function createSchema(): Promise<void> {
       content TEXT NOT NULL,
       timestamp INTEGER NOT NULL,
       status TEXT NOT NULL CHECK(status IN ('sending', 'sent', 'delivered', 'read')),
+      caption TEXT,
       imageWidth INTEGER,
       imageHeight INTEGER,
       imageSize INTEGER,
-      FOREIGN KEY (chatId) REFERENCES chats(id) ON DELETE CASCADE,
+      FOREIGN KEY (chatId) REFERENCES chats(id),
       FOREIGN KEY (senderId) REFERENCES users(uid)
     );
 
@@ -149,6 +153,40 @@ async function createSchema(): Promise<void> {
       FOREIGN KEY (userId) REFERENCES users(uid) ON DELETE CASCADE
     );
 
+    -- Cultural context hints table
+    CREATE TABLE IF NOT EXISTS cultural_hints (
+      id TEXT PRIMARY KEY,
+      messageId TEXT NOT NULL,
+      phrase TEXT NOT NULL,
+      explanation TEXT NOT NULL,
+      culturalBackground TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('holiday', 'idiom', 'custom', 'historical', 'norm')),
+      startIndex INTEGER NOT NULL,
+      endIndex INTEGER NOT NULL,
+      seen INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL,
+      FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
+    -- Slang and idiom items table
+    CREATE TABLE IF NOT EXISTS slang_items (
+      id TEXT PRIMARY KEY,
+      messageId TEXT NOT NULL,
+      phrase TEXT NOT NULL,
+      literal TEXT NOT NULL,
+      actual TEXT NOT NULL,
+      usage TEXT NOT NULL,
+      formality TEXT NOT NULL,
+      category TEXT NOT NULL CHECK(category IN ('slang', 'idiom', 'colloquialism', 'internet-slang')),
+      regions TEXT,
+      language TEXT NOT NULL,
+      startIndex INTEGER NOT NULL,
+      endIndex INTEGER NOT NULL,
+      known INTEGER DEFAULT 0,
+      timestamp INTEGER NOT NULL,
+      FOREIGN KEY (messageId) REFERENCES messages(id) ON DELETE CASCADE
+    );
+
     -- Create indexes for performance
     CREATE INDEX IF NOT EXISTS idx_messages_chatId_timestamp
       ON messages(chatId, timestamp DESC);
@@ -161,6 +199,52 @@ async function createSchema(): Promise<void> {
 
     CREATE INDEX IF NOT EXISTS idx_chat_participants_userId
       ON chat_participants(userId);
+
+    CREATE INDEX IF NOT EXISTS idx_cultural_hints_messageId
+      ON cultural_hints(messageId);
+
+    CREATE INDEX IF NOT EXISTS idx_slang_items_messageId
+      ON slang_items(messageId);
+
+    CREATE INDEX IF NOT EXISTS idx_slang_items_phrase
+      ON slang_items(phrase COLLATE NOCASE);
+
+    -- Index for message status queries (e.g., pending messages)
+    CREATE INDEX IF NOT EXISTS idx_messages_status_timestamp
+      ON messages(status, timestamp ASC);
+
+    -- Index for delivery tracking lookups
+    CREATE INDEX IF NOT EXISTS idx_message_delivery_messageId
+      ON message_delivery(messageId);
+
+    -- User style profiles table for smart replies
+    CREATE TABLE IF NOT EXISTS user_style_profiles (
+      id TEXT PRIMARY KEY,
+      userId TEXT NOT NULL,
+      chatId TEXT NOT NULL,
+      commonPhrases TEXT,
+      averageMessageLength REAL DEFAULT 0,
+      formalityPreference TEXT DEFAULT 'neutral',
+      emojiFrequency REAL DEFAULT 0,
+      emojiFavorites TEXT,
+      primaryLanguage TEXT DEFAULT 'en',
+      secondaryLanguages TEXT,
+      switchingPatterns TEXT,
+      conversationStyle TEXT DEFAULT 'balanced',
+      usesPeriods INTEGER DEFAULT 0,
+      usesExclamation INTEGER DEFAULT 0,
+      usesQuestions INTEGER DEFAULT 0,
+      greetingStyle TEXT,
+      closingStyle TEXT,
+      lastUpdated INTEGER NOT NULL,
+      messageCount INTEGER DEFAULT 0,
+      UNIQUE(userId, chatId),
+      FOREIGN KEY (userId) REFERENCES users(uid) ON DELETE CASCADE,
+      FOREIGN KEY (chatId) REFERENCES chats(id) ON DELETE CASCADE
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_user_style_profiles_userId_chatId
+      ON user_style_profiles(userId, chatId);
   `);
 }
 
@@ -168,7 +252,7 @@ async function createSchema(): Promise<void> {
  * Initialize version tracking for migrations
  */
 async function initVersioning(): Promise<void> {
-  if (!db) throw new Error('Database not initialized');
+  if (!db) throw new Error("Database not initialized");
 
   await db.execAsync(`
     CREATE TABLE IF NOT EXISTS database_version (
@@ -179,15 +263,140 @@ async function initVersioning(): Promise<void> {
   `);
 
   const result = await db.getFirstAsync<{ version: number }>(
-    'SELECT version FROM database_version WHERE id = 1'
+    "SELECT version FROM database_version WHERE id = 1",
   );
 
   if (!result) {
     // First time setup
     await db.runAsync(
-      'INSERT INTO database_version (id, version, updated_at) VALUES (?, ?, ?)',
-      [1, DB_VERSION, Date.now()]
+      "INSERT INTO database_version (id, version, updated_at) VALUES (?, ?, ?)",
+      [1, DB_VERSION, Date.now()],
     );
+  }
+
+  // Run schema migrations
+  await runMigrations();
+}
+
+/**
+ * Run database migrations
+ * Simple migration system: tries to add columns if they don't exist
+ */
+async function runMigrations(): Promise<void> {
+  if (!db) throw new Error("Database not initialized");
+
+  try {
+    // Add caption column to messages table if it doesn't exist
+    await db
+      .execAsync(
+        `
+      ALTER TABLE messages ADD COLUMN caption TEXT;
+    `,
+      )
+      .catch(() => {
+        // Column already exists, ignore error
+      });
+
+    // Add caption column to chats table if it doesn't exist
+    await db
+      .execAsync(
+        `
+      ALTER TABLE chats ADD COLUMN lastMessageCaption TEXT;
+    `,
+      )
+      .catch(() => {
+        // Column already exists, ignore error
+      });
+
+    // Add translation fields to messages table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE messages ADD COLUMN detectedLanguage TEXT;
+    `,
+      )
+      .catch(() => {});
+
+    await db
+      .execAsync(
+        `
+      ALTER TABLE messages ADD COLUMN translatedText TEXT;
+    `,
+      )
+      .catch(() => {});
+
+    await db
+      .execAsync(
+        `
+      ALTER TABLE messages ADD COLUMN translationTargetLang TEXT;
+    `,
+      )
+      .catch(() => {});
+
+    // Add translation preferences to users table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN autoTranslateEnabled INTEGER DEFAULT 0;
+    `,
+      )
+      .catch(() => {});
+
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN preferredLanguage TEXT DEFAULT 'en';
+    `,
+      )
+      .catch(() => {});
+
+    // Add profile picture URL to users table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN profilePictureUrl TEXT;
+    `,
+      )
+      .catch(() => {});
+
+    // Add cultural hints preference to users table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN culturalHintsEnabled INTEGER DEFAULT 0;
+    `,
+      )
+      .catch(() => {});
+
+    // Add slang explanations preference to users table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN slangExplanationsEnabled INTEGER DEFAULT 0;
+    `,
+      )
+      .catch(() => {});
+
+    // Add smart replies preference to users table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN smartRepliesEnabled INTEGER DEFAULT 1;
+    `,
+      )
+      .catch(() => {});
+
+    // Add theme mode preference to users table
+    await db
+      .execAsync(
+        `
+      ALTER TABLE users ADD COLUMN themeMode TEXT DEFAULT 'auto';
+    `,
+      )
+      .catch(() => {});
+  } catch (error) {
+    // Migrations are best-effort for now
+    console.warn("Migration warning:", error);
   }
 }
 
@@ -196,7 +405,7 @@ async function initVersioning(): Promise<void> {
  */
 export async function executeQuery<T = any>(
   sql: string,
-  params: any[] = []
+  params: any[] = [],
 ): Promise<DbResult<T[]>> {
   try {
     const database = getDatabase();
@@ -215,7 +424,7 @@ export async function executeQuery<T = any>(
  */
 export async function executeQueryFirst<T = any>(
   sql: string,
-  params: any[] = []
+  params: any[] = [],
 ): Promise<DbResult<T | null>> {
   try {
     const database = getDatabase();
@@ -234,7 +443,7 @@ export async function executeQueryFirst<T = any>(
  */
 export async function executeUpdate(
   sql: string,
-  params: any[] = []
+  params: any[] = [],
 ): Promise<DbResult<SQLite.SQLiteRunResult>> {
   try {
     const database = getDatabase();
@@ -258,11 +467,11 @@ let transactionQueue: Promise<any> = Promise.resolve();
  * Uses a queue to ensure transactions don't overlap
  */
 export async function executeTransaction(
-  queries: Array<{ sql: string; params?: any[] }>
+  queries: Array<{ sql: string; params?: any[] }>,
 ): Promise<DbResult<void>> {
   // Chain this transaction after the previous one
   const previousTransaction = transactionQueue;
-  
+
   let resolveTransaction: (value?: any) => void;
   transactionQueue = new Promise((resolve) => {
     resolveTransaction = resolve;
@@ -271,7 +480,7 @@ export async function executeTransaction(
   try {
     // Wait for previous transaction to complete
     await previousTransaction;
-    
+
     const database = getDatabase();
 
     await database.withTransactionAsync(async () => {
@@ -317,13 +526,39 @@ export async function getDatabaseVersion(): Promise<DbResult<number>> {
   try {
     const database = getDatabase();
     const result = await database.getFirstAsync<{ version: number }>(
-      'SELECT version FROM database_version WHERE id = 1'
+      "SELECT version FROM database_version WHERE id = 1",
     );
     return { success: true, data: result?.version ?? 0 };
   } catch (error) {
     return {
       success: false,
       error: `Failed to get database version: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
+}
+
+/**
+ * Clear all data from the database (for debugging/testing)
+ * WARNING: This will delete all local data!
+ */
+export async function clearAllData(): Promise<DbResult<void>> {
+  try {
+    const db = await getDatabase();
+
+    await db.execAsync(`
+      DELETE FROM message_status;
+      DELETE FROM chat_participants;
+      DELETE FROM messages;
+      DELETE FROM chats;
+      DELETE FROM users;
+    `);
+
+    console.log("✓ All local database data cleared");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: `Failed to clear data: ${error instanceof Error ? error.message : String(error)}`,
     };
   }
 }

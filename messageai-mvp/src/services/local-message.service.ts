@@ -3,14 +3,14 @@
  * Handles CRUD operations for messages and delivery tracking in SQLite
  */
 
-import { Message, DeliveryStatus } from '../types';
+import { Message, DeliveryStatus } from "../types";
 import {
   executeQuery,
   executeQueryFirst,
   executeUpdate,
   executeTransaction,
   DbResult,
-} from './database.service';
+} from "./database.service";
 
 /**
  * Message delivery status for a user
@@ -32,8 +32,9 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
     const messageSql = `
       INSERT OR REPLACE INTO messages (
         id, localId, chatId, senderId, type, content,
-        timestamp, status, imageWidth, imageHeight, imageSize
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        timestamp, status, caption, imageWidth, imageHeight, imageSize,
+        detectedLanguage, translatedText, translationTargetLang
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     queries.push({
@@ -47,9 +48,13 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
         message.content,
         message.timestamp,
         message.status,
+        message.caption ?? null,
         message.metadata?.imageWidth ?? null,
         message.metadata?.imageHeight ?? null,
         message.metadata?.imageSize ?? null,
+        message.detectedLanguage ?? null,
+        message.translatedText ?? null,
+        message.translationTargetLang ?? null,
       ],
     });
 
@@ -57,7 +62,7 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
     if (message.id && (message.deliveredTo || message.readBy)) {
       // Delete existing delivery records
       queries.push({
-        sql: 'DELETE FROM message_delivery WHERE messageId = ?',
+        sql: "DELETE FROM message_delivery WHERE messageId = ?",
         params: [message.id],
       });
 
@@ -88,6 +93,16 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
       return { success: false, error: result.error };
     }
 
+    // Update the chat's last message
+    const { updateChatLastMessage } = await import("./local-chat.service");
+    await updateChatLastMessage(message.chatId, {
+      content: message.content,
+      senderId: message.senderId,
+      timestamp: message.timestamp,
+      type: message.type,
+      caption: message.caption,
+    });
+
     return { success: true };
   } catch (error) {
     return {
@@ -100,9 +115,11 @@ export async function saveMessage(message: Message): Promise<DbResult<void>> {
 /**
  * Get a message by ID
  */
-export async function getMessage(messageId: string): Promise<DbResult<Message | null>> {
+export async function getMessage(
+  messageId: string,
+): Promise<DbResult<Message | null>> {
   try {
-    const sql = 'SELECT * FROM messages WHERE id = ?';
+    const sql = "SELECT * FROM messages WHERE id = ?";
     const result = await executeQueryFirst<any>(sql, [messageId]);
 
     if (!result.success) {
@@ -131,7 +148,7 @@ export async function getMessage(messageId: string): Promise<DbResult<Message | 
 export async function getMessagesByChat(
   chatId: string,
   limit: number = 50,
-  offset: number = 0
+  offset: number = 0,
 ): Promise<DbResult<Message[]>> {
   try {
     const sql = `
@@ -168,10 +185,10 @@ export async function getMessagesByChat(
  */
 export async function updateMessageStatus(
   messageId: string,
-  status: DeliveryStatus
+  status: DeliveryStatus,
 ): Promise<DbResult<void>> {
   try {
-    const sql = 'UPDATE messages SET status = ? WHERE id = ?';
+    const sql = "UPDATE messages SET status = ? WHERE id = ?";
     const result = await executeUpdate(sql, [status, messageId]);
 
     if (!result.success) {
@@ -194,7 +211,7 @@ export async function updateMessageDelivery(
   messageId: string,
   userId: string,
   delivered: boolean,
-  read: boolean
+  read: boolean,
 ): Promise<DbResult<void>> {
   try {
     const sql = `
@@ -222,7 +239,7 @@ export async function updateMessageDelivery(
  * Get delivery status for a message
  */
 export async function getMessageDeliveryStatus(
-  messageId: string
+  messageId: string,
 ): Promise<DbResult<MessageDelivery[]>> {
   try {
     const sql = `
@@ -255,9 +272,11 @@ export async function getMessageDeliveryStatus(
 /**
  * Delete a message
  */
-export async function deleteMessage(messageId: string): Promise<DbResult<void>> {
+export async function deleteMessage(
+  messageId: string,
+): Promise<DbResult<void>> {
   try {
-    const sql = 'DELETE FROM messages WHERE id = ?';
+    const sql = "DELETE FROM messages WHERE id = ?";
     const result = await executeUpdate(sql, [messageId]);
 
     if (!result.success) {
@@ -310,10 +329,10 @@ export async function getPendingMessages(): Promise<DbResult<Message[]>> {
  * Get a message by local ID
  */
 export async function getMessageByLocalId(
-  localId: string
+  localId: string,
 ): Promise<DbResult<Message | null>> {
   try {
-    const sql = 'SELECT * FROM messages WHERE localId = ?';
+    const sql = "SELECT * FROM messages WHERE localId = ?";
     const result = await executeQueryFirst<any>(sql, [localId]);
 
     if (!result.success) {
@@ -354,8 +373,14 @@ function mapRowToMessage(row: any, deliveries: MessageDelivery[]): Message {
     message.localId = row.localId;
   }
 
+  if (row.caption) {
+    message.caption = row.caption;
+  }
+
   if (deliveries.length > 0) {
-    message.deliveredTo = deliveries.filter((d) => d.delivered).map((d) => d.userId);
+    message.deliveredTo = deliveries
+      .filter((d) => d.delivered)
+      .map((d) => d.userId);
     message.readBy = deliveries.filter((d) => d.read).map((d) => d.userId);
   }
 
@@ -365,6 +390,19 @@ function mapRowToMessage(row: any, deliveries: MessageDelivery[]): Message {
       imageHeight: row.imageHeight ?? undefined,
       imageSize: row.imageSize ?? undefined,
     };
+  }
+
+  // Add translation fields if present
+  if (row.detectedLanguage) {
+    message.detectedLanguage = row.detectedLanguage;
+  }
+
+  if (row.translatedText) {
+    message.translatedText = row.translatedText;
+  }
+
+  if (row.translationTargetLang) {
+    message.translationTargetLang = row.translationTargetLang;
   }
 
   return message;

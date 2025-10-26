@@ -7,7 +7,7 @@
  * Integrates with React Native AppState for foreground/background detection.
  */
 
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, type AppStateStatus } from "react-native";
 import {
   ref,
   set,
@@ -17,8 +17,8 @@ import {
   get,
   type Unsubscribe,
   type DatabaseReference,
-} from 'firebase/database';
-import { getFirebaseDatabase } from './firebase';
+} from "firebase/database";
+import { getFirebaseDatabase } from "./firebase";
 
 /**
  * Presence data structure stored in Firebase
@@ -31,7 +31,11 @@ interface PresenceData {
 /**
  * Callback for presence updates
  */
-type PresenceCallback = (uid: string, isOnline: boolean, lastSeen: number) => void;
+type PresenceCallback = (
+  uid: string,
+  isOnline: boolean,
+  lastSeen: number,
+) => void;
 
 /**
  * Active presence listeners
@@ -74,7 +78,6 @@ export async function setUserOnline(uid: string): Promise<void> {
       isOnline: false,
       lastSeen: serverTimestamp(),
     });
-
   } catch (error) {
     throw error;
   }
@@ -93,7 +96,6 @@ export async function setUserOffline(uid: string): Promise<void> {
       isOnline: false,
       lastSeen: serverTimestamp(),
     });
-
   } catch (error) {
     throw error;
   }
@@ -105,7 +107,7 @@ export async function setUserOffline(uid: string): Promise<void> {
  */
 export function subscribeToUserPresence(
   uid: string,
-  callback: PresenceCallback
+  callback: PresenceCallback,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
   const presenceRef = ref(db, `presence/${uid}`);
@@ -138,7 +140,7 @@ export function subscribeToUserPresence(
  */
 export function subscribeToMultiplePresences(
   uids: string[],
-  callback: PresenceCallback
+  callback: PresenceCallback,
 ): Unsubscribe {
   const unsubscribers: Unsubscribe[] = [];
 
@@ -162,14 +164,12 @@ function handleAppStateChange(nextAppState: AppStateStatus): void {
     return;
   }
 
-  if (nextAppState === 'active') {
+  if (nextAppState === "active") {
     // App came to foreground - mark online
-    setUserOnline(currentUserId).catch(() => {
-    });
-  } else if (nextAppState === 'background' || nextAppState === 'inactive') {
+    setUserOnline(currentUserId).catch(() => {});
+  } else if (nextAppState === "background" || nextAppState === "inactive") {
     // App went to background - mark offline
-    setUserOffline(currentUserId).catch(() => {
-    });
+    setUserOffline(currentUserId).catch(() => {});
   }
 }
 
@@ -179,15 +179,14 @@ function handleAppStateChange(nextAppState: AppStateStatus): void {
  */
 function setupConnectionMonitor(uid: string): void {
   const db = getFirebaseDatabase();
-  const connectedRef = ref(db, '.info/connected');
+  const connectedRef = ref(db, ".info/connected");
 
   connectionListener = onValue(connectedRef, (snapshot) => {
     const isConnected = snapshot.val() === true;
 
     if (isConnected) {
       // Set user online (this also sets up onDisconnect)
-      setUserOnline(uid).catch(() => {
-      });
+      setUserOnline(uid).catch(() => {});
     }
   });
 }
@@ -206,7 +205,10 @@ export async function setupPresenceSystem(uid: string): Promise<void> {
   await setUserOnline(uid);
 
   // Set up app state monitoring
-  appStateSubscription = AppState.addEventListener('change', handleAppStateChange);
+  appStateSubscription = AppState.addEventListener(
+    "change",
+    handleAppStateChange,
+  );
 
   // Set up connection monitoring
   setupConnectionMonitor(uid);
@@ -245,7 +247,7 @@ export async function teardownPresenceSystem(): Promise<void> {
  * One-time read, does not set up a listener
  */
 export async function getUserPresence(
-  uid: string
+  uid: string,
 ): Promise<{ isOnline: boolean; lastSeen: number }> {
   try {
     const db = getFirebaseDatabase();

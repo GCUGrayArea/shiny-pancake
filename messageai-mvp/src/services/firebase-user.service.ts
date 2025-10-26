@@ -18,9 +18,11 @@ import {
   endAt,
   type DatabaseReference,
   type Unsubscribe,
-} from 'firebase/database';
-import { getFirebaseDatabase } from './firebase';
-import type { User } from '../types';
+} from "firebase/database";
+import { ref as storageRef, deleteObject } from "firebase/storage";
+import { getFirebaseDatabase, getFirebaseStorage } from "./firebase";
+import { compressImage, uploadImage } from "./image.service";
+import type { User } from "../types";
 
 /**
  * Result type for Firebase operations
@@ -38,7 +40,9 @@ export interface FirebaseResult<T = any> {
  * Create or update a user in Firebase
  * Uses set() to overwrite existing data (Firebase is source of truth)
  */
-export async function createUserInFirebase(user: User): Promise<FirebaseResult<void>> {
+export async function createUserInFirebase(
+  user: User,
+): Promise<FirebaseResult<void>> {
   try {
     const db = getFirebaseDatabase();
     const userRef = ref(db, `users/${user.uid}`);
@@ -51,13 +55,22 @@ export async function createUserInFirebase(user: User): Promise<FirebaseResult<v
       lastSeen: user.lastSeen,
       isOnline: user.isOnline,
       fcmToken: user.fcmToken || null,
+      pushToken: user.pushToken || null,
+      autoTranslateEnabled: user.autoTranslateEnabled || false,
+      preferredLanguage: user.preferredLanguage || "en",
+      profilePictureUrl: user.profilePictureUrl || null,
+      culturalHintsEnabled: user.culturalHintsEnabled || false,
+      slangExplanationsEnabled: user.slangExplanationsEnabled || false,
     });
 
     return { success: true };
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create user in Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create user in Firebase",
     };
   }
 }
@@ -65,7 +78,9 @@ export async function createUserInFirebase(user: User): Promise<FirebaseResult<v
 /**
  * Retrieve a user from Firebase
  */
-export async function getUserFromFirebase(uid: string): Promise<FirebaseResult<User | null>> {
+export async function getUserFromFirebase(
+  uid: string,
+): Promise<FirebaseResult<User | null>> {
   try {
     const db = getFirebaseDatabase();
     const userRef = ref(db, `users/${uid}`);
@@ -84,7 +99,10 @@ export async function getUserFromFirebase(uid: string): Promise<FirebaseResult<U
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get user from Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to get user from Firebase",
     };
   }
 }
@@ -95,7 +113,7 @@ export async function getUserFromFirebase(uid: string): Promise<FirebaseResult<U
  */
 export async function updateUserInFirebase(
   uid: string,
-  updates: Partial<Omit<User, 'uid'>>
+  updates: Partial<Omit<User, "uid">>,
 ): Promise<FirebaseResult<void>> {
   try {
     const db = getFirebaseDatabase();
@@ -111,7 +129,10 @@ export async function updateUserInFirebase(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update user in Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update user in Firebase",
     };
   }
 }
@@ -122,22 +143,26 @@ export async function updateUserInFirebase(
  */
 export function subscribeToUser(
   uid: string,
-  callback: (user: User | null) => void
+  callback: (user: User | null) => void,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
   const userRef = ref(db, `users/${uid}`);
 
-  return onValue(userRef, (snapshot) => {
-    if (!snapshot.exists()) {
-      callback(null);
-      return;
-    }
+  return onValue(
+    userRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
 
-    const userData = snapshot.val() as User;
-    callback(userData);
-  }, (error) => {
-    callback(null);
-  });
+      const userData = snapshot.val() as User;
+      callback(userData);
+    },
+    (error) => {
+      callback(null);
+    },
+  );
 }
 
 /**
@@ -147,15 +172,16 @@ export function subscribeToUser(
  * Note: Firebase RTDB has limited query capabilities. For better search,
  * consider using Algolia or similar in production.
  */
-export async function searchUsers(searchQuery: string): Promise<FirebaseResult<User[]>> {
+export async function searchUsers(
+  searchQuery: string,
+): Promise<FirebaseResult<User[]>> {
   try {
-    
     if (!searchQuery || searchQuery.trim().length === 0) {
       return { success: true, data: [] };
     }
 
     const db = getFirebaseDatabase();
-    const usersRef = ref(db, 'users');
+    const usersRef = ref(db, "users");
 
     const queryString = searchQuery.trim();
     const users: User[] = [];
@@ -164,24 +190,33 @@ export async function searchUsers(searchQuery: string): Promise<FirebaseResult<U
     const snapshot = await get(usersRef);
 
     if (snapshot.exists()) {
-      
       snapshot.forEach((childSnapshot) => {
         const user = childSnapshot.val() as User;
 
         // Search by display name (case-insensitive partial match)
-        if (user.displayName && user.displayName.toLowerCase().includes(queryString.toLowerCase())) {
+        if (
+          user.displayName &&
+          user.displayName.toLowerCase().includes(queryString.toLowerCase())
+        ) {
           users.push(user);
           return;
         }
 
         // Search by email (case-insensitive partial match)
-        if (user.email && user.email.toLowerCase().includes(queryString.toLowerCase())) {
+        if (
+          user.email &&
+          user.email.toLowerCase().includes(queryString.toLowerCase())
+        ) {
           users.push(user);
           return;
         }
 
         // If query looks like an email, try exact email match
-        if (queryString.includes('@') && user.email && user.email.toLowerCase() === queryString.toLowerCase()) {
+        if (
+          queryString.includes("@") &&
+          user.email &&
+          user.email.toLowerCase() === queryString.toLowerCase()
+        ) {
           users.push(user);
         }
       });
@@ -192,7 +227,7 @@ export async function searchUsers(searchQuery: string): Promise<FirebaseResult<U
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to search users',
+      error: error instanceof Error ? error.message : "Failed to search users",
     };
   }
 }
@@ -201,10 +236,12 @@ export async function searchUsers(searchQuery: string): Promise<FirebaseResult<U
  * Get all users from Firebase (for contact list)
  * Use with caution - should implement pagination for large user bases
  */
-export async function getAllUsersFromFirebase(): Promise<FirebaseResult<User[]>> {
+export async function getAllUsersFromFirebase(): Promise<
+  FirebaseResult<User[]>
+> {
   try {
     const db = getFirebaseDatabase();
-    const usersRef = ref(db, 'users');
+    const usersRef = ref(db, "users");
 
     const snapshot = await get(usersRef);
 
@@ -222,7 +259,94 @@ export async function getAllUsersFromFirebase(): Promise<FirebaseResult<User[]>>
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get all users',
+      error: error instanceof Error ? error.message : "Failed to get all users",
+    };
+  }
+}
+
+/**
+ * Upload a profile picture and update user profile
+ * @param uid - User ID
+ * @param imageUri - Local image URI
+ * @param onProgress - Optional progress callback
+ * @returns FirebaseResult with download URL
+ */
+export async function uploadProfilePicture(
+  uid: string,
+  imageUri: string,
+  onProgress?: (progress: number) => void,
+): Promise<FirebaseResult<string>> {
+  try {
+    // Compress image to 512x512, max 200KB
+    const compressed = await compressImage(imageUri, 200 * 1024); // 200KB
+
+    // Resize to 512x512 square
+    const { manipulateAsync, SaveFormat } = await import(
+      "expo-image-manipulator"
+    );
+    const resized = await manipulateAsync(
+      compressed.uri,
+      [{ resize: { width: 512, height: 512 } }],
+      { compress: 0.8, format: SaveFormat.JPEG },
+    );
+
+    // Upload to Firebase Storage
+    const storagePath = `profile-pictures/${uid}.jpg`;
+    const uploadResult = await uploadImage(
+      resized.uri,
+      storagePath,
+      onProgress,
+    );
+
+    // Update user profile in Firebase RTDB
+    await updateUserInFirebase(uid, {
+      profilePictureUrl: uploadResult.url,
+    });
+
+    return { success: true, data: uploadResult.url };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to upload profile picture",
+    };
+  }
+}
+
+/**
+ * Remove a user's profile picture
+ * @param uid - User ID
+ * @returns FirebaseResult
+ */
+export async function removeProfilePicture(
+  uid: string,
+): Promise<FirebaseResult<void>> {
+  try {
+    const storage = getFirebaseStorage();
+    const photoRef = storageRef(storage, `profile-pictures/${uid}.jpg`);
+
+    // Delete from Storage (ignore errors if file doesn't exist)
+    try {
+      await deleteObject(photoRef);
+    } catch (deleteError) {
+      // File might not exist, that's okay
+    }
+
+    // Update user profile in Firebase RTDB
+    await updateUserInFirebase(uid, {
+      profilePictureUrl: undefined,
+    });
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to remove profile picture",
     };
   }
 }

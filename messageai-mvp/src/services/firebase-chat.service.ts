@@ -17,9 +17,9 @@ import {
   push,
   type DatabaseReference,
   type Unsubscribe,
-} from 'firebase/database';
-import { getFirebaseDatabase } from './firebase';
-import type { Chat } from '../types';
+} from "firebase/database";
+import { getFirebaseDatabase } from "./firebase";
+import type { Chat } from "../types";
 
 export interface FirebaseResult<T = any> {
   success: boolean;
@@ -33,16 +33,16 @@ export interface FirebaseResult<T = any> {
  */
 export async function createChat(
   participantIds: string[],
-  name?: string
+  name?: string,
 ): Promise<FirebaseResult<string>> {
   const chat: Chat = {
-    id: '', // Will be auto-generated
-    type: participantIds.length === 2 ? '1:1' : 'group',
+    id: "", // Will be auto-generated
+    type: participantIds.length === 2 ? "1:1" : "group",
     participantIds,
     name,
     createdAt: Date.now(),
   };
-  
+
   return createChatInFirebase(chat);
 }
 
@@ -50,14 +50,16 @@ export async function createChat(
  * Create a new chat in Firebase
  * Returns the generated chat ID
  */
-export async function createChatInFirebase(chat: Chat): Promise<FirebaseResult<string>> {
+export async function createChatInFirebase(
+  chat: Chat,
+): Promise<FirebaseResult<string>> {
   try {
     const db = getFirebaseDatabase();
     let chatId = chat.id;
 
     // If no ID provided, generate one
     if (!chatId) {
-      const chatsRef = ref(db, 'chats');
+      const chatsRef = ref(db, "chats");
       const newChatRef = push(chatsRef);
       chatId = newChatRef.key!;
     }
@@ -66,14 +68,14 @@ export async function createChatInFirebase(chat: Chat): Promise<FirebaseResult<s
 
     // Convert participantIds array to object for Firebase security rules
     const participantIdsObject: { [key: string]: boolean } = {};
-    chat.participantIds.forEach(uid => {
+    chat.participantIds.forEach((uid) => {
       participantIdsObject[uid] = true;
     });
 
     // Convert unreadCounts to proper format
     const unreadCountsObject: { [key: string]: number } = {};
     if (chat.unreadCounts) {
-      Object.keys(chat.unreadCounts).forEach(uid => {
+      Object.keys(chat.unreadCounts).forEach((uid) => {
         unreadCountsObject[uid] = chat.unreadCounts![uid];
       });
     }
@@ -92,7 +94,10 @@ export async function createChatInFirebase(chat: Chat): Promise<FirebaseResult<s
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create chat in Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to create chat in Firebase",
     };
   }
 }
@@ -100,7 +105,9 @@ export async function createChatInFirebase(chat: Chat): Promise<FirebaseResult<s
 /**
  * Retrieve a chat from Firebase
  */
-export async function getChatFromFirebase(chatId: string): Promise<FirebaseResult<Chat | null>> {
+export async function getChatFromFirebase(
+  chatId: string,
+): Promise<FirebaseResult<Chat | null>> {
   try {
     const db = getFirebaseDatabase();
     const chatRef = ref(db, `chats/${chatId}`);
@@ -132,7 +139,10 @@ export async function getChatFromFirebase(chatId: string): Promise<FirebaseResul
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to get chat from Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to get chat from Firebase",
     };
   }
 }
@@ -142,7 +152,7 @@ export async function getChatFromFirebase(chatId: string): Promise<FirebaseResul
  */
 export async function updateChatInFirebase(
   chatId: string,
-  updates: Partial<Omit<Chat, 'id'>>
+  updates: Partial<Omit<Chat, "id">>,
 ): Promise<FirebaseResult<void>> {
   try {
     const db = getFirebaseDatabase();
@@ -168,7 +178,10 @@ export async function updateChatInFirebase(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update chat in Firebase',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update chat in Firebase",
     };
   }
 }
@@ -182,49 +195,55 @@ export async function updateChatInFirebase(
  */
 export function subscribeToUserChats(
   userId: string,
-  callback: (chats: Chat[]) => void
+  callback: (chats: Chat[]) => void,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
-  const chatsRef = ref(db, 'chats');
+  const chatsRef = ref(db, "chats");
 
-  return onValue(chatsRef, (snapshot) => {
-    const chats: Chat[] = [];
+  return onValue(
+    chatsRef,
+    (snapshot) => {
+      const chats: Chat[] = [];
 
-    if (snapshot.exists()) {
-      snapshot.forEach((childSnapshot) => {
-        const chatData = childSnapshot.val();
+      if (snapshot.exists()) {
+        snapshot.forEach((childSnapshot) => {
+          const chatData = childSnapshot.val();
 
-        // Check if user is a participant
-        if (chatData.participantIds && chatData.participantIds[userId]) {
-          const participantIds = Object.keys(chatData.participantIds);
+          // Check if user is a participant
+          if (chatData.participantIds && chatData.participantIds[userId]) {
+            const participantIds = Object.keys(chatData.participantIds);
 
-          chats.push({
-            id: chatData.id,
-            type: chatData.type,
-            participantIds,
-            name: chatData.name,
-            createdAt: chatData.createdAt,
-            lastMessage: chatData.lastMessage,
-            unreadCounts: chatData.unreadCounts || {},
-          });
-        }
-      });
-    }
+            chats.push({
+              id: chatData.id,
+              type: chatData.type,
+              participantIds,
+              name: chatData.name,
+              createdAt: chatData.createdAt,
+              lastMessage: chatData.lastMessage,
+              unreadCounts: chatData.unreadCounts || {},
+            });
+          }
+        });
+      }
 
-    callback(chats);
-  }, (error) => {
-    callback([]);
-  });
+      callback(chats);
+    },
+    (error) => {
+      callback([]);
+    },
+  );
 }
 
 /**
  * Get all chats for a user (one-time read, not subscription)
  * Useful for testing and initial sync
  */
-export async function getUserChatsFromFirebase(userId: string): Promise<FirebaseResult<Chat[]>> {
+export async function getUserChatsFromFirebase(
+  userId: string,
+): Promise<FirebaseResult<Chat[]>> {
   try {
     const db = getFirebaseDatabase();
-    const chatsRef = ref(db, 'chats');
+    const chatsRef = ref(db, "chats");
     const snapshot = await get(chatsRef);
 
     const chats: Chat[] = [];
@@ -261,36 +280,40 @@ export async function getUserChatsFromFirebase(userId: string): Promise<Firebase
  */
 export function subscribeToChat(
   chatId: string,
-  callback: (chat: Chat | null) => void
+  callback: (chat: Chat | null) => void,
 ): Unsubscribe {
   const db = getFirebaseDatabase();
   const chatRef = ref(db, `chats/${chatId}`);
 
-  return onValue(chatRef, (snapshot) => {
-    if (!snapshot.exists()) {
+  return onValue(
+    chatRef,
+    (snapshot) => {
+      if (!snapshot.exists()) {
+        callback(null);
+        return;
+      }
+
+      const chatData = snapshot.val();
+      const participantIds = chatData.participantIds
+        ? Object.keys(chatData.participantIds)
+        : [];
+
+      const chat: Chat = {
+        id: chatData.id,
+        type: chatData.type,
+        participantIds,
+        name: chatData.name,
+        createdAt: chatData.createdAt,
+        lastMessage: chatData.lastMessage,
+        unreadCounts: chatData.unreadCounts || {},
+      };
+
+      callback(chat);
+    },
+    (error) => {
       callback(null);
-      return;
-    }
-
-    const chatData = snapshot.val();
-    const participantIds = chatData.participantIds
-      ? Object.keys(chatData.participantIds)
-      : [];
-
-    const chat: Chat = {
-      id: chatData.id,
-      type: chatData.type,
-      participantIds,
-      name: chatData.name,
-      createdAt: chatData.createdAt,
-      lastMessage: chatData.lastMessage,
-      unreadCounts: chatData.unreadCounts || {},
-    };
-
-    callback(chat);
-  }, (error) => {
-    callback(null);
-  });
+    },
+  );
 }
 
 /**
@@ -299,11 +322,11 @@ export function subscribeToChat(
  */
 export async function findOneOnOneChat(
   userId1: string,
-  userId2: string
+  userId2: string,
 ): Promise<FirebaseResult<string | null>> {
   try {
     const db = getFirebaseDatabase();
-    const chatsRef = ref(db, 'chats');
+    const chatsRef = ref(db, "chats");
 
     // Get all chats
     const snapshot = await get(chatsRef);
@@ -316,7 +339,7 @@ export async function findOneOnOneChat(
         const chatData = childSnapshot.val();
 
         // Check if it's a 1:1 chat
-        if (chatData.type === '1:1' && chatData.participantIds) {
+        if (chatData.type === "1:1" && chatData.participantIds) {
           const participants = Object.keys(chatData.participantIds);
 
           // Check if both users are participants and no one else
@@ -340,7 +363,7 @@ export async function findOneOnOneChat(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to find chat',
+      error: error instanceof Error ? error.message : "Failed to find chat",
     };
   }
 }
@@ -353,11 +376,11 @@ export async function findOneOnOneChat(
  */
 export async function findOrCreateOneOnOneChat(
   userId1: string,
-  userId2: string
+  userId2: string,
 ): Promise<FirebaseResult<string>> {
   try {
     const db = getFirebaseDatabase();
-    const chatsRef = ref(db, 'chats');
+    const chatsRef = ref(db, "chats");
 
     // Get all chats
     const snapshot = await get(chatsRef);
@@ -370,7 +393,7 @@ export async function findOrCreateOneOnOneChat(
         const chatData = childSnapshot.val();
 
         // Check if it's a 1:1 chat
-        if (chatData.type === '1:1' && chatData.participantIds) {
+        if (chatData.type === "1:1" && chatData.participantIds) {
           const participants = Object.keys(chatData.participantIds);
 
           // Check if both users are participants and no one else
@@ -392,8 +415,8 @@ export async function findOrCreateOneOnOneChat(
 
     // No existing chat found, create a new one
     const newChat: Chat = {
-      id: '', // Will be generated
-      type: '1:1',
+      id: "", // Will be generated
+      type: "1:1",
       participantIds: [userId1, userId2],
       createdAt: Date.now(),
       unreadCounts: {
@@ -410,7 +433,10 @@ export async function findOrCreateOneOnOneChat(
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to find or create chat',
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to find or create chat",
     };
   }
 }

@@ -3,11 +3,12 @@
  * Shows avatar, name, and presence status
  */
 
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, ActivityIndicator } from 'react-native-paper';
-import Avatar from './Avatar';
-import { User } from '@/types';
+import React from "react";
+import { View, StyleSheet, TouchableOpacity } from "react-native";
+import { Text, ActivityIndicator } from "react-native-paper";
+import { useTheme } from "@/contexts/ThemeContext";
+import Avatar from "./Avatar";
+import { User } from "@/types";
 
 export interface UserListItemProps {
   /** User to display */
@@ -35,6 +36,8 @@ export default function UserListItem({
   loading = false,
   style,
 }: UserListItemProps) {
+  const { colors } = useTheme();
+
   const handlePress = () => {
     onPress?.(user);
   };
@@ -49,6 +52,7 @@ export default function UserListItem({
         <Avatar
           displayName={user.displayName}
           userId={user.uid}
+          profilePictureUrl={user.profilePictureUrl}
           size="medium"
           showOnlineStatus={showOnlineStatus && !loading}
           isOnline={user.isOnline}
@@ -56,21 +60,34 @@ export default function UserListItem({
         />
 
         <View style={styles.content}>
-          <Text variant="bodyLarge" style={[styles.displayName, loading && styles.disabledText]}>
+          <Text
+            variant="bodyLarge"
+            style={[
+              styles.displayName,
+              { color: colors.text },
+              loading && styles.disabledText,
+            ]}
+          >
             {user.displayName}
           </Text>
 
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="small" />
-              <Text variant="bodyMedium" style={styles.loadingText}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text
+                variant="bodyMedium"
+                style={[styles.loadingText, { color: colors.textSecondary }]}
+              >
                 Starting chat...
               </Text>
             </View>
           ) : (
             <>
               {subtitle && (
-                <Text variant="bodyMedium" style={styles.subtitle}>
+                <Text
+                  variant="bodyMedium"
+                  style={[styles.subtitle, { color: colors.textSecondary }]}
+                >
                   {subtitle}
                 </Text>
               )}
@@ -80,10 +97,14 @@ export default function UserListItem({
                   variant="bodySmall"
                   style={[
                     styles.statusText,
-                    { color: user.isOnline ? '#4CAF50' : '#9E9E9E' },
+                    {
+                      color: user.isOnline
+                        ? colors.success
+                        : colors.textTertiary,
+                    },
                   ]}
                 >
-                  {user.isOnline ? 'Online' : 'Offline'}
+                  {user.isOnline ? "Online" : "Offline"}
                 </Text>
               )}
             </>
@@ -96,24 +117,24 @@ export default function UserListItem({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   avatar: {
     marginRight: 12,
   },
   content: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   displayName: {
-    fontWeight: '500',
+    fontWeight: "500",
   },
   subtitle: {
-    color: '#666',
+    color: "#666",
     marginTop: 2,
   },
   statusText: {
@@ -127,11 +148,11 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   loadingText: {
-    color: '#666',
+    color: "#666",
   },
 });

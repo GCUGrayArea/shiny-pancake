@@ -3,22 +3,35 @@
  * Allows users to search and select other users to start conversations
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl } from 'react-native';
-import { Text, Searchbar, ActivityIndicator, Button, Checkbox } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useAuth } from '@/contexts/AuthContext';
-import { User } from '@/types';
-import UserListItem from '@/components/UserListItem';
-import { getAllUsersFromFirebase, searchUsers } from '@/services/firebase-user.service';
-import { getUserPresence } from '@/services/presence.service';
-import { findOneOnOneChat } from '@/services/firebase-chat.service';
-import { getAllChats } from '@/services/local-chat.service';
-import { MainStackParamList } from '@/navigation/AppNavigator';
+import React, { useState, useEffect, useCallback } from "react";
+import { View, StyleSheet, FlatList, RefreshControl } from "react-native";
+import {
+  Text,
+  Searchbar,
+  ActivityIndicator,
+  Button,
+  Checkbox,
+} from "react-native-paper";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { User } from "@/types";
+import UserListItem from "@/components/UserListItem";
+import {
+  getAllUsersFromFirebase,
+  searchUsers,
+} from "@/services/firebase-user.service";
+import { getUserPresence } from "@/services/presence.service";
+import { findOneOnOneChat } from "@/services/firebase-chat.service";
+import { getAllChats } from "@/services/local-chat.service";
+import { MainStackParamList } from "@/navigation/AppNavigator";
 
-type NewChatScreenNavigationProp = NativeStackNavigationProp<MainStackParamList, 'NewChat'>;
+type NewChatScreenNavigationProp = NativeStackNavigationProp<
+  MainStackParamList,
+  "NewChat"
+>;
 
 export default function NewChatScreen() {
   const [users, setUsers] = useState<User[]>([]);
@@ -28,12 +41,13 @@ export default function NewChatScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [creatingChat, setCreatingChat] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isSearchingEmail, setIsSearchingEmail] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
   const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
+  const { colors } = useTheme();
   const navigation = useNavigation<NewChatScreenNavigationProp>();
 
   // Load all users and chat participants from Firebase
@@ -50,21 +64,28 @@ export default function NewChatScreen() {
       }
 
       // Filter out current user from the list
-      const firebaseUsers = (usersResult.data || []).filter(u => u.uid !== user.uid);
+      const firebaseUsers = (usersResult.data || []).filter(
+        (u) => u.uid !== user.uid,
+      );
 
       // Load existing chats to get participants (filter by current user for security)
       const chatsResult = await getAllChats(user.uid);
-      const chats = chatsResult.success ? (chatsResult.data || []) : [];
+      const chats = chatsResult.success ? chatsResult.data || [] : [];
 
       // Extract unique participants from chats (excluding current user)
       const participantMap = new Map<string, any>();
-      chats.forEach(chat => {
+      chats.forEach((chat) => {
         if (chat.participantIds) {
-          Object.keys(chat.participantIds).forEach(participantId => {
-            if (participantId !== user.uid && !participantMap.has(participantId)) {
+          Object.keys(chat.participantIds).forEach((participantId) => {
+            if (
+              participantId !== user.uid &&
+              !participantMap.has(participantId)
+            ) {
               // Create a basic user object for chat participants
               // We'll need to fetch their full details from Firebase users
-              const firebaseUser = firebaseUsers.find(u => u.uid === participantId);
+              const firebaseUser = firebaseUsers.find(
+                (u) => u.uid === participantId,
+              );
               if (firebaseUser) {
                 participantMap.set(participantId, firebaseUser);
               }
@@ -78,9 +99,8 @@ export default function NewChatScreen() {
       // Combine Firebase users and chat participants (remove duplicates)
       const allUsersMap = new Map<string, User>();
 
-
       // Add all Firebase users first
-      firebaseUsers.forEach(u => {
+      firebaseUsers.forEach((u) => {
         if (u.uid !== user.uid) {
           allUsersMap.set(u.uid, u);
         } else {
@@ -88,7 +108,7 @@ export default function NewChatScreen() {
       });
 
       // Add chat participants (they might already be in the map)
-      chatParticipants.forEach(p => {
+      chatParticipants.forEach((p) => {
         if (p.uid !== user.uid) {
           allUsersMap.set(p.uid, p);
         }
@@ -114,22 +134,21 @@ export default function NewChatScreen() {
               lastSeen: Date.now(),
             };
           }
-        })
+        }),
       );
 
-      
       // Store all Firebase users for searching
-      setUsers(firebaseUsers.filter(u => u.uid !== user.uid));
-      
+      setUsers(firebaseUsers.filter((u) => u.uid !== user.uid));
+
       // Store chat participants with presence
-      const chatParticipantsWithPresence = usersWithPresence.filter(u =>
-        chatParticipants.some(p => p.uid === u.uid)
+      const chatParticipantsWithPresence = usersWithPresence.filter((u) =>
+        chatParticipants.some((p) => p.uid === u.uid),
       );
       setChatParticipants(chatParticipantsWithPresence);
-      
+
       // Store all users for searching
       setAllUsers(usersWithPresence);
-      
+
       // Initially show only chat participants (empty if no chats)
       setFilteredUsers(chatParticipantsWithPresence);
     } catch (error) {
@@ -161,13 +180,14 @@ export default function NewChatScreen() {
     const query = searchQuery.toLowerCase().trim();
 
     // Search through chat participants first (by display name and email)
-    const filteredParticipants = chatParticipants.filter(u =>
-      u.displayName.toLowerCase().includes(query) ||
-      u.email.toLowerCase().includes(query)
+    const filteredParticipants = chatParticipants.filter(
+      (u) =>
+        u.displayName.toLowerCase().includes(query) ||
+        u.email.toLowerCase().includes(query),
     );
 
     // If this looks like an email search (contains @), enable email search mode
-    if (query.includes('@')) {
+    if (query.includes("@")) {
       setIsSearchingEmail(true);
       // For email searches, show filtered participants
       // (exact Firebase search happens on Enter key)
@@ -192,62 +212,64 @@ export default function NewChatScreen() {
   }, [isMultiSelectMode]);
 
   // Handle user selection (single or multi-select)
-  const handleUserSelect = useCallback(async (selectedUser: User) => {
-    if (!user || creatingChat) return;
+  const handleUserSelect = useCallback(
+    async (selectedUser: User) => {
+      if (!user || creatingChat) return;
 
-    // Prevent chatting with yourself
-    if (selectedUser.uid === user.uid) {
-      return;
-    }
-
-    if (isMultiSelectMode) {
-      // Multi-select mode - toggle selection
-      setSelectedUsers(prev => {
-        const isSelected = prev.some(u => u.uid === selectedUser.uid);
-        if (isSelected) {
-          return prev.filter(u => u.uid !== selectedUser.uid);
-        } else {
-          return [...prev, selectedUser];
-        }
-      });
-    } else {
-      // Single-select mode - open 1:1 chat
-      try {
-        setCreatingChat(selectedUser.uid);
-
-        // Check if a chat already exists (but don't create it yet)
-        const chatResult = await findOneOnOneChat(user.uid, selectedUser.uid);
-
-        if (!chatResult.success) {
-          // Still navigate to conversation - chat will be created on first message
-        }
-
-        const existingChatId = chatResult.success && chatResult.data ? chatResult.data : undefined;
-
-        if (existingChatId) {
-        } else {
-        }
-
-        // Navigate to conversation screen
-        // Chat will be created when first message is sent (if it doesn't exist)
-        navigation.navigate('Conversation', {
-          chatId: existingChatId,
-          otherUserId: selectedUser.uid,
-          otherUserName: selectedUser.displayName,
-          otherUserEmail: selectedUser.email,
-        });
-
-      } catch (error) {
-      } finally {
-        setCreatingChat(null);
+      // Prevent chatting with yourself
+      if (selectedUser.uid === user.uid) {
+        return;
       }
-    }
-  }, [user, navigation, creatingChat, isMultiSelectMode]);
+
+      if (isMultiSelectMode) {
+        // Multi-select mode - toggle selection
+        setSelectedUsers((prev) => {
+          const isSelected = prev.some((u) => u.uid === selectedUser.uid);
+          if (isSelected) {
+            return prev.filter((u) => u.uid !== selectedUser.uid);
+          } else {
+            return [...prev, selectedUser];
+          }
+        });
+      } else {
+        // Single-select mode - open 1:1 chat
+        try {
+          setCreatingChat(selectedUser.uid);
+
+          // Check if a chat already exists (but don't create it yet)
+          const chatResult = await findOneOnOneChat(user.uid, selectedUser.uid);
+
+          if (!chatResult.success) {
+            // Still navigate to conversation - chat will be created on first message
+          }
+
+          const existingChatId =
+            chatResult.success && chatResult.data ? chatResult.data : undefined;
+
+          if (existingChatId) {
+          } else {
+          }
+
+          // Navigate to conversation screen
+          // Chat will be created when first message is sent (if it doesn't exist)
+          navigation.navigate("Conversation", {
+            chatId: existingChatId,
+            otherUserId: selectedUser.uid,
+            otherUserName: selectedUser.displayName,
+            otherUserEmail: selectedUser.email,
+          });
+        } catch (error) {
+        } finally {
+          setCreatingChat(null);
+        }
+      }
+    },
+    [user, navigation, creatingChat, isMultiSelectMode],
+  );
 
   // Handle creating group with selected users
   const handleCreateGroup = useCallback(() => {
-    if (selectedUsers.length < 2) return;
-
+    if (!user || selectedUsers.length < 2) return;
 
     // Include current user as the first participant (they're creating the group)
     const allParticipants = [
@@ -255,20 +277,22 @@ export default function NewChatScreen() {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
+        createdAt: user.createdAt,
         isOnline: true,
         lastSeen: Date.now(),
       },
-      ...selectedUsers.map(u => ({
+      ...selectedUsers.map((u) => ({
         uid: u.uid,
         email: u.email,
         displayName: u.displayName,
+        createdAt: u.createdAt,
         isOnline: u.isOnline,
         lastSeen: u.lastSeen,
-      }))
+      })),
     ];
 
-    navigation.navigate('CreateGroup', {
-      participants: allParticipants
+    navigation.navigate("CreateGroup", {
+      participants: allParticipants,
     });
 
     // Reset multi-select mode
@@ -278,16 +302,22 @@ export default function NewChatScreen() {
 
   // Render user item
   const renderUserItem = ({ item }: { item: User }) => {
-    const isSelected = selectedUsers.some(u => u.uid === item.uid);
+    const isSelected = selectedUsers.some((u) => u.uid === item.uid);
     const isCurrentUser = item.uid === user?.uid;
 
     if (isMultiSelectMode) {
       return (
-        <View style={styles.multiSelectItem}>
+        <View
+          style={[
+            styles.multiSelectItem,
+            { backgroundColor: colors.surfaceElevated },
+          ]}
+        >
           <Checkbox
-            status={isSelected ? 'checked' : 'unchecked'}
+            status={isSelected ? "checked" : "unchecked"}
             onPress={() => !isCurrentUser && handleUserSelect(item)}
             disabled={isCurrentUser}
+            color={colors.primary}
           />
           <UserListItem
             user={item}
@@ -297,7 +327,10 @@ export default function NewChatScreen() {
             loading={creatingChat === item.uid}
           />
           {isCurrentUser && (
-            <Text variant="bodySmall" style={styles.cannotSelectText}>
+            <Text
+              variant="bodySmall"
+              style={[styles.cannotSelectText, { color: colors.textSecondary }]}
+            >
               Cannot select yourself
             </Text>
           )}
@@ -318,18 +351,33 @@ export default function NewChatScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator animating size="large" />
-        <Text style={styles.loadingText}>Loading users...</Text>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator animating size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          Loading users...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom }]}>
-      <View style={styles.header}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: colors.background, paddingBottom: insets.bottom },
+      ]}
+    >
+      <View style={[styles.header, { backgroundColor: colors.surface }]}>
         <View style={styles.headerTop}>
-          <Text variant="headlineSmall" style={styles.title}>
+          <Text
+            variant="headlineSmall"
+            style={[styles.title, { color: colors.text }]}
+          >
             Start New Chat
           </Text>
           <Button
@@ -337,42 +385,60 @@ export default function NewChatScreen() {
             onPress={toggleMultiSelect}
             style={styles.modeToggle}
             compact
+            buttonColor={isMultiSelectMode ? colors.primary : undefined}
+            textColor={isMultiSelectMode ? "#FFFFFF" : colors.primary}
           >
             {isMultiSelectMode ? "Cancel Group" : "Create Group"}
           </Button>
         </View>
-        <Text variant="bodyMedium" style={styles.subtitle}>
+        <Text
+          variant="bodyMedium"
+          style={[styles.subtitle, { color: colors.textSecondary }]}
+        >
           {isMultiSelectMode
-            ? `Select ${selectedUsers.length} users to create a group chat${selectedUsers.length >= 2 ? ' - then tap "Create Group" below' : ''}`
-            : "Search existing chats by name/email, or tap 'Create Group' to start a group chat"
-          }
+            ? `Select ${selectedUsers.length} users to create a group chat${selectedUsers.length >= 2 ? ' - then tap "Create Group" below' : ""}`
+            : "Search existing chats by name/email, or tap 'Create Group' to start a group chat"}
         </Text>
       </View>
 
       {isMultiSelectMode && (
-        <View style={[
-          styles.createGroupBar,
-          selectedUsers.length >= 2 && styles.createGroupBarReady
-        ]}>
-          <Text variant="bodyMedium" style={[
-            styles.selectedCount,
-            selectedUsers.length >= 2 && styles.selectedCountReady
-          ]}>
+        <View
+          style={[
+            styles.createGroupBar,
+            {
+              backgroundColor:
+                selectedUsers.length >= 2
+                  ? colors.success
+                  : colors.primaryLight,
+              borderBottomColor:
+                selectedUsers.length >= 2 ? colors.success : colors.primary,
+            },
+          ]}
+        >
+          <Text
+            variant="bodyMedium"
+            style={[
+              styles.selectedCount,
+              {
+                color: selectedUsers.length >= 2 ? "#FFFFFF" : colors.primary,
+                fontWeight: selectedUsers.length >= 2 ? "bold" : "normal",
+              },
+            ]}
+          >
             {selectedUsers.length >= 2
               ? `✅ ${selectedUsers.length} selected - ready to create!`
-              : `${selectedUsers.length} selected - select ${2 - selectedUsers.length} more`
-            }
+              : `${selectedUsers.length} selected - select ${2 - selectedUsers.length} more`}
           </Text>
           <Button
             mode="contained"
             onPress={handleCreateGroup}
             disabled={selectedUsers.length < 2}
-            style={[
-              styles.createButton,
-              selectedUsers.length < 2 && styles.disabledButton
-            ]}
+            buttonColor={
+              selectedUsers.length >= 2 ? colors.primary : colors.border
+            }
+            style={styles.createButton}
           >
-            {selectedUsers.length >= 2 ? 'Create Group' : 'Select Users'}
+            {selectedUsers.length >= 2 ? "Create Group" : "Select Users"}
           </Button>
         </View>
       )}
@@ -383,38 +449,46 @@ export default function NewChatScreen() {
             ? "Email search mode - press Enter to search"
             : "Search users by name or email..."
         }
+        placeholderTextColor={colors.textSecondary}
         onChangeText={setSearchQuery}
         value={searchQuery}
         style={[
           styles.searchBar,
-          isSearchingEmail && styles.emailSearchMode
+          { backgroundColor: colors.surface },
+          isSearchingEmail && { borderColor: colors.primary, borderWidth: 2 },
         ]}
+        iconColor={colors.primary}
+        inputStyle={{ color: colors.text }}
         onSubmitEditing={async () => {
-          if (searchQuery.trim() && searchQuery.includes('@')) {
-
+          if (searchQuery.trim() && searchQuery.includes("@")) {
             try {
               // Perform exact email search
               const emailResult = await searchUsers(searchQuery.trim());
 
-
-              if (emailResult.success && emailResult.data && emailResult.data.length > 0) {
+              if (
+                emailResult.success &&
+                emailResult.data &&
+                emailResult.data.length > 0
+              ) {
                 const foundUser = emailResult.data[0];
 
                 // Check if user is already in allUsers
-                const existingUser = allUsers.find(u => u.uid === foundUser.uid);
+                const existingUser = allUsers.find(
+                  (u) => u.uid === foundUser.uid,
+                );
 
                 if (existingUser) {
-                  
                   // User exists in allUsers, just add to filteredUsers if not already there
-                  setFilteredUsers(prev => {
-                    const alreadyInFiltered = prev.some(u => u.uid === existingUser.uid);
+                  setFilteredUsers((prev) => {
+                    const alreadyInFiltered = prev.some(
+                      (u) => u.uid === existingUser.uid,
+                    );
                     if (alreadyInFiltered) {
                       return prev;
                     }
                     return [existingUser, ...prev];
                   });
                 } else {
-
                   // Add this user to our results (they'll appear at the top)
                   const enhancedUser = {
                     ...foundUser,
@@ -427,16 +501,14 @@ export default function NewChatScreen() {
                     const presence = await getUserPresence(foundUser.uid);
                     enhancedUser.isOnline = presence.isOnline;
                     enhancedUser.lastSeen = presence.lastSeen;
-                  } catch (error) {
-                  }
+                  } catch (error) {}
 
-                  setAllUsers(prev => [enhancedUser, ...prev]);
-                  setFilteredUsers(prev => [enhancedUser, ...prev]);
+                  setAllUsers((prev) => [enhancedUser, ...prev]);
+                  setFilteredUsers((prev) => [enhancedUser, ...prev]);
                 }
               } else {
               }
-            } catch (error) {
-            }
+            } catch (error) {}
           }
         }}
       />
@@ -451,10 +523,13 @@ export default function NewChatScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text variant="bodyLarge" style={styles.emptyText}>
-              {searchQuery 
-                ? 'No users found. Try typing an email and pressing Enter.' 
-                : 'No existing chats. Search for a user by email to start a new chat.'}
+            <Text
+              variant="bodyLarge"
+              style={[styles.emptyText, { color: colors.textSecondary }]}
+            >
+              {searchQuery
+                ? "No users found. Try typing an email and pressing Enter."
+                : "No existing chats. Search for a user by email to start a new chat."}
             </Text>
           </View>
         }
@@ -466,75 +541,75 @@ export default function NewChatScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     paddingBottom: 0, // Set dynamically with safe area insets
   },
   loadingContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 16,
   },
   loadingText: {
     fontSize: 16,
-    color: '#666',
+    color: "#666",
   },
   header: {
     padding: 16,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
   title: {
     flex: 1,
   },
   subtitle: {
-    color: '#666',
+    color: "#666",
   },
   modeToggle: {
     marginLeft: 16,
   },
   createGroupBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: "#E3F2FD",
     borderBottomWidth: 1,
-    borderBottomColor: '#2196F3',
+    borderBottomColor: "#2196F3",
   },
   createGroupBarReady: {
-    backgroundColor: '#4CAF50',
-    borderBottomColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
+    borderBottomColor: "#4CAF50",
   },
   selectedCount: {
     flex: 1,
-    color: '#1976D2',
+    color: "#1976D2",
   },
   selectedCountReady: {
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: "#FFFFFF",
+    fontWeight: "bold",
   },
   createButton: {
-    backgroundColor: '#2196F3',
+    backgroundColor: "#2196F3",
   },
   disabledButton: {
-    backgroundColor: '#B0BEC5',
+    backgroundColor: "#B0BEC5",
   },
   cannotSelectText: {
-    color: '#666',
+    color: "#666",
     fontSize: 12,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   searchBar: {
     margin: 16,
   },
   emailSearchMode: {
-    borderColor: '#2196F3',
+    borderColor: "#2196F3",
     borderWidth: 2,
   },
   listContainer: {
@@ -545,12 +620,12 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   multiSelectItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginHorizontal: 16,
     marginVertical: 4,
     padding: 8,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 8,
   },
   multiSelectUserItem: {
@@ -558,17 +633,16 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
     marginVertical: 0,
     padding: 0,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   emptyContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 32,
   },
   emptyText: {
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
 });
-
