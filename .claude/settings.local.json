@@ -11,7 +11,8 @@
       "Bash(git add:*)",
       "Bash(npm run lint:*)",
       "Bash(eas secret:create:*)",
-      "Read(//c/Users/tgrah/Documents/Gauntlet/repos/**)"
+      "Read(//c/Users/tgrah/Documents/Gauntlet/repos/**)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []

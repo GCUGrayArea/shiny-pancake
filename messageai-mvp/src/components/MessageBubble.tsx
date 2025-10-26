@@ -58,6 +58,7 @@ function MessageBubble({
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | undefined>();
+  const [messageImageLoading, setMessageImageLoading] = useState(message.type === 'image');
 
   // On-demand translation state (separate from auto-translation)
   const [onDemandTranslation, setOnDemandTranslation] = useState<string | null>(null);
@@ -389,6 +390,9 @@ function MessageBubble({
               source={{ uri: message.content }}
               style={styles.fullScreenImage}
               resizeMode="contain"
+              // Performance optimizations for full-screen view
+              progressiveRenderingEnabled={true}
+              // React Native Image caches by default
             />
             {message.caption && (
               <View style={styles.modalCaptionContainer}>
@@ -502,13 +506,25 @@ function MessageBubble({
                 onPress={() => setImagePreviewVisible(true)}
                 style={styles.imageContainer}
               >
+                {/* Loading placeholder */}
+                {messageImageLoading && (
+                  <View style={[styles.imageLoadingPlaceholder, isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage]}>
+                    <MaterialCommunityIcons name="image" size={40} color="#999" />
+                  </View>
+                )}
                 <Image
                   source={{ uri: message.content }}
                   style={[
                     styles.messageImage,
                     isOwnMessage ? styles.ownMessageImage : styles.otherMessageImage,
+                    { opacity: messageImageLoading ? 0 : 1 },
                   ]}
                   resizeMode="cover"
+                  // Performance optimizations
+                  progressiveRenderingEnabled={true}
+                  // React Native Image caches by default
+                  onLoadEnd={() => setMessageImageLoading(false)}
+                  onError={() => setMessageImageLoading(false)}
                 />
               </TouchableOpacity>
               {message.caption && (
@@ -782,6 +798,15 @@ const styles = StyleSheet.create({
   },
   otherTranslationToggle: {
     color: '#2196F3',
+  },
+  // Image loading placeholder
+  imageLoadingPlaceholder: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0',
   },
 });
 

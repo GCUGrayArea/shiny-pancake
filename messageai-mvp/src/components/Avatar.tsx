@@ -56,28 +56,54 @@ export default function Avatar({
           {
             width: avatarSize,
             height: avatarSize,
-            backgroundColor: showImage ? 'transparent' : backgroundColor,
+            backgroundColor: showImage && !imageLoading ? 'transparent' : backgroundColor,
             borderRadius: avatarSize / 2,
           },
         ]}
       >
         {showImage ? (
-          <Image
-            source={{ uri: profilePictureUrl }}
-            style={[
-              styles.image,
-              {
-                width: avatarSize,
-                height: avatarSize,
-                borderRadius: avatarSize / 2,
-              },
-            ]}
-            onLoadEnd={() => setImageLoading(false)}
-            onError={() => {
-              setImageError(true);
-              setImageLoading(false);
-            }}
-          />
+          <>
+            {/* Show initials placeholder while loading */}
+            {imageLoading && (
+              <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+                <Text
+                  style={[
+                    styles.initials,
+                    {
+                      fontSize: avatarSize * 0.4,
+                      lineHeight: avatarSize * 0.4,
+                    },
+                  ]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.5}
+                >
+                  {initials}
+                </Text>
+              </View>
+            )}
+            <Image
+              source={{ uri: profilePictureUrl }}
+              style={[
+                styles.image,
+                {
+                  width: avatarSize,
+                  height: avatarSize,
+                  borderRadius: avatarSize / 2,
+                  opacity: imageLoading ? 0 : 1,
+                },
+              ]}
+              // Performance optimizations
+              resizeMode="cover"
+              progressiveRenderingEnabled={true}
+              // React Native Image caches by default
+              onLoadEnd={() => setImageLoading(false)}
+              onError={() => {
+                setImageError(true);
+                setImageLoading(false);
+              }}
+            />
+          </>
         ) : (
           <Text
             style={[

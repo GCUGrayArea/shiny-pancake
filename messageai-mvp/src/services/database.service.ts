@@ -207,6 +207,14 @@ async function createSchema(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_slang_items_phrase
       ON slang_items(phrase COLLATE NOCASE);
 
+    -- Index for message status queries (e.g., pending messages)
+    CREATE INDEX IF NOT EXISTS idx_messages_status_timestamp
+      ON messages(status, timestamp ASC);
+
+    -- Index for delivery tracking lookups
+    CREATE INDEX IF NOT EXISTS idx_message_delivery_messageId
+      ON message_delivery(messageId);
+
     -- User style profiles table for smart replies
     CREATE TABLE IF NOT EXISTS user_style_profiles (
       id TEXT PRIMARY KEY,
