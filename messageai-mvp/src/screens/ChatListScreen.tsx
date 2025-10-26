@@ -99,6 +99,7 @@ export default function ChatListScreen() {
         const bTime = b.lastMessage?.timestamp ?? b.createdAt;
         return bTime - aTime;
       });
+
       setChats(sortedChats);
 
       // Load user names for 1:1 chats
@@ -246,6 +247,7 @@ export default function ChatListScreen() {
         otherUserId: otherUser.uid,
         otherUserName: otherUser.displayName,
         otherUserEmail: otherUser.email,
+        profilePictureUrl: otherUser.profilePictureUrl,
       });
     } else {
       // For group chats

@@ -36,6 +36,7 @@ export type MainStackParamList = {
     otherUserId?: string; // For 1:1 chats
     otherUserName?: string; // For 1:1 chats
     otherUserEmail?: string; // For 1:1 chats
+    profilePictureUrl?: string; // For 1:1 chats - other user's profile picture
     isGroup?: boolean; // For group chats
     groupName?: string; // For group chats
   };

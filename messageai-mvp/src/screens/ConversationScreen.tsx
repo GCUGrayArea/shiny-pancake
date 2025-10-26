@@ -28,7 +28,7 @@ import MessageBubble from '@/components/MessageBubble';
 import MessageInput from '@/components/MessageInput';
 import TypingIndicator from '@/components/TypingIndicator';
 import SmartReplyBar from '@/components/SmartReplyBar';
-// import Avatar from '@/components/Avatar'; // Temporarily disabled due to import issues
+import Avatar from '@/components/Avatar';
 import { computeMessageStatus } from '@/utils/message-status.utils';
 import { getInitials } from '@/utils/chat.utils';
 import { subscribeToTyping, type TypingUser } from '@/services/typing.service';
@@ -46,7 +46,7 @@ export default function ConversationScreen() {
   const { user } = useAuth();
   const { isOnline, triggerQueueProcessing } = useNetwork();
   
-  const { chatId: initialChatId, otherUserId, otherUserName, otherUserEmail, isGroup, groupName } = route.params;
+  const { chatId: initialChatId, otherUserId, otherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName } = route.params;
   
   const [chatId, setChatId] = useState<string | undefined>(initialChatId);
   const [sending, setSending] = useState(false);
@@ -180,13 +180,14 @@ export default function ConversationScreen() {
     navigation.setOptions({
       title: displayName,
       headerTitle: isGroup ? displayName : () => {
-        const initials = getInitials(displayName);
-
         return (
           <View style={styles.headerTitleContainer}>
-            <View style={[styles.avatarCircle, { backgroundColor: '#2196F3' }]}>
-              <Text style={styles.avatarText}>{initials}</Text>
-            </View>
+            <Avatar
+              displayName={displayName}
+              userId={otherUserId || 'unknown'}
+              profilePictureUrl={profilePictureUrl}
+              size="small"
+            />
             <Text style={styles.headerTitleText}>
               {displayName}
             </Text>
@@ -207,7 +208,7 @@ export default function ConversationScreen() {
         />
       ) : undefined,
     });
-  }, [navigation, otherUserName, loadedOtherUserName, otherUserEmail, isGroup, groupName, chatId]);
+  }, [navigation, otherUserId, otherUserName, loadedOtherUserName, otherUserEmail, profilePictureUrl, isGroup, groupName, chatId]);
 
   // Load messages when chat ID is available
   useEffect(() => {
