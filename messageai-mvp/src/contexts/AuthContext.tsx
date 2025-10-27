@@ -149,9 +149,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setError(null);
       try {
         await teardownPresenceSystem();
+        // Clear local database before signing out
+        const { clearAllData } = await import('@/services/database.service');
+        await clearAllData();
         await svcSignOut();
       } catch (error) {
-        // Continue with sign out even if presence teardown fails
+        // Continue with sign out even if cleanup fails
         await svcSignOut();
       }
     },

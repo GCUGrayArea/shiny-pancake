@@ -221,14 +221,15 @@ export async function savePushTokenToProfile(
 ): Promise<void> {
   try {
     const { getFirebaseDatabase } = await import("./firebase");
-    const { ref, set } = await import("firebase/database");
+    const { ref, update } = await import("firebase/database");
 
     const database = getFirebaseDatabase();
-    const tokenRef = ref(database, `/users/${userId}/pushToken`);
+    const userRef = ref(database, `/users/${userId}`);
 
-    await set(tokenRef, token);
+    // Use update() instead of set() to avoid parent validation rules
+    await update(userRef, { pushToken: token });
   } catch (error) {
     console.error("Error saving push token:", error);
-    throw error;
+    // Don't throw - push token is non-critical, log and continue
   }
 }

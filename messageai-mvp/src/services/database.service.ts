@@ -543,17 +543,20 @@ export async function getDatabaseVersion(): Promise<DbResult<number>> {
  */
 export async function clearAllData(): Promise<DbResult<void>> {
   try {
-    const db = await getDatabase();
+    const db = getDatabase();
 
+    // Clear all tables in reverse dependency order
     await db.execAsync(`
-      DELETE FROM message_status;
+      DELETE FROM message_delivery;
+      DELETE FROM cultural_hints;
+      DELETE FROM slang_items;
+      DELETE FROM user_style_profiles;
       DELETE FROM chat_participants;
       DELETE FROM messages;
       DELETE FROM chats;
       DELETE FROM users;
     `);
 
-    console.log("✓ All local database data cleared");
     return { success: true };
   } catch (error) {
     return {
